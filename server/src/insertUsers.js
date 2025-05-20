@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const User = require('./userModel'); // Assuming your User model is in a file named userModel.js
+const User = require('../models/userModel'); // Assuming your User model is in a file named userModel.js
 
 // Array of 20 user objects
 const users = [
@@ -168,13 +168,7 @@ const users = [
 // Function to feed users into the database
 async function feedUsersToDatabase() {
   try {
-    // Connect to MongoDB (replace with your connection string)
-    await mongoose.connect('mongodb://localhost:27017/yourdbname', {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
-
-    console.log('Connected to MongoDB');
+      console.log('Connected to MongoDB');
 
     // Insert users
     const result = await User.insertMany(users);
