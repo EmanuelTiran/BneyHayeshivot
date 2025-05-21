@@ -6,6 +6,8 @@ import Prayers from './pages/Prayers';
 import Announcements from './pages/Announcements';
 import Contact from './pages/Contact';
 import Admin from './pages/Admin';
+import Login from './components/auth/Login';  // יבוא קומפוננטת התחברות
+import Register from './components/auth/Register';  // יבוא קומפוננטת הרשמה
 import Footer from './components/common/Footer';
 
 function App() {
@@ -20,6 +22,8 @@ function App() {
             <Route path="/announcements" element={<Announcements />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/admin" element={<Admin />} />
+            <Route path="/login" element={<Login />} /> {/* נתיב חדש להתחברות */}
+            <Route path="/register" element={<Register />} /> {/* נתיב חדש להרשמה */}
           </Routes>
         </main>
         <Footer />
