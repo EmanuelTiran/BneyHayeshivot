@@ -9,6 +9,7 @@ import Admin from './pages/Admin';
 import Login from './components/auth/Login';  // יבוא קומפוננטת התחברות
 import Register from './components/auth/Register';  // יבוא קומפוננטת הרשמה
 import Footer from './components/common/Footer';
+import HalachicTimes from './components/HalachicTimes'; // יבוא קומפוננטת זמני הלכה
 
 function App() {
   return (
@@ -24,6 +25,7 @@ function App() {
             <Route path="/admin" element={<Admin />} />
             <Route path="/login" element={<Login />} /> {/* נתיב חדש להתחברות */}
             <Route path="/register" element={<Register />} /> {/* נתיב חדש להרשמה */}
+            <Route path="/hebcal" element={<HalachicTimes />} /> {/* נתיב חדש להרשמה */}
           </Routes>
         </main>
         <Footer />

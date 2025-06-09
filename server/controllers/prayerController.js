@@ -6,6 +6,7 @@ exports.getAll = async (req, res) => {
 };
 
 exports.create = async (req, res) => {
+  console.log(req.body)
   const saved = await prayerService.create(req.body);
   res.status(201).json(saved);
 };

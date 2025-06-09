@@ -1,9 +1,9 @@
 const mongoose = require('mongoose');
 
 const prayerSchema = new mongoose.Schema({
-  date: String,
+  description: String,
   time: String,
-  type: String, // שחרית, מנחה וכו'
+  title: String, // שחרית, מנחה וכו'
 });
 
 module.exports = mongoose.model('Prayer', prayerSchema);
