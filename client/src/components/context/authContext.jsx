@@ -9,7 +9,6 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // בדיקה אם המשתמש מחובר בעת טעינת האפליקציה
     const storedToken = localStorage.getItem('token');
     const storedUser = localStorage.getItem('user');
     
@@ -35,12 +34,14 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('user');
   };
 
+  const isAuthenticated = !!user;
+
   const isAdmin = () => {
-    return user && user.role === 'admin';
+    return isAuthenticated && user?.role?.toLowerCase() === 'admin';
   };
 
   const isGabbai = () => {
-    return user && user.role === 'gabbai';
+    return isAuthenticated && user?.role?.toLowerCase() === 'gabbai';
   };
 
   return (
@@ -51,7 +52,7 @@ export const AuthProvider = ({ children }) => {
       logout, 
       isAdmin, 
       isGabbai, 
-      isAuthenticated: !!user,
+      isAuthenticated,
       loading 
     }}>
       {children}
@@ -59,7 +60,6 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-// הוק לשימוש בקונטקסט
 export const useAuth = () => {
   return useContext(AuthContext);
 };

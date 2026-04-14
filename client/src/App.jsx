@@ -27,7 +27,7 @@ function App() {
             <Route path={ROUTES.LOGIN} element={<Login />} />
             <Route path={ROUTES.REGISTER} element={<Register />} />
             <Route path={ROUTES.HEBCAL} element={<HalachicTimes />} />
-            <Route path="*" element={<div className="text-center text-xl">העמוד לא נמצא</div>} />
+            <Route path="*" element={<div className="text-center text-xl">העמוד לא נמצא אין לך מה לחפש פה</div>} />
           </Routes>
         </main>
         <Footer />

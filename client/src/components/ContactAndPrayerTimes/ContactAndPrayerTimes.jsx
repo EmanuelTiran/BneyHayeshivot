@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
+import { useAuth } from '../context/authContext';
 
 const ContactAndPrayerTimes = ({ isButtonTransparent }) => {
+  const { isAdmin } = useAuth();
   const [prayers, setPrayers] = useState([
     { name: 'שחרית', time: '06:30' },
     { name: 'מנחה', time: '20 דקות לפני השקיעה' },
@@ -11,7 +13,7 @@ const ContactAndPrayerTimes = ({ isButtonTransparent }) => {
   const [tempPrayers, setTempPrayers] = useState([]);
 
   const openModal = () => {
-    setTempPrayers([...prayers]); // יצירת עותק לעריכה
+    setTempPrayers([...prayers]);
     setIsModalOpen(true);
   };
 
@@ -59,17 +61,17 @@ const ContactAndPrayerTimes = ({ isButtonTransparent }) => {
       </div>
 
       <div className="text-center">
-        <button
-          onClick={openModal}
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
-          style={{ opacity: isButtonTransparent ? 0 : 1 }}
-
-        >
-          ערוך זמני תפילה
-        </button>
+        {isAdmin() && (
+          <button
+            onClick={openModal}
+            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
+            style={{ opacity: isButtonTransparent ? 0 : 1 }}
+          >
+            ערוך זמני תפילה
+          </button>
+        )}
       </div>
 
-      {/* --- MODAL --- */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full border border-gray-300" dir="rtl">
@@ -105,10 +107,7 @@ const ContactAndPrayerTimes = ({ isButtonTransparent }) => {
             </div>
 
             <div className="flex justify-between items-center mt-6">
-              <button
-                onClick={addPrayer}
-                className="text-blue-600 hover:underline"
-              >
+              <button onClick={addPrayer} className="text-blue-600 hover:underline">
                 ➕ הוסף תפילה
               </button>
 
