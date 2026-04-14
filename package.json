@@ -1,4 +1,10 @@
 {
+  "private": true,
+  "scripts": {
+    "dev:client": "npm run dev --prefix client",
+    "dev:server": "npm run dev --prefix server",
+    "build:client": "npm run build --prefix client"
+  },
   "dependencies": {
     "react-router-dom": "^6.24.0"
   }

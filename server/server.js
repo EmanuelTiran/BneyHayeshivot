@@ -15,10 +15,13 @@ app.use('/api/prayers', require('./routes/prayers'));
 app.use('/api/announcements', require('./routes/announcements'));
 app.use('/api/contact', require('./routes/contact'));
 app.use('/api/auth', require('./routes/auth'));
+app.get('/api/health', (_req, res) => res.status(200).json({ status: 'ok' }));
 
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
 
 

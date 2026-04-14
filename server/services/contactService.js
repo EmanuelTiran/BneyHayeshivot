@@ -14,8 +14,8 @@ exports.createMessage = async (data) => {
  * מחזיר את כל הודעות צור קשר - לשימוש גבאים
  * @returns {Promise<Array>} - רשימת ההודעות בסדר כרונולוגי יורד
  */
-exports.getAllMessages = async () => {
-  return await ContactMessage.find().sort({ createdAt: -1 });
+exports.getAllMessages = async (filters = {}) => {
+  return await ContactMessage.find(filters).sort({ date: -1 });
 };
 
 /**
@@ -25,4 +25,19 @@ exports.getAllMessages = async () => {
  */
 exports.deleteMessageById = async (id) => {
   return await ContactMessage.findByIdAndDelete(id);
+};
+
+/**
+ * מעדכן סטטוס טיפול בהודעה
+ * @param {string} id - מזהה ההודעה
+ * @param {boolean} handled - האם ההודעה טופלה
+ * @returns {Promise<Object|null>} - ההודעה המעודכנת
+ */
+exports.updateHandledStatus = async (id, handled) => {
+  const handledAt = handled ? new Date() : null;
+  return await ContactMessage.findByIdAndUpdate(
+    id,
+    { handled, handledAt },
+    { new: true }
+  );
 };

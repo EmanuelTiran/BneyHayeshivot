@@ -1,0 +1,16 @@
+/* בקובץ CSS חיצוני או בבלוק <style> ב-HTML */
+@media print {
+  body { /* או אלמנט ספציפי אחר שתרצה להדפיס */
+    -webkit-print-color-adjust: exact; /* עבור דפדפני WebKit כמו Chrome ו-Safari */
+    print-color-adjust: exact; /* תקן CSS3 */
+  }
+
+  .element-to-print { /* לדוגמה, אם תיתן ל-div שלך class "element-to-print" */
+    background-image: url("/backgroundBnH.jpg") !important;
+    background-size: cover !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+    /* וודא שגובה האלמנט מספיק כדי שהתמונה תהיה גלויה */
+    min-height: 300px !important; 
+  }
+}

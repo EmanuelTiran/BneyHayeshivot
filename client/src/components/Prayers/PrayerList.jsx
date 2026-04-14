@@ -8,7 +8,7 @@ export default function PrayerList() {
     fetchPrayers().then((res) => setPrayers(res.data));
     fetchPrayers().then((res) => console.log(res.data));
   }, []);
-
+  
   return (
     <div className="p-4" dir="rtl">
       <h2 className="text-xl font-bold mb-4">לוח תפילות</h2>
