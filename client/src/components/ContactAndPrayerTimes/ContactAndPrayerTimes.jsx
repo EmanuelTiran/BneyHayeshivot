@@ -1,60 +1,154 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/authContext';
+import { getPrayers, savePrayers } from '../../services/prayersService';
+import { getAnnouncements, saveAnnouncement } from '../../services/announcementsService';
 
 const ContactAndPrayerTimes = ({ isButtonTransparent }) => {
   const { isAdmin } = useAuth();
-  const [prayers, setPrayers] = useState([
-    { name: 'שחרית', time: '06:30' },
-    { name: 'מנחה', time: '20 דקות לפני השקיעה' },
-    { name: 'ערבית', time: 'מיד לאחר מכן' },
-  ]);
+
+  const [specialMessage, setSpecialMessage] = useState('');
+  const [pinnedAnnouncement, setPinnedAnnouncement] = useState(null);
+  const [prayers, setPrayers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [tempPrayers, setTempPrayers] = useState([]);
+  const [tempMessage, setTempMessage] = useState('');
 
+  // ── Fetch on mount ──────────────────────────────────────────────────────────
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [fetchedPrayers, fetchedAnnouncements] = await Promise.all([
+          getPrayers(),
+          getAnnouncements(),
+        ]);
+
+        setPrayers(fetchedPrayers);
+
+        if (fetchedAnnouncements.length > 0) {
+          const pinned = fetchedAnnouncements[0];
+          setPinnedAnnouncement(pinned);
+          setSpecialMessage(pinned.content);
+        }
+      } catch (err) {
+        setError('שגיאה בטעינת הנתונים. אנא רענן את הדף.');
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, []);
+
+  // ── Modal helpers ───────────────────────────────────────────────────────────
   const openModal = () => {
-    setTempPrayers([...prayers]);
+    setTempPrayers(prayers.map((p) => ({ ...p })));
+    setTempMessage(specialMessage);
     setIsModalOpen(true);
   };
 
   const closeModal = () => setIsModalOpen(false);
 
-  const saveChanges = () => {
-    setPrayers(tempPrayers);
-    setIsModalOpen(false);
+  const saveChanges = async () => {
+    try {
+      const updatedPrayers = await savePrayers(tempPrayers);
+      setPrayers(updatedPrayers);
+
+      const announcementPayload = pinnedAnnouncement
+        ? { ...pinnedAnnouncement, content: tempMessage, title: 'הודעת גבאי' }
+        : { title: 'הודעת גבאי', content: tempMessage };
+
+      const savedAnnouncement = await saveAnnouncement(announcementPayload);
+      setPinnedAnnouncement(savedAnnouncement);
+      setSpecialMessage(savedAnnouncement.content);
+
+      setIsModalOpen(false);
+    } catch (err) {
+      console.error('שגיאה בשמירת הנתונים:', err);
+      alert('שגיאה בשמירת הנתונים. אנא נסה שוב.');
+    }
   };
 
   const handleChange = (index, field, value) => {
     const updated = [...tempPrayers];
-    updated[index][field] = value;
+    updated[index] = { ...updated[index], [field]: value };
     setTempPrayers(updated);
   };
 
-  const addPrayer = () => {
-    setTempPrayers([...tempPrayers, { name: '', time: '' }]);
-  };
+  const addPrayer = () =>
+    setTempPrayers([...tempPrayers, { title: '', time: '' }]);
 
-  const removePrayer = (index) => {
-    const updated = tempPrayers.filter((_, i) => i !== index);
-    setTempPrayers(updated);
-  };
+  const removePrayer = (index) =>
+    setTempPrayers(tempPrayers.filter((_, i) => i !== index));
+
+  // ── Render ──────────────────────────────────────────────────────────────────
+  if (loading) {
+    return (
+      <div className="text-center py-10 text-[#0d2340] font-medium" dir="rtl">
+        <div className="animate-pulse">טוען נתונים...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-10 text-[#a61b1b] font-medium" dir="rtl">
+        {error}
+      </div>
+    );
+  }
 
   return (
-    <div className="bg-white shadow-lg rounded-lg p-6 max-w-md mx-auto my-8 border border-gray-200" dir="rtl">
-      <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">פרטי יצירת קשר וזמני תפילה</h2>
+    <div
+      className="bg-[#f7f4e9] shadow-2xl rounded-xl p-6 max-w-md mx-auto my-8 border border-[#cfa756]/30 relative overflow-hidden"
+      dir="rtl"
+    >
+      {/* פס קישוט עליון בסגנון הכתר */}
+      <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-[#0d2340] via-[#cfa756] to-[#0d2340]"></div>
 
-      <div className="mb-5">
-        <h3 className="text-xl font-semibold text-gray-700 mb-2">כתובתנו:</h3>
-        <p className="text-lg text-gray-600">הרב רפאל ברוך טולדנו 18</p>
+      <h2 className="text-3xl font-bold text-[#0d2340] mb-8 mt-2 text-center drop-shadow-sm">
+        זמני תפילה ומידע
+      </h2>
+
+      {specialMessage && (
+        <div className="mb-8 p-4 bg-white border-r-4 border-[#a61b1b] shadow-sm rounded-l-lg relative">
+          <div className="absolute -top-3 -right-2 bg-[#a61b1b] text-white text-xs font-bold px-2 py-1 rounded shadow">
+            הודעת גבאי
+          </div>
+          <p className="text-[#0d2340] font-medium mt-2 leading-relaxed whitespace-pre-wrap">
+            {specialMessage}
+          </p>
+        </div>
+      )}
+
+      <div className="mb-6 bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+        <h3 className="text-xl font-bold text-[#0d2340] mb-2 flex items-center gap-2">
+          <svg className="w-5 h-5 text-[#cfa756]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          כתובתנו:
+        </h3>
+        <p className="text-lg text-gray-700 font-medium pr-7">הרב רפאל ברוך טולדנו 20 | רמת שלמה</p>
       </div>
 
-      <div className="mb-4">
-        <h3 className="text-xl font-semibold text-gray-700 mb-3">זמני תפילות:</h3>
-        <ul className="space-y-2">
+      <div className="mb-8">
+        <h3 className="text-xl font-bold text-[#0d2340] mb-4 border-b-2 border-[#cfa756] pb-2 inline-block">
+          זמני תפילות:
+        </h3>
+        <ul className="space-y-3">
           {prayers.map((prayer, index) => (
-            <li key={index} className="flex justify-between items-center text-lg text-gray-600">
-              <span className="font-medium">{prayer.name}:</span>
-              <span className="bg-blue-100 text-blue-800 text-md px-3 py-1 rounded-full">{prayer.time}</span>
+            <li
+              key={prayer._id ?? index}
+              className="flex justify-between items-center text-lg bg-white px-4 py-3 rounded-lg shadow-sm border border-gray-100 hover:border-[#cfa756]/50 transition-colors"
+            >
+              <span className="font-bold text-[#1a365d]">{prayer.title ?? prayer.name}</span>
+              <span className="bg-[#0d2340] text-[#cfa756] font-bold text-md px-4 py-1 rounded-full shadow-inner tracking-wide">
+                {prayer.time}
+              </span>
             </li>
           ))}
         </ul>
@@ -64,67 +158,94 @@ const ContactAndPrayerTimes = ({ isButtonTransparent }) => {
         {isAdmin() && (
           <button
             onClick={openModal}
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
+            className="bg-[#cfa756] text-[#0d2340] font-bold px-6 py-2.5 rounded-md hover:bg-[#b8860b] hover:text-white transition-all shadow-md focus:outline-none focus:ring-2 focus:ring-[#0d2340] ring-offset-2 ring-offset-[#f7f4e9]"
             style={{ opacity: isButtonTransparent ? 0 : 1 }}
           >
-            ערוך זמני תפילה
+            ערוך זמני תפילה והודעה
           </button>
         )}
       </div>
 
+      {/* Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full border border-gray-300" dir="rtl">
-            <h3 className="text-2xl font-bold mb-4 text-center text-gray-800">עריכת זמני תפילה</h3>
+        <div className="fixed inset-0 bg-[#0d2340]/70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div
+            className="bg-[#f7f4e9] p-6 rounded-xl shadow-2xl max-w-md w-full border-2 border-[#cfa756]"
+            dir="rtl"
+          >
+            <h3 className="text-2xl font-bold mb-6 text-center text-[#0d2340] border-b border-[#cfa756]/30 pb-3">
+              עריכת תוכן
+            </h3>
 
-            <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+            <div className="mb-6">
+              <label className="block text-[#0d2340] font-bold mb-2">הודעה מיוחדת (גבאי):</label>
+              <textarea
+                className="border border-gray-300 rounded-md px-3 py-2 w-full text-gray-800 focus:ring-2 focus:ring-[#cfa756] focus:border-[#cfa756] outline-none shadow-sm"
+                rows="3"
+                value={tempMessage}
+                onChange={(e) => setTempMessage(e.target.value)}
+                placeholder="כתבו כאן הודעה למתפללים..."
+              />
+            </div>
+
+            <div className="mb-4 flex items-center justify-between">
+              <h4 className="font-bold text-[#0d2340]">עריכת זמני תפילה:</h4>
+            </div>
+            
+            <div className="space-y-4 max-h-[35vh] overflow-y-auto pr-2 custom-scrollbar">
               {tempPrayers.map((prayer, index) => (
-                <div key={index} className="flex flex-col gap-2 border-b pb-3">
-                  <div className="flex justify-between gap-2">
+                <div key={prayer._id ?? index} className="flex flex-col gap-2 bg-white p-3 rounded-md shadow-sm border border-gray-200">
+                  <div className="flex justify-between gap-3">
                     <input
-                      className="border rounded px-3 py-2 w-full text-gray-700"
-                      value={prayer.name}
-                      onChange={(e) => handleChange(index, 'name', e.target.value)}
-                      placeholder="שם התפילה"
+                      className="border border-gray-300 rounded px-3 py-2 w-full text-gray-800 focus:ring-1 focus:ring-[#cfa756] outline-none"
+                      value={prayer.title ?? prayer.name ?? ''}
+                      onChange={(e) => handleChange(index, 'title', e.target.value)}
+                      placeholder="שם התפילה (לדוג': שחרית)"
                     />
                     <input
-                      className="border rounded px-3 py-2 w-full text-gray-700"
+                      className="border border-gray-300 rounded px-3 py-2 w-full text-gray-800 focus:ring-1 focus:ring-[#cfa756] outline-none text-center"
                       value={prayer.time}
                       onChange={(e) => handleChange(index, 'time', e.target.value)}
-                      placeholder="זמן התפילה"
+                      placeholder="זמן (לדוג': 06:15)"
+                      dir="ltr"
                     />
                   </div>
-                  <div className="text-left">
+                  <div className="text-right mt-1">
                     <button
                       onClick={() => removePrayer(index)}
-                      className="text-sm text-red-600 hover:underline"
+                      className="text-sm font-medium text-[#a61b1b] hover:text-red-800 hover:underline flex items-center gap-1"
                     >
-                      מחק תפילה זו
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                      מחק תפילה
                     </button>
                   </div>
                 </div>
               ))}
             </div>
 
-            <div className="flex justify-between items-center mt-6">
-              <button onClick={addPrayer} className="text-blue-600 hover:underline">
-                ➕ הוסף תפילה
+            <div className="mt-4 border-t border-[#cfa756]/30 pt-4">
+              <button 
+                onClick={addPrayer} 
+                className="text-[#1a365d] font-bold hover:text-[#cfa756] transition-colors flex items-center gap-1"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
+                הוסף תפילה
               </button>
+            </div>
 
-              <div className="flex gap-3">
-                <button
-                  onClick={closeModal}
-                  className="px-4 py-2 rounded bg-gray-300 hover:bg-gray-400 text-gray-800"
-                >
-                  ביטול
-                </button>
-                <button
-                  onClick={saveChanges}
-                  className="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white"
-                >
-                  שמור שינויים
-                </button>
-              </div>
+            <div className="flex justify-end gap-3 mt-8">
+              <button
+                onClick={closeModal}
+                className="px-5 py-2 rounded-md border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 font-medium transition-colors"
+              >
+                ביטול
+              </button>
+              <button
+                onClick={saveChanges}
+                className="px-5 py-2 rounded-md bg-[#0d2340] hover:bg-[#1a365d] text-[#cfa756] font-bold transition-colors shadow-md"
+              >
+                שמור שינויים
+              </button>
             </div>
           </div>
         </div>

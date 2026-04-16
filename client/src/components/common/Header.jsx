@@ -2,72 +2,18 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { NAVIGATION_ITEMS, ROUTES } from '../../constants/routes';
+import { useAuth } from '../context/authContext';
 
 function Header() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [user, setUser] = useState(null);
+  const { user, isAuthenticated, isAdmin, logout } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-
-  // פונקציה לבדיקת סטטוס האימות
-  const checkAuthStatus = useCallback(() => {
-    try {
-      const token = localStorage.getItem('token');
-      const userData = localStorage.getItem('user');
-
-      if (token && userData) {
-        const parsedUser = JSON.parse(userData);
-        setIsLoggedIn(true);
-        setUser(parsedUser);
-      } else {
-        setIsLoggedIn(false);
-        setUser(null);
-      }
-    } catch (error) {
-      console.error('Error parsing user data:', error);
-      // במקרה של שגיאה, נסיר את הנתונים הפגומים
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      setIsLoggedIn(false);
-      setUser(null);
-    }
-  }, []);
-
-  useEffect(() => {
-    checkAuthStatus();
-
-    // האזנה לשינויים ב-storage
-    const handleStorageChange = (e) => {
-      if (e.key === 'token' || e.key === 'user') {
-        checkAuthStatus();
-      }
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-    };
-  }, [checkAuthStatus]);
 
   // סגירת תפריט נייד בעת שינוי route
   useEffect(() => {
     setIsMenuOpen(false);
   }, [location.pathname]);
-
-  const handleLogout = useCallback(() => {
-    try {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      setIsLoggedIn(false);
-      setUser(null);
-      setIsMenuOpen(false);
-      navigate(ROUTES.HOME);
-    } catch (error) {
-      console.error('Error during logout:', error);
-    }
-  }, [navigate]);
 
   const toggleMenu = useCallback(() => {
     setIsMenuOpen(prev => !prev);
@@ -82,7 +28,11 @@ function Header() {
   const NavigationLink = ({ to, children, className = "", onClick = null }) => (
     <Link
       to={to}
-      className={`hover:text-blue-200 transition-colors ${isActiveLink(to) ? 'text-blue-200 font-semibold' : ''} ${className}`}
+      className={`hover:text-[#cfa756] transition-colors duration-300 ${
+        isActiveLink(to) 
+          ? 'text-[#cfa756] font-bold border-b-2 border-[#cfa756] pb-1' 
+          : 'text-[#f7f4e9]'
+      } ${className}`}
       onClick={onClick}
     >
       {children}
@@ -91,15 +41,15 @@ function Header() {
 
   // רכיב לכפתורי התחברות/הרשמה
   const AuthButtons = useMemo(() => {
-    if (isLoggedIn) {
+    if (isAuthenticated) {
       return (
         <div className="flex items-center">
-          <span className="ml-4 text-lg font-medium">
+          <span className="ml-4 text-lg font-medium text-[#f7f4e9]">
             שלום, {user?.name || 'משתמש'}!
           </span>
           <button
-            onClick={handleLogout}
-            className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded transition-colors ml-4 focus:outline-none focus:ring-2 focus:ring-red-300"
+            onClick={logout}
+            className="bg-[#a61b1b] hover:bg-[#801515] text-white px-5 py-2 rounded-md transition-colors ml-4 focus:outline-none focus:ring-2 focus:ring-[#cfa756] shadow-md"
             aria-label="התנתק מהמערכת"
           >
             התנתק
@@ -109,34 +59,37 @@ function Header() {
     }
 
     return (
-      <div className="flex items-center space-x-2">
+      <div className="flex items-center space-x-3 rtl:space-x-reverse">
         <Link
           to={ROUTES.LOGIN}
-          className="bg-blue-700 hover:bg-blue-800 text-white px-4 py-2 rounded transition-colors ml-2 focus:outline-none focus:ring-2 focus:ring-blue-300"
+          className="border-2 border-[#cfa756] text-[#cfa756] hover:bg-[#cfa756] hover:text-[#0d2340] px-5 py-2 rounded-md transition-all focus:outline-none focus:ring-2 focus:ring-[#cfa756] font-medium"
         >
           התחבר
         </Link>
         <Link
           to={ROUTES.REGISTER}
-          className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded transition-colors focus:outline-none focus:ring-2 focus:ring-green-300"
+          className="bg-[#cfa756] hover:bg-[#b8860b] text-[#0d2340] px-5 py-2 rounded-md transition-all focus:outline-none focus:ring-2 focus:ring-[#cfa756] font-bold shadow-md"
         >
           הירשם
         </Link>
       </div>
     );
-  }, [isLoggedIn, user?.name, handleLogout]);
+  }, [isAuthenticated, user?.name, logout]);
 
   // רכיב לתפריט נייד
   const MobileAuthButtons = useMemo(() => {
-    if (isLoggedIn) {
+    if (isAuthenticated) {
       return (
-        <div className="flex flex-col space-y-2">
-          <span className="text-lg font-medium">
+        <div className="flex flex-col space-y-3 mt-4 border-t border-[#cfa756]/30 pt-4">
+          <span className="text-lg font-medium text-[#cfa756]">
             שלום, {user?.name || 'משתמש'}!
           </span>
           <button
-            onClick={handleLogout}
-            className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded transition-colors text-right focus:outline-none focus:ring-2 focus:ring-red-300"
+            onClick={() => {
+              logout();
+              setIsMenuOpen(false);
+            }}
+            className="bg-[#a61b1b] hover:bg-[#801515] text-white px-4 py-2 rounded-md transition-colors text-right focus:outline-none shadow-sm"
             aria-label="התנתק מהמערכת"
           >
             התנתק
@@ -146,46 +99,52 @@ function Header() {
     }
 
     return (
-      <div className="flex flex-col space-y-2">
+      <div className="flex flex-col space-y-3 mt-4 border-t border-[#cfa756]/30 pt-4">
         <Link
           to={ROUTES.LOGIN}
-          className="bg-blue-700 hover:bg-blue-800 text-white px-4 py-2 rounded transition-colors text-right focus:outline-none focus:ring-2 focus:ring-blue-300"
+          className="border border-[#cfa756] text-[#cfa756] hover:bg-[#cfa756] hover:text-[#0d2340] px-4 py-2 rounded-md transition-colors text-right"
           onClick={() => setIsMenuOpen(false)}
         >
           התחבר
         </Link>
         <Link
           to={ROUTES.REGISTER}
-          className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded transition-colors text-right focus:outline-none focus:ring-2 focus:ring-green-300"
+          className="bg-[#cfa756] hover:bg-[#b8860b] text-[#0d2340] font-bold px-4 py-2 rounded-md transition-colors text-right"
           onClick={() => setIsMenuOpen(false)}
         >
           הירשם
         </Link>
       </div>
     );
-  }, [isLoggedIn, user?.name, handleLogout]);
+  }, [isAuthenticated, user?.name, logout]);
 
   return (
-    <header className="bg-blue-600 text-white shadow-md">
+    <header className="bg-gradient-to-r from-[#0d2340] to-[#1a365d] border-b-4 border-[#cfa756] shadow-lg relative z-50">
       <div className="container mx-auto px-4 py-3">
         <div className="flex items-center justify-between">
-          <Link 
-            to={ROUTES.HOME}
-            className="text-2xl font-bold hover:text-blue-200 transition-colors"
-            aria-label="דף הבית של בית הכנסת"
-          >
-            בית הכנסת
-          </Link>
+          {/* לוגו / שם האתר */}
+         {/* לוגו - תמונה במקום טקסט */}
+<Link 
+  to={ROUTES.HOME}
+  className="flex items-center"
+  aria-label="דף הבית"
+>
+  <img 
+    src="/logo.png" 
+    alt="לוגו" 
+    className="h-10 md:h-14 w-auto object-contain transition-transform duration-300 hover:scale-105"
+  />
+</Link>
 
           {/* תפריט המבורגר למובייל */}
           <div className="lg:hidden">
             <button
               onClick={toggleMenu}
-              className="text-white focus:outline-none focus:ring-2 focus:ring-blue-300 p-2 rounded"
+              className="text-[#cfa756] hover:text-[#f7f4e9] focus:outline-none p-2 rounded transition-colors"
               aria-label={isMenuOpen ? 'סגור תפריט' : 'פתח תפריט'}
               aria-expanded={isMenuOpen}
             >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                 <path 
                   strokeLinecap="round" 
                   strokeLinejoin="round" 
@@ -196,42 +155,44 @@ function Header() {
           </div>
 
           {/* תפריט למחשב */}
-          <nav className="hidden lg:flex items-center space-x-6" role="navigation">
+          <nav className="hidden lg:flex items-center space-x-6 rtl:space-x-reverse" role="navigation">
             {NAVIGATION_ITEMS.map(({ path, label }) => (
-              <NavigationLink key={path} to={path} className="ml-6">
+              <NavigationLink key={path} to={path}>
                 {label}
               </NavigationLink>
             ))}
 
-            {isLoggedIn && user?.role === 'admin' && (
-              <NavigationLink to={ROUTES.ADMIN} className="ml-6">
+            {isAuthenticated && isAdmin() && (
+              <NavigationLink to={ROUTES.ADMIN}>
                 ניהול
               </NavigationLink>
             )}
 
-            {AuthButtons}
+            <div className="mr-6 border-r border-[#cfa756]/30 pr-6 h-8 flex items-center">
+              {AuthButtons}
+            </div>
           </nav>
         </div>
 
         {/* תפריט נייד */}
         {isMenuOpen && (
-          <div className="lg:hidden mt-4" role="navigation">
-            <div className="flex flex-col space-y-3 text-right">
+          <div className="lg:hidden mt-4 pb-4" role="navigation">
+            <div className="flex flex-col space-y-4 text-right">
               {NAVIGATION_ITEMS.map(({ path, label }) => (
                 <NavigationLink 
                   key={path} 
                   to={path} 
-                  className="py-2"
+                  className="text-lg"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   {label}
                 </NavigationLink>
               ))}
 
-              {isLoggedIn && user?.role === 'admin' && (
+              {isAuthenticated && isAdmin() && (
                 <NavigationLink 
                   to={ROUTES.ADMIN} 
-                  className="py-2"
+                  className="text-lg"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   ניהול
