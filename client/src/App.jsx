@@ -11,6 +11,7 @@ import Register from './components/auth/Register';
 import Footer from './components/common/Footer';
 import HalachicTimes from './components/HalachicTimes';
 import { ROUTES } from './constants/routes';
+import Payments from './pages/Payments';
 
 function App() {
   return (
@@ -27,6 +28,7 @@ function App() {
             <Route path={ROUTES.LOGIN} element={<Login />} />
             <Route path={ROUTES.REGISTER} element={<Register />} />
             <Route path={ROUTES.HEBCAL} element={<HalachicTimes />} />
+            <Route path={ROUTES.PAYMENTS}      element={<Payments />} /> 
             <Route path="*" element={<div className="text-center text-xl">העמוד לא נמצא אין לך מה לחפש פה</div>} />
           </Routes>
         </main>

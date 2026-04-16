@@ -4,37 +4,32 @@ const API = axios.create({
   baseURL: 'http://localhost:5000/api',
 });
 
-// --- התוספת שלנו: המיירט שמוסיף את הטוקן ---
 API.interceptors.request.use((req) => {
-  // ודא שהשם 'token' תואם לשם שבו אתה שומר את הטוקן ב-localStorage בזמן ההתחברות
-  const token = localStorage.getItem('token'); 
+  const token = localStorage.getItem('token');
   if (token) {
     req.headers.Authorization = `Bearer ${token}`;
   }
   return req;
 });
-// -------------------------------------------
 
-export const fetchAnnouncements = () => API.get('/announcements');
-export const createAnnouncement = (data) => API.post('/announcements', data);
-export const updatePrayers      = (prayers) => API.put('/prayers', { prayers });
-export const updateAnnouncement = (id, data) => API.put(`/announcements/${id}`, data);
+// ── קיים ──────────────────────────────────────────────────────────────────────
+export const fetchAnnouncements   = () => API.get('/announcements');
+export const createAnnouncement   = (data) => API.post('/announcements', data);
+export const updateAnnouncement   = (id, data) => API.put(`/announcements/${id}`, data);
 
-export const fetchPrayers = () => API.get('/prayers');
-export const createPrayer = (data) => API.post('/prayers', data);
+export const fetchPrayers         = () => API.get('/prayers');
+export const createPrayer         = (data) => API.post('/prayers', data);
+export const updatePrayers        = (prayers) => API.put('/prayers', { prayers });
 
-export const sendContactMessage = (data) => API.post('/contact', data);
+export const sendContactMessage   = (data) => API.post('/contact', data);
 export const fetchContactMessages = () => API.get('/contact');
 
 export const updateContactMessageHandled = async (id, handled) => {
   const payload = { handled };
-
   try {
     return await API.patch(`/contact/${id}/handled`, payload);
   } catch (error) {
     const status = error?.response?.status;
-
-    // Fallback for environments running older/different backend route shapes.
     if (status === 404 || status === 405) {
       try {
         return await API.patch(`/contact/${id}`, payload);
@@ -46,7 +41,39 @@ export const updateContactMessageHandled = async (id, handled) => {
         throw secondError;
       }
     }
-
     throw error;
   }
 };
+
+// ── תשלומים – חדש ────────────────────────────────────────────────────────────
+
+/** משתמש רגיל */
+export const fetchMyPayments        = () => API.get('/payments/me');
+export const addMyDebt              = (data) => API.post('/payments/me/debts', data);
+export const markMyDebtPaid         = (debtId, isPaid) =>
+  API.patch(`/payments/me/debts/${debtId}`, { isPaid });
+export const setMyStandingOrder     = (data) => API.post('/payments/me/standing-order', data);
+export const cancelMyStandingOrder  = () => API.delete('/payments/me/standing-order');
+export const addMyDonation          = (data) => API.post('/payments/me/donations', data);
+
+/** אדמין */
+export const fetchAllPayments       = () => API.get('/payments');
+export const fetchUserPayments      = (userId) => API.get(`/payments/${userId}`);
+export const addUserDebt            = (userId, data) => API.post(`/payments/${userId}/debts`, data);
+export const markUserDebtPaid       = (userId, debtId, isPaid) =>
+  API.patch(`/payments/${userId}/debts/${debtId}`, { isPaid });
+export const deleteUserDebt         = (userId, debtId) =>
+  API.delete(`/payments/${userId}/debts/${debtId}`);
+export const setUserStandingOrder   = (userId, data) =>
+  API.post(`/payments/${userId}/standing-order`, data);
+export const cancelUserStandingOrder = (userId) =>
+  API.delete(`/payments/${userId}/standing-order`);
+export const addUserDonation        = (userId, data) =>
+  API.post(`/payments/${userId}/donations`, data);
+export const deleteUserDonation     = (userId, donationId) =>
+  API.delete(`/payments/${userId}/donations/${donationId}`);
+export const updateUserNotes        = (userId, notes) =>
+  API.patch(`/payments/${userId}/notes`, { notes });
+
+/** משתמשים */
+export const fetchAllUsers          = () => API.get('/users');
