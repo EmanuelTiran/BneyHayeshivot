@@ -79,6 +79,7 @@ client/src/pages/Announcements.jsx
 client/src/pages/Contact.jsx
 client/src/pages/Home.css
 client/src/pages/Home.jsx
+client/src/pages/Payments.jsx
 client/src/pages/Prayers.jsx
 client/src/services/announcementsService.js
 client/src/services/api.js
@@ -91,12 +92,14 @@ server/config/db.js
 server/controllers/announcementController.js
 server/controllers/authController.js
 server/controllers/contactController.js
+server/controllers/paymentController.js
 server/controllers/prayerController.js
 server/middleware/authMiddleware.js
 server/middleware/errorHandler.js
 server/models/Announcement.js
 server/models/connectToMongo.js
 server/models/ContactMessage.js
+server/models/Payment.js
 server/models/Prayer.js
 server/models/User.js
 server/models/userModel.js
@@ -104,12 +107,15 @@ server/package.json
 server/routes/announcements.js
 server/routes/auth.js
 server/routes/contact.js
+server/routes/payments.js
 server/routes/prayers.js
 server/routes/userRouter.js
+server/routes/users.js
 server/server.js
 server/services/announcementService.js
 server/services/authService.js
 server/services/contactService.js
+server/services/paymentService.js
 server/services/prayerService.js
 server/services/userServices.js
 server/src/insertUsers.js
@@ -255,29 +261,14 @@ Description:	${this.description}`)}}const kT=["getAdjustedDate","getDate","getEl
     <link rel="stylesheet" crossorigin href="/assets/index-CJcogRhB.css">
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"></div>
+
   </body>
 </html>
 </file>
 
 <file path="client/dist/vite.svg">
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" class="iconify iconify--logos" width="31.88" height="32" preserveAspectRatio="xMidYMid meet" viewBox="0 0 256 257"><defs><linearGradient id="IconifyId1813088fe1fbc01fb466" x1="-.828%" x2="57.636%" y1="7.652%" y2="78.411%"><stop offset="0%" stop-color="#41D1FF"></stop><stop offset="100%" stop-color="#BD34FE"></stop></linearGradient><linearGradient id="IconifyId1813088fe1fbc01fb467" x1="43.376%" x2="50.316%" y1="2.242%" y2="89.03%"><stop offset="0%" stop-color="#FFEA83"></stop><stop offset="8.333%" stop-color="#FFDD35"></stop><stop offset="100%" stop-color="#FFA800"></stop></linearGradient></defs><path fill="url(#IconifyId1813088fe1fbc01fb466)" d="M255.153 37.938L134.897 252.976c-2.483 4.44-8.862 4.466-11.382.048L.875 37.958c-2.746-4.814 1.371-10.646 6.827-9.67l120.385 21.517a6.537 6.537 0 0 0 2.322-.004l117.867-21.483c5.438-.991 9.574 4.796 6.877 9.62Z"></path><path fill="url(#IconifyId1813088fe1fbc01fb467)" d="M185.432.063L96.44 17.501a3.268 3.268 0 0 0-2.634 3.014l-5.474 92.456a3.268 3.268 0 0 0 3.997 3.378l24.777-5.718c2.318-.535 4.413 1.507 3.936 3.838l-7.361 36.047c-.495 2.426 1.782 4.5 4.151 3.78l15.304-4.649c2.372-.72 4.652 1.36 4.15 3.788l-11.698 56.621c-.732 3.542 3.979 5.473 5.943 2.437l1.313-2.028l72.516-144.72c1.215-2.423-.88-5.186-3.54-4.672l-25.505 4.922c-2.396.462-4.435-1.77-3.759-4.114l16.646-57.705c.677-2.35-1.37-4.583-3.769-4.113Z"></path></svg>
-</file>
-
-<file path="client/index.html">
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/logo.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Bney Hayeshivot</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
-</html>
 </file>
 
 <file path="client/postcss.config.js">
@@ -662,26 +653,6 @@ const HalachicTimes = () => {
 export default HalachicTimes;
 </file>
 
-<file path="client/src/constants/routes.js">
-export const ROUTES = {
-  HOME: '/',
-  PRAYERS: '/prayers',
-  ANNOUNCEMENTS: '/announcements',
-  CONTACT: '/contact',
-  ADMIN: '/admin',
-  LOGIN: '/login',
-  REGISTER: '/register',
-  HEBCAL: '/hebcal'
-};
-
-export const NAVIGATION_ITEMS = [
-  { path: ROUTES.HOME, label: 'דף הבית' },
-  { path: ROUTES.PRAYERS, label: 'תפילות' },
-  { path: ROUTES.ANNOUNCEMENTS, label: 'הודעות' },
-  { path: ROUTES.CONTACT, label: 'צור קשר' }
-];
-</file>
-
 <file path="client/src/layout/AdminLayout.jsx">
 
 </file>
@@ -735,6 +706,673 @@ export default function ContactPage() {
 }
 </file>
 
+<file path="client/src/pages/Payments.jsx">
+import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  fetchMyPayments, fetchAllPayments, fetchAllUsers,
+  addMyDebt, markMyDebtPaid,
+  setMyStandingOrder, cancelMyStandingOrder,
+  addMyDonation,
+  addUserDebt, markUserDebtPaid, deleteUserDebt,
+  setUserStandingOrder, cancelUserStandingOrder,
+  addUserDonation, deleteUserDonation,
+  updateUserNotes,
+} from '../services/api';
+
+// ─── כלי עזר ────────────────────────────────────────────────────────────────
+
+const fmt = (amount) =>
+  new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS' }).format(amount);
+
+const fmtDate = (dateStr) =>
+  dateStr ? new Date(dateStr).toLocaleDateString('he-IL') : '—';
+
+// ─── Badge סטטוס ─────────────────────────────────────────────────────────────
+
+const Badge = ({ active, labels }) => (
+  <span className={`text-xs font-bold px-2 py-1 rounded-full ${
+    active
+      ? 'bg-green-100 text-green-800 border border-green-300'
+      : 'bg-red-100 text-red-700 border border-red-300'
+  }`}>
+    {active ? labels[0] : labels[1]}
+  </span>
+);
+
+// ─── כרטיסית סעיף ────────────────────────────────────────────────────────────
+
+const Section = ({ title, icon, children }) => (
+  <div className="bg-white rounded-xl border border-[#cfa756]/30 shadow-md overflow-hidden mb-6">
+    <div className="bg-gradient-to-r from-[#0d2340] to-[#1a365d] px-5 py-3 flex items-center gap-2">
+      <span className="text-[#cfa756] text-xl">{icon}</span>
+      <h2 className="text-[#f7f4e9] font-bold text-lg">{title}</h2>
+    </div>
+    <div className="p-5">{children}</div>
+  </div>
+);
+
+// ─── טופס הוספת חוב ──────────────────────────────────────────────────────────
+
+function AddDebtForm({ onSubmit, loading }) {
+  const [form, setForm] = useState({ description: '', amount: '', dueDate: '' });
+
+  const handle = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+
+  const submit = (e) => {
+    e.preventDefault();
+    onSubmit({ ...form, amount: Number(form.amount) });
+    setForm({ description: '', amount: '', dueDate: '' });
+  };
+
+  return (
+    <form onSubmit={submit} className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4 pt-4 border-t border-gray-200">
+      <input
+        name="description" value={form.description} onChange={handle} required
+        placeholder="תיאור החוב"
+        className="border border-gray-300 rounded-lg px-3 py-2 text-right focus:ring-2 focus:ring-[#cfa756] outline-none"
+      />
+      <input
+        name="amount" value={form.amount} onChange={handle} required type="number" min="0"
+        placeholder="סכום (₪)"
+        className="border border-gray-300 rounded-lg px-3 py-2 text-right focus:ring-2 focus:ring-[#cfa756] outline-none"
+      />
+      <input
+        name="dueDate" value={form.dueDate} onChange={handle} type="date"
+        className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#cfa756] outline-none"
+      />
+      <button
+        type="submit" disabled={loading}
+        className="sm:col-span-3 bg-[#0d2340] hover:bg-[#1a365d] text-[#cfa756] font-bold px-4 py-2 rounded-lg transition-colors"
+      >
+        {loading ? 'שומר...' : '+ הוסף חוב'}
+      </button>
+    </form>
+  );
+}
+
+// ─── טופס הוספת תרומה ────────────────────────────────────────────────────────
+
+function AddDonationForm({ onSubmit, loading }) {
+  const [form, setForm] = useState({ description: 'תרומה', amount: '', date: '' });
+
+  const handle = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+
+  const submit = (e) => {
+    e.preventDefault();
+    onSubmit({ ...form, amount: Number(form.amount) });
+    setForm({ description: 'תרומה', amount: '', date: '' });
+  };
+
+  return (
+    <form onSubmit={submit} className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4 pt-4 border-t border-gray-200">
+      <input
+        name="description" value={form.description} onChange={handle} required
+        placeholder="תיאור התרומה"
+        className="border border-gray-300 rounded-lg px-3 py-2 text-right focus:ring-2 focus:ring-[#cfa756] outline-none"
+      />
+      <input
+        name="amount" value={form.amount} onChange={handle} required type="number" min="0"
+        placeholder="סכום (₪)"
+        className="border border-gray-300 rounded-lg px-3 py-2 text-right focus:ring-2 focus:ring-[#cfa756] outline-none"
+      />
+      <input
+        name="date" value={form.date} onChange={handle} type="date"
+        className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#cfa756] outline-none"
+      />
+      <button
+        type="submit" disabled={loading}
+        className="sm:col-span-3 bg-[#0d2340] hover:bg-[#1a365d] text-[#cfa756] font-bold px-4 py-2 rounded-lg transition-colors"
+      >
+        {loading ? 'שומר...' : '+ הוסף תרומה'}
+      </button>
+    </form>
+  );
+}
+
+// ─── טופס הוראת קבע ──────────────────────────────────────────────────────────
+
+function StandingOrderForm({ current, onSave, onCancel, loading }) {
+  const [form, setForm] = useState({
+    amount:      current?.amount     || '',
+    dayOfMonth:  current?.dayOfMonth || 1,
+    description: current?.description || 'הוראת קבע חודשית',
+  });
+
+  const handle = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+
+  const submit = (e) => {
+    e.preventDefault();
+    onSave({ ...form, amount: Number(form.amount), dayOfMonth: Number(form.dayOfMonth) });
+  };
+
+  return (
+    <form onSubmit={submit} className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4 pt-4 border-t border-gray-200">
+      <input
+        name="description" value={form.description} onChange={handle} required
+        placeholder="תיאור"
+        className="border border-gray-300 rounded-lg px-3 py-2 text-right focus:ring-2 focus:ring-[#cfa756] outline-none"
+      />
+      <input
+        name="amount" value={form.amount} onChange={handle} required type="number" min="0"
+        placeholder="סכום חודשי (₪)"
+        className="border border-gray-300 rounded-lg px-3 py-2 text-right focus:ring-2 focus:ring-[#cfa756] outline-none"
+      />
+      <input
+        name="dayOfMonth" value={form.dayOfMonth} onChange={handle} type="number" min="1" max="28"
+        placeholder="יום בחודש (1-28)"
+        className="border border-gray-300 rounded-lg px-3 py-2 text-right focus:ring-2 focus:ring-[#cfa756] outline-none"
+      />
+      <div className="sm:col-span-3 flex gap-3">
+        <button type="submit" disabled={loading}
+          className="flex-1 bg-[#0d2340] hover:bg-[#1a365d] text-[#cfa756] font-bold px-4 py-2 rounded-lg transition-colors">
+          {loading ? 'שומר...' : 'שמור הוראת קבע'}
+        </button>
+        {current?.isActive && (
+          <button type="button" onClick={onCancel} disabled={loading}
+            className="bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-2 rounded-lg transition-colors">
+            בטל הוראת קבע
+          </button>
+        )}
+      </div>
+    </form>
+  );
+}
+
+// ─── תצוגת תשלומים – משתמש רגיל ──────────────────────────────────────────────
+
+function MyPaymentsView() {
+  const [data, setData]       = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving]   = useState(false);
+  const [error, setError]     = useState('');
+  const [showSOForm, setShowSOForm] = useState(false);
+
+  const reload = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await fetchMyPayments();
+      setData(res.data);
+    } catch {
+      setError('שגיאה בטעינת נתוני התשלומים');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { reload(); }, [reload]);
+
+  const withSave = async (fn) => {
+    setSaving(true);
+    setError('');
+    try {
+      await fn();
+      await reload();
+    } catch {
+      setError('שגיאה בשמירה, נסה שוב');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) return <p className="text-center py-10 text-[#0d2340]">טוען נתונים...</p>;
+  if (!data)   return <p className="text-center py-10 text-red-600">{error}</p>;
+
+  const openDebts  = data.debts?.filter(d => !d.isPaid) || [];
+  const closedDebts = data.debts?.filter(d => d.isPaid) || [];
+  const totalDebt  = openDebts.reduce((s, d) => s + d.amount, 0);
+
+  return (
+    <div dir="rtl" className="max-w-3xl mx-auto py-8 px-4">
+      <div className="text-center mb-8">
+        <h1 className="text-3xl font-bold text-[#0d2340]">הנתונים הכספיים שלי</h1>
+        <p className="text-gray-500 mt-1">כל המידע הפיננסי שלך במקום אחד</p>
+      </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-300 text-red-700 rounded-lg px-4 py-3 mb-4 text-right">
+          {error}
+        </div>
+      )}
+
+      {/* סיכום */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        {[
+          { label: 'סך חובות פתוחים', value: fmt(totalDebt), color: totalDebt > 0 ? 'text-red-600' : 'text-green-600' },
+          { label: 'תרומות שבוצעו',  value: data.donations?.length || 0, color: 'text-[#0d2340]' },
+          { label: 'הוראת קבע',      value: data.standingOrder?.isActive ? fmt(data.standingOrder.amount) : 'לא פעילה', color: 'text-[#0d2340]' },
+        ].map(card => (
+          <div key={card.label} className="bg-white rounded-xl border border-[#cfa756]/30 shadow-sm p-4 text-center">
+            <p className="text-sm text-gray-500 mb-1">{card.label}</p>
+            <p className={`text-2xl font-bold ${card.color}`}>{card.value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* חובות */}
+      <Section title="חובות פתוחים" icon="⚠️">
+        {openDebts.length === 0 ? (
+          <p className="text-green-600 font-medium">אין חובות פתוחים 🎉</p>
+        ) : (
+          <table className="w-full text-right text-sm">
+            <thead>
+              <tr className="border-b border-gray-200 text-gray-500">
+                <th className="pb-2">תיאור</th>
+                <th className="pb-2">סכום</th>
+                <th className="pb-2">תאריך יעד</th>
+                <th className="pb-2">שולם</th>
+              </tr>
+            </thead>
+            <tbody>
+              {openDebts.map(debt => (
+                <tr key={debt._id} className="border-b border-gray-100 hover:bg-gray-50">
+                  <td className="py-2 font-medium">{debt.description}</td>
+                  <td className="py-2 text-red-600 font-bold">{fmt(debt.amount)}</td>
+                  <td className="py-2 text-gray-500">{fmtDate(debt.dueDate)}</td>
+                  <td className="py-2">
+                    <input
+                      type="checkbox"
+                      checked={false}
+                      onChange={() => withSave(() => markMyDebtPaid(debt._id, true))}
+                      className="w-4 h-4 accent-[#0d2340] cursor-pointer"
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+
+        {closedDebts.length > 0 && (
+          <details className="mt-4">
+            <summary className="cursor-pointer text-sm text-gray-500 hover:text-[#0d2340]">
+              הצג חובות ששולמו ({closedDebts.length})
+            </summary>
+            <table className="w-full text-right text-sm mt-2">
+              <tbody>
+                {closedDebts.map(debt => (
+                  <tr key={debt._id} className="opacity-60 border-b border-gray-100">
+                    <td className="py-1 line-through">{debt.description}</td>
+                    <td className="py-1">{fmt(debt.amount)}</td>
+                    <td className="py-1 text-green-600">שולם {fmtDate(debt.paidAt)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </details>
+        )}
+      </Section>
+
+      {/* הוראת קבע */}
+      <Section title="הוראת קבע" icon="🔄">
+        {data.standingOrder ? (
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="flex-1">
+              <p className="font-semibold text-[#0d2340]">{data.standingOrder.description}</p>
+              <p className="text-2xl font-bold text-[#0d2340] mt-1">{fmt(data.standingOrder.amount)}</p>
+              <p className="text-sm text-gray-500 mt-1">
+                בכל ה-{data.standingOrder.dayOfMonth} לחודש
+              </p>
+            </div>
+            <Badge active={data.standingOrder.isActive} labels={['פעילה', 'מבוטלת']} />
+          </div>
+        ) : (
+          <p className="text-gray-500">לא הוגדרה הוראת קבע</p>
+        )}
+
+        <button
+          onClick={() => setShowSOForm(v => !v)}
+          className="mt-3 text-sm text-[#0d2340] hover:text-[#cfa756] underline"
+        >
+          {showSOForm ? 'סגור' : data.standingOrder ? 'ערוך הוראת קבע' : 'הגדר הוראת קבע'}
+        </button>
+
+        {showSOForm && (
+          <StandingOrderForm
+            current={data.standingOrder}
+            loading={saving}
+            onSave={(d) => withSave(() => setMyStandingOrder(d)).then(() => setShowSOForm(false))}
+            onCancel={() => withSave(() => cancelMyStandingOrder()).then(() => setShowSOForm(false))}
+          />
+        )}
+      </Section>
+
+      {/* תרומות */}
+      <Section title="היסטוריית תרומות" icon="💛">
+        {(!data.donations || data.donations.length === 0) ? (
+          <p className="text-gray-500">טרם בוצעו תרומות</p>
+        ) : (
+          <table className="w-full text-right text-sm">
+            <thead>
+              <tr className="border-b border-gray-200 text-gray-500">
+                <th className="pb-2">תיאור</th>
+                <th className="pb-2">סכום</th>
+                <th className="pb-2">תאריך</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[...data.donations].reverse().map(don => (
+                <tr key={don._id} className="border-b border-gray-100 hover:bg-gray-50">
+                  <td className="py-2 font-medium">{don.description}</td>
+                  <td className="py-2 text-green-600 font-bold">{fmt(don.amount)}</td>
+                  <td className="py-2 text-gray-500">{fmtDate(don.date)}</td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="font-bold text-[#0d2340]">
+                <td className="pt-3">סה"כ</td>
+                <td className="pt-3 text-green-700">
+                  {fmt(data.donations.reduce((s, d) => s + d.amount, 0))}
+                </td>
+                <td />
+              </tr>
+            </tfoot>
+          </table>
+        )}
+      </Section>
+    </div>
+  );
+}
+
+// ─── תצוגת תשלומים – אדמין ───────────────────────────────────────────────────
+
+function AdminPaymentsView() {
+  const [allData, setAllData]   = useState([]);
+  const [users, setUsers]       = useState([]);
+  const [selectedId, setSelectedId] = useState(null);
+  const [loading, setLoading]   = useState(true);
+  const [saving, setSaving]     = useState(false);
+  const [error, setError]       = useState('');
+  const [notesText, setNotesText] = useState('');
+  const [showDebtForm, setShowDebtForm]   = useState(false);
+  const [showDonForm, setShowDonForm]     = useState(false);
+  const [showSOForm, setShowSOForm]       = useState(false);
+
+  const reload = useCallback(async () => {
+    try {
+      setLoading(true);
+      const [paymentsRes, usersRes] = await Promise.all([fetchAllPayments(), fetchAllUsers()]);
+      setAllData(paymentsRes.data);
+      setUsers(usersRes.data);
+    } catch {
+      setError('שגיאה בטעינת נתונים');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { reload(); }, [reload]);
+
+  const selected = allData.find(p => p.user?._id === selectedId);
+
+  useEffect(() => {
+    if (selected) setNotesText(selected.notes || '');
+  }, [selected]);
+
+  const withSave = async (fn) => {
+    setSaving(true);
+    setError('');
+    try {
+      await fn();
+      await reload();
+    } catch {
+      setError('שגיאה בשמירה');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) return <p className="text-center py-10">טוען נתונים...</p>;
+
+  return (
+    <div dir="rtl" className="max-w-6xl mx-auto py-8 px-4">
+      <h1 className="text-3xl font-bold text-[#0d2340] text-center mb-8">ניהול תשלומים</h1>
+
+      {error && (
+        <div className="bg-red-50 border border-red-300 text-red-700 rounded-lg px-4 py-3 mb-4">
+          {error}
+        </div>
+      )}
+
+      <div className="flex flex-col lg:flex-row gap-6">
+
+        {/* רשימת מתפללים */}
+        <aside className="lg:w-72 bg-white rounded-xl border border-[#cfa756]/30 shadow-md overflow-hidden">
+          <div className="bg-gradient-to-r from-[#0d2340] to-[#1a365d] px-4 py-3">
+            <h2 className="text-[#cfa756] font-bold">רשימת מתפללים</h2>
+          </div>
+          <ul className="divide-y divide-gray-100 max-h-[70vh] overflow-y-auto">
+            {users.map(user => {
+              const rec = allData.find(p => p.user?._id === user._id);
+              const openDebt = rec?.debts?.filter(d => !d.isPaid).reduce((s, d) => s + d.amount, 0) || 0;
+              return (
+                <li key={user._id}>
+                  <button
+                    onClick={() => setSelectedId(user._id)}
+                    className={`w-full text-right px-4 py-3 hover:bg-[#f7f4e9] transition-colors ${
+                      selectedId === user._id ? 'bg-[#f7f4e9] border-r-4 border-[#cfa756]' : ''
+                    }`}
+                  >
+                    <p className="font-semibold text-[#0d2340]">{user.name}</p>
+                    <p className="text-xs text-gray-500">{user.email}</p>
+                    {openDebt > 0 && (
+                      <p className="text-xs text-red-600 font-bold mt-0.5">חוב: {fmt(openDebt)}</p>
+                    )}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </aside>
+
+        {/* פרטי משתמש נבחר */}
+        <main className="flex-1">
+          {!selectedId ? (
+            <div className="flex items-center justify-center h-48 text-gray-400">
+              בחר מתפלל מהרשימה
+            </div>
+          ) : !selected ? (
+            <div className="text-center text-gray-500 py-10">
+              <p>אין עדיין נתוני תשלום למתפלל זה</p>
+              <button
+                onClick={() => withSave(() => addUserDebt(selectedId, { description: 'חוב ראשוני', amount: 0 }))}
+                className="mt-4 bg-[#0d2340] text-[#cfa756] px-4 py-2 rounded-lg font-bold"
+              >
+                צור רשומה
+              </button>
+            </div>
+          ) : (
+            <>
+              {/* כותרת */}
+              <div className="bg-white rounded-xl border border-[#cfa756]/30 shadow-md p-5 mb-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                  <div>
+                    <h2 className="text-xl font-bold text-[#0d2340]">{selected.user?.name}</h2>
+                    <p className="text-sm text-gray-500">{selected.user?.email}</p>
+                  </div>
+                  <div className="text-left">
+                    <p className="text-sm text-gray-500">עודכן לאחרונה</p>
+                    <p className="font-medium">{fmtDate(selected.updatedAt)}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* חובות */}
+              <Section title="חובות" icon="⚠️">
+                {selected.debts?.length === 0 ? (
+                  <p className="text-gray-500 text-sm">אין חובות רשומים</p>
+                ) : (
+                  <table className="w-full text-right text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-200 text-gray-500">
+                        <th className="pb-2">תיאור</th>
+                        <th className="pb-2">סכום</th>
+                        <th className="pb-2">יעד</th>
+                        <th className="pb-2">סטטוס</th>
+                        <th className="pb-2">פעולות</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selected.debts.map(debt => (
+                        <tr key={debt._id} className={`border-b border-gray-100 ${debt.isPaid ? 'opacity-50' : ''}`}>
+                          <td className="py-2">{debt.description}</td>
+                          <td className="py-2 font-bold">{fmt(debt.amount)}</td>
+                          <td className="py-2 text-gray-500">{fmtDate(debt.dueDate)}</td>
+                          <td className="py-2">
+                            <Badge active={debt.isPaid} labels={['שולם', 'פתוח']} />
+                          </td>
+                          <td className="py-2">
+                            <div className="flex gap-2 justify-end">
+                              <button
+                                onClick={() => withSave(() => markUserDebtPaid(selectedId, debt._id, !debt.isPaid))}
+                                className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200"
+                              >
+                                {debt.isPaid ? 'סמן כפתוח' : 'סמן כשולם'}
+                              </button>
+                              <button
+                                onClick={() => withSave(() => deleteUserDebt(selectedId, debt._id))}
+                                className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded hover:bg-red-200"
+                              >
+                                מחק
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+                <button onClick={() => setShowDebtForm(v => !v)}
+                  className="mt-3 text-sm text-[#0d2340] hover:text-[#cfa756] underline">
+                  {showDebtForm ? 'סגור' : '+ הוסף חוב'}
+                </button>
+                {showDebtForm && (
+                  <AddDebtForm
+                    loading={saving}
+                    onSubmit={(d) => withSave(() => addUserDebt(selectedId, d)).then(() => setShowDebtForm(false))}
+                  />
+                )}
+              </Section>
+
+              {/* הוראת קבע */}
+              <Section title="הוראת קבע" icon="🔄">
+                {selected.standingOrder ? (
+                  <div className="flex items-center gap-4">
+                    <div className="flex-1">
+                      <p className="font-semibold">{selected.standingOrder.description}</p>
+                      <p className="text-xl font-bold text-[#0d2340]">{fmt(selected.standingOrder.amount)}</p>
+                      <p className="text-sm text-gray-500">יום {selected.standingOrder.dayOfMonth} בחודש</p>
+                    </div>
+                    <Badge active={selected.standingOrder.isActive} labels={['פעילה', 'מבוטלת']} />
+                  </div>
+                ) : (
+                  <p className="text-gray-500 text-sm">לא הוגדרה הוראת קבע</p>
+                )}
+                <button onClick={() => setShowSOForm(v => !v)}
+                  className="mt-3 text-sm text-[#0d2340] hover:text-[#cfa756] underline">
+                  {showSOForm ? 'סגור' : selected.standingOrder ? 'ערוך' : 'הגדר'}
+                </button>
+                {showSOForm && (
+                  <StandingOrderForm
+                    current={selected.standingOrder}
+                    loading={saving}
+                    onSave={(d) => withSave(() => setUserStandingOrder(selectedId, d)).then(() => setShowSOForm(false))}
+                    onCancel={() => withSave(() => cancelUserStandingOrder(selectedId)).then(() => setShowSOForm(false))}
+                  />
+                )}
+              </Section>
+
+              {/* תרומות */}
+              <Section title="תרומות" icon="💛">
+                {!selected.donations?.length ? (
+                  <p className="text-gray-500 text-sm">אין תרומות רשומות</p>
+                ) : (
+                  <table className="w-full text-right text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-200 text-gray-500">
+                        <th className="pb-2">תיאור</th>
+                        <th className="pb-2">סכום</th>
+                        <th className="pb-2">תאריך</th>
+                        <th className="pb-2"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[...selected.donations].reverse().map(don => (
+                        <tr key={don._id} className="border-b border-gray-100">
+                          <td className="py-2">{don.description}</td>
+                          <td className="py-2 text-green-600 font-bold">{fmt(don.amount)}</td>
+                          <td className="py-2 text-gray-500">{fmtDate(don.date)}</td>
+                          <td className="py-2">
+                            <button
+                              onClick={() => withSave(() => deleteUserDonation(selectedId, don._id))}
+                              className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded hover:bg-red-200"
+                            >
+                              מחק
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+                <button onClick={() => setShowDonForm(v => !v)}
+                  className="mt-3 text-sm text-[#0d2340] hover:text-[#cfa756] underline">
+                  {showDonForm ? 'סגור' : '+ הוסף תרומה'}
+                </button>
+                {showDonForm && (
+                  <AddDonationForm
+                    loading={saving}
+                    onSubmit={(d) => withSave(() => addUserDonation(selectedId, d)).then(() => setShowDonForm(false))}
+                  />
+                )}
+              </Section>
+
+              {/* הערות */}
+              <Section title="הערות פנימיות" icon="📝">
+                <textarea
+                  value={notesText}
+                  onChange={e => setNotesText(e.target.value)}
+                  rows={4}
+                  placeholder="הערות פנימיות (לא גלויות למתפלל)..."
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-right focus:ring-2 focus:ring-[#cfa756] outline-none"
+                />
+                <button
+                  onClick={() => withSave(() => updateUserNotes(selectedId, notesText))}
+                  disabled={saving}
+                  className="mt-2 bg-[#0d2340] hover:bg-[#1a365d] text-[#cfa756] font-bold px-4 py-2 rounded-lg transition-colors"
+                >
+                  {saving ? 'שומר...' : 'שמור הערות'}
+                </button>
+              </Section>
+            </>
+          )}
+        </main>
+      </div>
+    </div>
+  );
+}
+
+// ─── עמוד ראשי – מחליט מה להציג ─────────────────────────────────────────────
+
+export default function Payments() {
+  const navigate = useNavigate();
+
+  const rawUser = localStorage.getItem('user');
+  const user    = rawUser ? JSON.parse(rawUser) : null;
+
+  useEffect(() => {
+    if (!user) navigate('/login', { state: { from: '/payments' } });
+  }, [user, navigate]);
+
+  if (!user) return null;
+
+  return user.role === 'admin'
+    ? <AdminPaymentsView />
+    : <MyPaymentsView />;
+}
+</file>
+
 <file path="client/src/pages/Prayers.jsx">
 import PrayerList from '../components/Prayers/PrayerList';
 import NewPrayerForm from '../components/Prayers/NewPrayerForm';
@@ -750,41 +1388,6 @@ export default function PrayersPage() {
     </div>
   );
 }
-</file>
-
-<file path="client/src/services/announcementsService.js">
-import { fetchAnnouncements, createAnnouncement, updateAnnouncement } from './api';
-
-export const getAnnouncements = async () => {
-  const res = await fetchAnnouncements();
-  return res.data; // [{_id, title, content, date}, ...]
-};
-
-export const saveAnnouncement = async (announcement) => {
-  if (announcement._id) {
-    // Existing — update
-    const res = await updateAnnouncement(announcement._id, announcement);
-    return res.data;
-  }
-  // New — create
-  const res = await createAnnouncement(announcement);
-  return res.data;
-};
-</file>
-
-<file path="client/src/services/prayersService.js">
-import { fetchPrayers, updatePrayers } from './api';
-
-export const getPrayers = async () => {
-  const res = await fetchPrayers();
-  return res.data; // [{_id, title, time}, ...]
-};
-
-// Send the full edited list back to the server
-export const savePrayers = async (prayers) => {
-  const res = await updatePrayers(prayers);
-  return res.data;
-};
 </file>
 
 <file path="client/tailwind.config.js">
@@ -827,56 +1430,6 @@ const connectDB = async () => {
 module.exports = connectDB;
 </file>
 
-<file path="server/controllers/announcementController.js">
-const announcementService = require('../services/announcementService');
-
-exports.getAll = async (req, res) => {
-    const data = await announcementService.getAll();
-    res.json(data);
-};
-
-exports.create = async (req, res) => {
-    const created = await announcementService.create(req.body);
-    res.status(201).json(created);
-};
-const service = require('../services/announcementService');
-
-exports.getAnnouncements = async (req, res) => {
-  try {
-    res.json(await service.getAllAnnouncements());
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-};
-
-exports.createAnnouncement = async (req, res) => {
-  try {
-    res.status(201).json(await service.createAnnouncement(req.body));
-  } catch (err) {
-    res.status(400).json({ message: err.message });
-  }
-};
-
-exports.updateAnnouncement = async (req, res) => {
-  try {
-    const updated = await service.updateAnnouncement(req.params.id, req.body);
-    if (!updated) return res.status(404).json({ message: 'Not found' });
-    res.json(updated);
-  } catch (err) {
-    res.status(400).json({ message: err.message });
-  }
-};
-
-exports.deleteAnnouncement = async (req, res) => {
-  try {
-    await service.deleteAnnouncement(req.params.id);
-    res.json({ message: 'Deleted' });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-};
-</file>
-
 <file path="server/controllers/authController.js">
 const authService = require('../services/authService');
 
@@ -895,6 +1448,151 @@ exports.login = async (req, res, next) => {
     res.json(data);
   } catch (err) {
     res.status(401).json({ error: 'אימייל או סיסמה שגויים' });
+  }
+};
+</file>
+
+<file path="server/controllers/paymentController.js">
+const service = require('../services/paymentService');
+
+// ── משתמש רגיל: הנתונים שלו בלבד ────────────────────────────────────────────
+
+exports.getMyPayments = async (req, res) => {
+  try {
+    const record = await service.getOrCreateByUser(req.user.userId);
+    res.json(record);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// ── אדמין: כלל המשתמשים ──────────────────────────────────────────────────────
+
+exports.getAllPayments = async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'גישה אסורה' });
+    }
+    const all = await service.getAllPayments();
+    res.json(all);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.getUserPayments = async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'גישה אסורה' });
+    }
+    const record = await service.getOrCreateByUser(req.params.userId);
+    res.json(record);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// ── חובות ────────────────────────────────────────────────────────────────────
+
+exports.addDebt = async (req, res) => {
+  try {
+    const targetId = req.user.role === 'admin' && req.params.userId
+      ? req.params.userId
+      : req.user.userId;
+    const record = await service.addDebt(targetId, req.body);
+    res.status(201).json(record);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+};
+
+exports.markDebtPaid = async (req, res) => {
+  try {
+    const targetId = req.user.role === 'admin' && req.params.userId
+      ? req.params.userId
+      : req.user.userId;
+    const record = await service.markDebtPaid(targetId, req.params.debtId, req.body.isPaid);
+    res.json(record);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+};
+
+exports.deleteDebt = async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'גישה אסורה' });
+    }
+    const record = await service.deleteDebt(req.params.userId, req.params.debtId);
+    res.json(record);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+};
+
+// ── הוראת קבע ────────────────────────────────────────────────────────────────
+
+exports.setStandingOrder = async (req, res) => {
+  try {
+    const targetId = req.user.role === 'admin' && req.params.userId
+      ? req.params.userId
+      : req.user.userId;
+    const record = await service.setStandingOrder(targetId, req.body);
+    res.json(record);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+};
+
+exports.cancelStandingOrder = async (req, res) => {
+  try {
+    const targetId = req.user.role === 'admin' && req.params.userId
+      ? req.params.userId
+      : req.user.userId;
+    const record = await service.cancelStandingOrder(targetId);
+    res.json(record);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+};
+
+// ── תרומות ───────────────────────────────────────────────────────────────────
+
+exports.addDonation = async (req, res) => {
+  try {
+    const targetId = req.user.role === 'admin' && req.params.userId
+      ? req.params.userId
+      : req.user.userId;
+    const record = await service.addDonation(targetId, req.body);
+    res.status(201).json(record);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+};
+
+exports.deleteDonation = async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'גישה אסורה' });
+    }
+    const record = await service.deleteDonation(req.params.userId, req.params.donationId);
+    res.json(record);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+};
+
+// ── הערות ────────────────────────────────────────────────────────────────────
+
+exports.updateNotes = async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'גישה אסורה' });
+    }
+    const record = await service.updateNotes(req.params.userId, req.body.notes);
+    res.json(record);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
   }
 };
 </file>
@@ -935,29 +1633,66 @@ console.log(error)
 module.exports = {connectToMongo};
 </file>
 
-<file path="server/models/User.js">
+<file path="server/models/Payment.js">
 const mongoose = require('mongoose');
-const bcrypt = require('bcrypt');
 
-const userSchema = new mongoose.Schema({
-  name: String,
-  email: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
-  role: { type: String, enum: ['admin', 'gabbai'], default: 'gabbai' }
+// ── חוב בודד ─────────────────────────────────────────────────────────────────
+const debtSchema = new mongoose.Schema({
+  description: { type: String, required: true },
+  amount:      { type: Number, required: true, min: 0 },
+  dueDate:     { type: Date },
+  isPaid:      { type: Boolean, default: false },
+  paidAt:      { type: Date, default: null },
+  createdAt:   { type: Date, default: Date.now }
 });
 
-// הצפנת סיסמה לפני שמירה
-userSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) return next();
-  this.password = await bcrypt.hash(this.password, 10);
+// ── הוראת קבע ────────────────────────────────────────────────────────────────
+const standingOrderSchema = new mongoose.Schema({
+  amount:       { type: Number, required: true, min: 0 },
+  dayOfMonth:   { type: Number, min: 1, max: 28, default: 1 },
+  isActive:     { type: Boolean, default: true },
+  description:  { type: String, default: 'הוראת קבע חודשית' },
+  startDate:    { type: Date, default: Date.now },
+  lastCharged:  { type: Date, default: null }
+});
+
+// ── תרומה בודדת ───────────────────────────────────────────────────────────────
+const donationSchema = new mongoose.Schema({
+  amount:      { type: Number, required: true, min: 0 },
+  description: { type: String, default: 'תרומה' },
+  date:        { type: Date, default: Date.now },
+  receiptNumber: { type: String, default: '' }
+});
+
+// ── מסמך ראשי לכל משתמש ──────────────────────────────────────────────────────
+const paymentSchema = new mongoose.Schema({
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true,
+    unique: true   // רשומה אחת לכל משתמש
+  },
+  debts:         { type: [debtSchema],         default: [] },
+  standingOrder: { type: standingOrderSchema,  default: null },
+  donations:     { type: [donationSchema],     default: [] },
+  notes:         { type: String, default: '' },
+  updatedAt:     { type: Date, default: Date.now }
+});
+
+// עדכן updatedAt אוטומטית
+paymentSchema.pre('save', function (next) {
+  this.updatedAt = new Date();
   next();
 });
 
-userSchema.methods.comparePassword = function (candidate) {
-  return bcrypt.compare(candidate, this.password);
-};
+// ── Virtual: סך חובות פתוחים ──────────────────────────────────────────────────
+paymentSchema.virtual('totalDebt').get(function () {
+  return this.debts
+    .filter(d => !d.isPaid)
+    .reduce((sum, d) => sum + d.amount, 0);
+});
 
-module.exports = mongoose.model('User', userSchema);
+module.exports = mongoose.model('Payment', paymentSchema);
 </file>
 
 <file path="server/models/userModel.js">
@@ -1016,20 +1751,6 @@ const User = mongoose.model('User', userSchema);
 module.exports = User;
 </file>
 
-<file path="server/routes/announcements.js">
-const express = require('express');
-const router = express.Router();
-
-const ctrl    = require('../controllers/announcementController');
-const protect = require('../middleware/authMiddleware');
-router.get('/',           ctrl.getAnnouncements);
-router.post('/',  protect, ctrl.createAnnouncement);
-router.put('/:id', protect, ctrl.updateAnnouncement);
-router.delete('/:id', protect, ctrl.deleteAnnouncement);
-
-module.exports = router;
-</file>
-
 <file path="server/routes/auth.js">
 const express = require('express');
 const router = express.Router();
@@ -1041,24 +1762,31 @@ router.post('/login', authController.login);
 module.exports = router;
 </file>
 
-<file path="server/routes/prayers.js">
+<file path="server/routes/payments.js">
 const express = require('express');
 const router = express.Router();
-const ctrl = require('../controllers/prayerController');
+const ctrl = require('../controllers/paymentController');
+const protect = require('../middleware/authMiddleware');
 
-// בדוק ב-middleware/authMiddleware.js איך ייצאת את protect. 
-// אם ייצאת אותו כ-module.exports = protect, אז תוריד את הסוגריים המסולסלים.
-const  protect  = require('../middleware/authMiddleware'); 
+// ── משתמש מחובר: הנתונים שלו ─────────────────────────────────────────────────
+router.get('/me',                     protect, ctrl.getMyPayments);
+router.post('/me/debts',              protect, ctrl.addDebt);
+router.patch('/me/debts/:debtId',     protect, ctrl.markDebtPaid);
+router.post('/me/standing-order',     protect, ctrl.setStandingOrder);
+router.delete('/me/standing-order',   protect, ctrl.cancelStandingOrder);
+router.post('/me/donations',          protect, ctrl.addDonation);
 
-// שליפת תפילות - פתוח לכולם
-router.get('/', ctrl.getPrayers);
-console.log("Checking protect middleware:", protect);
-console.log("Checking controller function:", ctrl.replacePrayers);
-// עדכון כל התפילות - דורש הגנה (Token/Admin)
-router.put('/', protect, ctrl.replacePrayers);
-
-// יצירת תפילה בודדת (אופציונלי)
-router.post('/', protect, ctrl.create);
+// ── אדמין: ניהול כלל המשתמשים ────────────────────────────────────────────────
+router.get('/',                                    protect, ctrl.getAllPayments);
+router.get('/:userId',                             protect, ctrl.getUserPayments);
+router.post('/:userId/debts',                      protect, ctrl.addDebt);
+router.patch('/:userId/debts/:debtId',             protect, ctrl.markDebtPaid);
+router.delete('/:userId/debts/:debtId',            protect, ctrl.deleteDebt);
+router.post('/:userId/standing-order',             protect, ctrl.setStandingOrder);
+router.delete('/:userId/standing-order',           protect, ctrl.cancelStandingOrder);
+router.post('/:userId/donations',                  protect, ctrl.addDonation);
+router.delete('/:userId/donations/:donationId',    protect, ctrl.deleteDonation);
+router.patch('/:userId/notes',                     protect, ctrl.updateNotes);
 
 module.exports = router;
 </file>
@@ -1090,54 +1818,122 @@ router.delete("/:id", async (req, res) => { });
 module.exports = router;
 </file>
 
-<file path="server/services/announcementService.js">
-const Announcement = require('../models/Announcement');
+<file path="server/routes/users.js">
+const express = require('express');
+const router = express.Router();
+const protect = require('../middleware/authMiddleware');
+const User = require('../models/User');
 
-exports.getAll = () => Announcement.find();
-exports.create = (data) => new Announcement(data).save();
+// רשימת כל המשתמשים – לאדמין בלבד
+router.get('/', protect, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'גישה אסורה' });
+    }
+    const users = await User.find({ isActive: true })
+      .select('-password')
+      .sort({ name: 1 });
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 
-
-const getAllAnnouncements = () => Announcement.find().sort({ date: -1 });
-
-const createAnnouncement = (data) => Announcement.create(data);
-
-// Update a single announcement by id
-const updateAnnouncement = (id, data) =>
-  Announcement.findByIdAndUpdate(id, data, { new: true });
-
-const deleteAnnouncement = (id) => Announcement.findByIdAndDelete(id);
-
-module.exports = {
-  getAllAnnouncements,
-  createAnnouncement,
-  updateAnnouncement,
-  deleteAnnouncement,
-};
+module.exports = router;
 </file>
 
-<file path="server/services/authService.js">
-const User = require('../models/User');
-const jwt = require('jsonwebtoken');
+<file path="server/services/paymentService.js">
+const Payment = require('../models/Payment');
 
-exports.register = async (userData) => {
-  const user = new User(userData);
-  return await user.save();
+// ── קריאה ────────────────────────────────────────────────────────────────────
+
+/** מחזיר את רשומת התשלום של משתמש (יוצר אם לא קיימת) */
+const getOrCreateByUser = async (userId) => {
+  let record = await Payment.findOne({ user: userId }).populate('user', 'name email');
+  if (!record) {
+    record = await Payment.create({ user: userId });
+    record = await record.populate('user', 'name email');
+  }
+  return record;
 };
 
-exports.login = async ({ email, password }) => {
-  console.log('email', email);
-  const user = await User.findOne({ email });
-  if (!user || !(await user.comparePassword(password))) {
-    throw new Error('Invalid credentials');
+/** מחזיר את כל רשומות התשלום – לאדמין בלבד */
+const getAllPayments = async () => {
+  return Payment.find().populate('user', 'name email phone').sort({ updatedAt: -1 });
+};
+
+// ── חובות ────────────────────────────────────────────────────────────────────
+
+const addDebt = async (userId, debtData) => {
+  const record = await getOrCreateByUser(userId);
+  record.debts.push(debtData);
+  return record.save();
+};
+
+const markDebtPaid = async (userId, debtId, isPaid) => {
+  const record = await getOrCreateByUser(userId);
+  const debt = record.debts.id(debtId);
+  if (!debt) throw new Error('חוב לא נמצא');
+  debt.isPaid = isPaid;
+  debt.paidAt = isPaid ? new Date() : null;
+  return record.save();
+};
+
+const deleteDebt = async (userId, debtId) => {
+  const record = await getOrCreateByUser(userId);
+  record.debts.pull(debtId);
+  return record.save();
+};
+
+// ── הוראת קבע ────────────────────────────────────────────────────────────────
+
+const setStandingOrder = async (userId, orderData) => {
+  const record = await getOrCreateByUser(userId);
+  record.standingOrder = orderData;
+  return record.save();
+};
+
+const cancelStandingOrder = async (userId) => {
+  const record = await getOrCreateByUser(userId);
+  if (record.standingOrder) {
+    record.standingOrder.isActive = false;
   }
+  return record.save();
+};
 
-  const token = jwt.sign(
-    { userId: user._id, role: user.role },
-    process.env.JWT_SECRET,
-    { expiresIn: '2h' }
-  );
+// ── תרומות ───────────────────────────────────────────────────────────────────
 
-  return { token, user };
+const addDonation = async (userId, donationData) => {
+  const record = await getOrCreateByUser(userId);
+  record.donations.push(donationData);
+  return record.save();
+};
+
+const deleteDonation = async (userId, donationId) => {
+  const record = await getOrCreateByUser(userId);
+  record.donations.pull(donationId);
+  return record.save();
+};
+
+// ── הערות (אדמין) ─────────────────────────────────────────────────────────────
+
+const updateNotes = async (userId, notes) => {
+  const record = await getOrCreateByUser(userId);
+  record.notes = notes;
+  return record.save();
+};
+
+module.exports = {
+  getOrCreateByUser,
+  getAllPayments,
+  addDebt,
+  markDebtPaid,
+  deleteDebt,
+  setStandingOrder,
+  cancelStandingOrder,
+  addDonation,
+  deleteDonation,
+  updateNotes,
 };
 </file>
 
@@ -1292,6 +2088,22 @@ const userService = {
 };
 
 module.exports = userService;
+</file>
+
+<file path="client/index.html">
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/logo.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bney Hayeshivot</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
 </file>
 
 <file path="client/package.json">
@@ -1453,272 +2265,6 @@ export default function Footer() {
 }
 </file>
 
-<file path="client/src/components/ContactAndPrayerTimes/ContactAndPrayerTimes.jsx">
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../context/authContext';
-import { getPrayers, savePrayers } from '../../services/prayersService';
-import { getAnnouncements, saveAnnouncement } from '../../services/announcementsService';
-
-const ContactAndPrayerTimes = ({ isButtonTransparent }) => {
-  const { isAdmin } = useAuth();
-
-  const [specialMessage, setSpecialMessage] = useState('');
-  const [pinnedAnnouncement, setPinnedAnnouncement] = useState(null);
-  const [prayers, setPrayers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [tempPrayers, setTempPrayers] = useState([]);
-  const [tempMessage, setTempMessage] = useState('');
-
-  // ── Fetch on mount ──────────────────────────────────────────────────────────
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const [fetchedPrayers, fetchedAnnouncements] = await Promise.all([
-          getPrayers(),
-          getAnnouncements(),
-        ]);
-
-        setPrayers(fetchedPrayers);
-
-        if (fetchedAnnouncements.length > 0) {
-          const pinned = fetchedAnnouncements[0];
-          setPinnedAnnouncement(pinned);
-          setSpecialMessage(pinned.content);
-        }
-      } catch (err) {
-        setError('שגיאה בטעינת הנתונים. אנא רענן את הדף.');
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadData();
-  }, []);
-
-  // ── Modal helpers ───────────────────────────────────────────────────────────
-  const openModal = () => {
-    setTempPrayers(prayers.map((p) => ({ ...p })));
-    setTempMessage(specialMessage);
-    setIsModalOpen(true);
-  };
-
-  const closeModal = () => setIsModalOpen(false);
-
-  const saveChanges = async () => {
-    try {
-      console.log('🔵 Saving prayers:', tempPrayers);
-      const updatedPrayers = await savePrayers(tempPrayers);
-      console.log('✅ Prayers saved:', updatedPrayers);
-      setPrayers(updatedPrayers);
-  
-      const announcementPayload = pinnedAnnouncement
-        ? { ...pinnedAnnouncement, content: tempMessage, title: 'הודעת גבאי' }
-        : { title: 'הודעת גבאי', content: tempMessage };
-  
-      console.log('🔵 Saving announcement:', announcementPayload);
-      const savedAnnouncement = await saveAnnouncement(announcementPayload);
-      console.log('✅ Announcement saved:', savedAnnouncement);
-      setPinnedAnnouncement(savedAnnouncement);
-      setSpecialMessage(savedAnnouncement.content);
-  
-      setIsModalOpen(false);
-    } catch (err) {
-      console.error('❌ Full error object:', err);
-      console.error('❌ Response data:', err?.response?.data);
-      console.error('❌ Response status:', err?.response?.status);
-      alert('שגיאה בשמירת הנתונים. אנא נסה שוב.');
-    }
-  };
-
-  const handleChange = (index, field, value) => {
-    const updated = [...tempPrayers];
-    updated[index] = { ...updated[index], [field]: value };
-    setTempPrayers(updated);
-  };
-
-  const addPrayer = () =>
-    setTempPrayers([...tempPrayers, { title: '', time: '' }]);
-
-  const removePrayer = (index) =>
-    setTempPrayers(tempPrayers.filter((_, i) => i !== index));
-
-  // ── Render ──────────────────────────────────────────────────────────────────
-  if (loading) {
-    return (
-      <div className="text-center py-10 text-[#0d2340] font-medium" dir="rtl">
-        <div className="animate-pulse">טוען נתונים...</div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="text-center py-10 text-[#a61b1b] font-medium" dir="rtl">
-        {error}
-      </div>
-    );
-  }
-
-  return (
-    <div
-      className="bg-[#f7f4e9] shadow-2xl rounded-xl p-6 max-w-md mx-auto my-8 border border-[#cfa756]/30 relative overflow-hidden"
-      dir="rtl"
-    >
-      {/* פס קישוט עליון בסגנון הכתר */}
-      <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-[#0d2340] via-[#cfa756] to-[#0d2340]"></div>
-
-      <h2 className="text-3xl font-bold text-[#0d2340] mb-8 mt-2 text-center drop-shadow-sm">
-        זמני תפילה ומידע
-      </h2>
-
-      {specialMessage && (
-        <div className="mb-8 p-4 bg-white border-r-4 border-[#a61b1b] shadow-sm rounded-l-lg relative">
-          <div className="absolute -top-3 -right-2 bg-[#a61b1b] text-white text-xs font-bold px-2 py-1 rounded shadow">
-            הודעת גבאי
-          </div>
-          <p className="text-[#0d2340] font-medium mt-2 leading-relaxed whitespace-pre-wrap">
-            {specialMessage}
-          </p>
-        </div>
-      )}
-
-      <div className="mb-6 bg-white p-4 rounded-lg shadow-sm border border-gray-100">
-        <h3 className="text-xl font-bold text-[#0d2340] mb-2 flex items-center gap-2">
-          <svg className="w-5 h-5 text-[#cfa756]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-          כתובתנו:
-        </h3>
-        <p className="text-lg text-gray-700 font-medium pr-7">הרב רפאל ברוך טולדנו 20 | רמת שלמה</p>
-      </div>
-
-      <div className="mb-8">
-        <h3 className="text-xl font-bold text-[#0d2340] mb-4 border-b-2 border-[#cfa756] pb-2 inline-block">
-          זמני תפילות:
-        </h3>
-        <ul className="space-y-3">
-          {prayers.map((prayer, index) => (
-            <li
-              key={prayer._id ?? index}
-              className="flex justify-between items-center text-lg bg-white px-4 py-3 rounded-lg shadow-sm border border-gray-100 hover:border-[#cfa756]/50 transition-colors"
-            >
-              <span className="font-bold text-[#1a365d]">{prayer.title ?? prayer.name}</span>
-              <span className="bg-[#0d2340] text-[#cfa756] font-bold text-md px-4 py-1 rounded-full shadow-inner tracking-wide">
-                {prayer.time}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      <div className="text-center">
-        {isAdmin() && (
-          <button
-            onClick={openModal}
-            className="bg-[#cfa756] text-[#0d2340] font-bold px-6 py-2.5 rounded-md hover:bg-[#b8860b] hover:text-white transition-all shadow-md focus:outline-none focus:ring-2 focus:ring-[#0d2340] ring-offset-2 ring-offset-[#f7f4e9]"
-            style={{ opacity: isButtonTransparent ? 0 : 1 }}
-          >
-            ערוך זמני תפילה והודעה
-          </button>
-        )}
-      </div>
-
-      {/* Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-[#0d2340]/70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-          <div
-            className="bg-[#f7f4e9] p-6 rounded-xl shadow-2xl max-w-md w-full border-2 border-[#cfa756]"
-            dir="rtl"
-          >
-            <h3 className="text-2xl font-bold mb-6 text-center text-[#0d2340] border-b border-[#cfa756]/30 pb-3">
-              עריכת תוכן
-            </h3>
-
-            <div className="mb-6">
-              <label className="block text-[#0d2340] font-bold mb-2">הודעה מיוחדת (גבאי):</label>
-              <textarea
-                className="border border-gray-300 rounded-md px-3 py-2 w-full text-gray-800 focus:ring-2 focus:ring-[#cfa756] focus:border-[#cfa756] outline-none shadow-sm"
-                rows="3"
-                value={tempMessage}
-                onChange={(e) => setTempMessage(e.target.value)}
-                placeholder="כתבו כאן הודעה למתפללים..."
-              />
-            </div>
-
-            <div className="mb-4 flex items-center justify-between">
-              <h4 className="font-bold text-[#0d2340]">עריכת זמני תפילה:</h4>
-            </div>
-            
-            <div className="space-y-4 max-h-[35vh] overflow-y-auto pr-2 custom-scrollbar">
-              {tempPrayers.map((prayer, index) => (
-                <div key={prayer._id ?? index} className="flex flex-col gap-2 bg-white p-3 rounded-md shadow-sm border border-gray-200">
-                  <div className="flex justify-between gap-3">
-                    <input
-                      className="border border-gray-300 rounded px-3 py-2 w-full text-gray-800 focus:ring-1 focus:ring-[#cfa756] outline-none"
-                      value={prayer.title ?? prayer.name ?? ''}
-                      onChange={(e) => handleChange(index, 'title', e.target.value)}
-                      placeholder="שם התפילה (לדוג': שחרית)"
-                    />
-                    <input
-                      className="border border-gray-300 rounded px-3 py-2 w-full text-gray-800 focus:ring-1 focus:ring-[#cfa756] outline-none text-center"
-                      value={prayer.time}
-                      onChange={(e) => handleChange(index, 'time', e.target.value)}
-                      placeholder="זמן (לדוג': 06:15)"
-                      dir="ltr"
-                    />
-                  </div>
-                  <div className="text-right mt-1">
-                    <button
-                      onClick={() => removePrayer(index)}
-                      className="text-sm font-medium text-[#a61b1b] hover:text-red-800 hover:underline flex items-center gap-1"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                      מחק תפילה
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-4 border-t border-[#cfa756]/30 pt-4">
-              <button 
-                onClick={addPrayer} 
-                className="text-[#1a365d] font-bold hover:text-[#cfa756] transition-colors flex items-center gap-1"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
-                הוסף תפילה
-              </button>
-            </div>
-
-            <div className="flex justify-end gap-3 mt-8">
-              <button
-                onClick={closeModal}
-                className="px-5 py-2 rounded-md border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 font-medium transition-colors"
-              >
-                ביטול
-              </button>
-              <button
-                onClick={saveChanges}
-                className="px-5 py-2 rounded-md bg-[#0d2340] hover:bg-[#1a365d] text-[#cfa756] font-bold transition-colors shadow-md"
-              >
-                שמור שינויים
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-export default ContactAndPrayerTimes;
-</file>
-
 <file path="client/src/components/context/authContext.jsx">
 // context/authContext.jsx
 import { createContext, useState, useEffect, useContext } from 'react';
@@ -1837,6 +2383,28 @@ export default function NewPrayerForm({ onAdd }) {
     </form>
   );
 }
+</file>
+
+<file path="client/src/constants/routes.js">
+export const ROUTES = {
+  HOME:         '/',
+  PRAYERS:      '/prayers',
+  ANNOUNCEMENTS:'/announcements',
+  CONTACT:      '/contact',
+  ADMIN:        '/admin',
+  LOGIN:        '/login',
+  REGISTER:     '/register',
+  HEBCAL:       '/hebcal',
+  PAYMENTS:     '/payments',   // ← חדש
+};
+
+export const NAVIGATION_ITEMS = [
+  { path: ROUTES.HOME,          label: 'דף הבית' },
+  { path: ROUTES.PRAYERS,       label: 'תפילות' },
+  { path: ROUTES.ANNOUNCEMENTS, label: 'הודעות' },
+  { path: ROUTES.CONTACT,       label: 'צור קשר' },
+  { path: ROUTES.PAYMENTS,      label: 'תשלומים' },  // ← חדש
+];
 </file>
 
 <file path="client/src/index.css">
@@ -2083,6 +2651,41 @@ const Home = () => {
 export default Home;
 </file>
 
+<file path="client/src/services/announcementsService.js">
+import { fetchAnnouncements, createAnnouncement, updateAnnouncement } from './api';
+
+export const getAnnouncements = async () => {
+  const res = await fetchAnnouncements();
+  return res.data; // [{_id, title, content, date}, ...]
+};
+
+export const saveAnnouncement = async (announcement) => {
+  if (announcement._id) {
+    // Existing — update
+    const res = await updateAnnouncement(announcement._id, announcement);
+    return res.data;
+  }
+  // New — create
+  const res = await createAnnouncement(announcement);
+  return res.data;
+};
+</file>
+
+<file path="client/src/services/prayersService.js">
+import { fetchPrayers, updatePrayers } from './api';
+
+export const getPrayers = async () => {
+  const res = await fetchPrayers();
+  return res.data; // [{_id, title, time}, ...]
+};
+
+// Send the full edited list back to the server
+export const savePrayers = async (prayers) => {
+  const res = await updatePrayers(prayers);
+  return res.data;
+};
+</file>
+
 <file path="package.json">
 {
   "private": true,
@@ -2095,6 +2698,56 @@ export default Home;
     "react-router-dom": "^6.24.0"
   }
 }
+</file>
+
+<file path="server/controllers/announcementController.js">
+const announcementService = require('../services/announcementService');
+
+exports.getAll = async (req, res) => {
+    const data = await announcementService.getAll();
+    res.json(data);
+};
+
+exports.create = async (req, res) => {
+    const created = await announcementService.create(req.body);
+    res.status(201).json(created);
+};
+const service = require('../services/announcementService');
+
+exports.getAnnouncements = async (req, res) => {
+  try {
+    res.json(await service.getAllAnnouncements());
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.createAnnouncement = async (req, res) => {
+  try {
+    res.status(201).json(await service.createAnnouncement(req.body));
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+};
+
+exports.updateAnnouncement = async (req, res) => {
+  try {
+    const updated = await service.updateAnnouncement(req.params.id, req.body);
+    if (!updated) return res.status(404).json({ message: 'Not found' });
+    res.json(updated);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+};
+
+exports.deleteAnnouncement = async (req, res) => {
+  try {
+    await service.deleteAnnouncement(req.params.id);
+    res.json({ message: 'Deleted' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
 </file>
 
 <file path="server/controllers/contactController.js">
@@ -2132,44 +2785,6 @@ exports.updateHandledStatus = async (req, res) => {
   }
 
   return res.json(updated);
-};
-</file>
-
-<file path="server/controllers/prayerController.js">
-const prayerService = require('../services/prayerService');
-
-// שליפת כל התפילות
-exports.getPrayers = async (req, res) => {
-    try {
-        const prayers = await prayerService.getAllPrayers();
-        res.json(prayers);
-    } catch (err) {
-        res.status(500).json({ message: err.message });
-    }
-};
-
-// עדכון כל רשימת התפילות (עבור האדמין)
-exports.replacePrayers = async (req, res) => {
-    try {
-        const { prayers } = req.body;
-        if (!Array.isArray(prayers)) {
-            return res.status(400).json({ message: 'prayers must be an array' });
-        }
-        const updated = await prayerService.replaceAllPrayers(prayers);
-        res.json(updated);
-    } catch (err) {
-        res.status(500).json({ message: err.message });
-    }
-};
-
-// יצירה (אם אתה עדיין צריך את זה בנפרד)
-exports.create = async (req, res) => {
-    try {
-        const saved = await prayerService.create(req.body);
-        res.status(201).json(saved);
-    } catch (err) {
-        res.status(500).json({ message: err.message });
-    }
 };
 </file>
 
@@ -2224,6 +2839,47 @@ const prayerSchema = new mongoose.Schema({
 module.exports = mongoose.model('Prayer', prayerSchema);
 </file>
 
+<file path="server/models/User.js">
+const mongoose = require('mongoose');
+const bcrypt = require('bcrypt');
+
+const userSchema = new mongoose.Schema({
+  name: { type: String, required: true, trim: true },
+  email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+  password: { type: String, required: true, minlength: 6 },
+  role: { type: String, enum: ['admin', 'gabbai', 'member'], default: 'member' },
+  phone: { type: String, trim: true, default: '' },
+  createdAt: { type: Date, default: Date.now },
+  isActive: { type: Boolean, default: true }
+});
+
+userSchema.pre('save', async function (next) {
+  if (!this.isModified('password')) return next();
+  this.password = await bcrypt.hash(this.password, 10);
+  next();
+});
+
+userSchema.methods.comparePassword = function (candidate) {
+  return bcrypt.compare(candidate, this.password);
+};
+
+module.exports = mongoose.model('User', userSchema);
+</file>
+
+<file path="server/routes/announcements.js">
+const express = require('express');
+const router = express.Router();
+
+const ctrl    = require('../controllers/announcementController');
+const protect = require('../middleware/authMiddleware');
+router.get('/',           ctrl.getAnnouncements);
+router.post('/',  protect, ctrl.createAnnouncement);
+router.put('/:id', protect, ctrl.updateAnnouncement);
+router.delete('/:id', protect, ctrl.deleteAnnouncement);
+
+module.exports = router;
+</file>
+
 <file path="server/routes/contact.js">
 const express = require('express');
 const router = express.Router();
@@ -2236,6 +2892,79 @@ router.patch('/:id', controller.updateHandledStatus);
 router.put('/:id/handled', controller.updateHandledStatus);
 
 module.exports = router;
+</file>
+
+<file path="server/routes/prayers.js">
+const express = require('express');
+const router = express.Router();
+const ctrl = require('../controllers/prayerController');
+
+// בדוק ב-middleware/authMiddleware.js איך ייצאת את protect. 
+// אם ייצאת אותו כ-module.exports = protect, אז תוריד את הסוגריים המסולסלים.
+const  protect  = require('../middleware/authMiddleware'); 
+
+// שליפת תפילות - פתוח לכולם
+router.get('/', ctrl.getPrayers);
+console.log("Checking protect middleware:", protect);
+console.log("Checking controller function:", ctrl.replacePrayers);
+// עדכון כל התפילות - דורש הגנה (Token/Admin)
+router.put('/', protect, ctrl.replacePrayers);
+
+// יצירת תפילה בודדת (אופציונלי)
+router.post('/', protect, ctrl.create);
+
+module.exports = router;
+</file>
+
+<file path="server/services/announcementService.js">
+const Announcement = require('../models/Announcement');
+
+exports.getAll = () => Announcement.find();
+exports.create = (data) => new Announcement(data).save();
+
+
+const getAllAnnouncements = () => Announcement.find().sort({ date: -1 });
+
+const createAnnouncement = (data) => Announcement.create(data);
+
+// Update a single announcement by id
+const updateAnnouncement = (id, data) =>
+  Announcement.findByIdAndUpdate(id, data, { new: true });
+
+const deleteAnnouncement = (id) => Announcement.findByIdAndDelete(id);
+
+module.exports = {
+  getAllAnnouncements,
+  createAnnouncement,
+  updateAnnouncement,
+  deleteAnnouncement,
+};
+</file>
+
+<file path="server/services/authService.js">
+const User = require('../models/User');
+const jwt = require('jsonwebtoken');
+
+exports.register = async (userData) => {
+  const user = new User(userData);
+  return await user.save();
+};
+
+exports.login = async ({ email, password }) => {
+  console.log('email', email);
+  const user = await User.findOne({ email });
+  if (!user || !(await user.comparePassword(password))) {
+    throw new Error('Invalid credentials');
+  }
+
+  const token = jwt.sign(
+    { userId: user._id, role: user.role },
+    process.env.JWT_SECRET,
+    { expiresIn: '2h' }
+  );
+
+  return { token, user };
+};
 </file>
 
 <file path="server/services/contactService.js">
@@ -2282,38 +3011,6 @@ exports.updateHandledStatus = async (id, handled) => {
     { new: true }
   );
 };
-</file>
-
-<file path="server/services/prayerService.js">
-const Prayer = require('../models/Prayer');
-
-exports.getAll = () => Prayer.find();
-exports.create = (data) => {
-    console.log({data})
-    new Prayer(data).save()
-};
-
-const getAllPrayers = () => Prayer.find();
-
-// Replaces the entire collection with a new array in one transaction
-const replaceAllPrayers = async (prayersArray) => {
-  await Prayer.deleteMany({});
-  return Prayer.insertMany(prayersArray);
-};
-
-module.exports = { getAllPrayers, replaceAllPrayers };
-
-// server/services/announcementService.js
-// const Announcement = require('../models/Announcement');
-
-// exports.getAll = () => Announcement.find();
-// exports.create = (data) => new Announcement(data).save();
-
-// server/services/contactService.js
-// const ContactMessage = require('../models/ContactMessage');
-
-// exports.getAll = () => ContactMessage.find();
-// exports.create = (data) => new ContactMessage(data).save();
 </file>
 
 <file path="server/src/insertUsers.js">
@@ -2507,6 +3204,266 @@ async function feedUsersToDatabase() {
   module.exports = { feedUsersToDatabase };
 </file>
 
+<file path="client/src/components/ContactAndPrayerTimes/ContactAndPrayerTimes.jsx">
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../context/authContext';
+import { getPrayers, savePrayers } from '../../services/prayersService';
+import { getAnnouncements, saveAnnouncement } from '../../services/announcementsService';
+
+const ContactAndPrayerTimes = ({ isButtonTransparent }) => {
+  const { isAdmin } = useAuth();
+
+  const [specialMessage, setSpecialMessage] = useState('');
+  const [pinnedAnnouncement, setPinnedAnnouncement] = useState(null);
+  const [prayers, setPrayers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [tempPrayers, setTempPrayers] = useState([]);
+  const [tempMessage, setTempMessage] = useState('');
+
+  // ── Fetch on mount ──────────────────────────────────────────────────────────
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [fetchedPrayers, fetchedAnnouncements] = await Promise.all([
+          getPrayers(),
+          getAnnouncements(),
+        ]);
+
+        setPrayers(fetchedPrayers);
+
+        if (fetchedAnnouncements.length > 0) {
+          const pinned = fetchedAnnouncements[0];
+          setPinnedAnnouncement(pinned);
+          setSpecialMessage(pinned.content);
+        }
+      } catch (err) {
+        setError('שגיאה בטעינת הנתונים. אנא רענן את הדף.');
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, []);
+
+  // ── Modal helpers ───────────────────────────────────────────────────────────
+  const openModal = () => {
+    setTempPrayers(prayers.map((p) => ({ ...p })));
+    setTempMessage(specialMessage);
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => setIsModalOpen(false);
+
+  const saveChanges = async () => {
+    try {
+      const updatedPrayers = await savePrayers(tempPrayers);
+      setPrayers(updatedPrayers);
+
+      const announcementPayload = pinnedAnnouncement
+        ? { ...pinnedAnnouncement, content: tempMessage, title: 'הודעת גבאי' }
+        : { title: 'הודעת גבאי', content: tempMessage };
+
+      const savedAnnouncement = await saveAnnouncement(announcementPayload);
+      setPinnedAnnouncement(savedAnnouncement);
+      setSpecialMessage(savedAnnouncement.content);
+
+      setIsModalOpen(false);
+    } catch (err) {
+      console.error('שגיאה בשמירת הנתונים:', err);
+      alert('שגיאה בשמירת הנתונים. אנא נסה שוב.');
+    }
+  };
+
+  const handleChange = (index, field, value) => {
+    const updated = [...tempPrayers];
+    updated[index] = { ...updated[index], [field]: value };
+    setTempPrayers(updated);
+  };
+
+  const addPrayer = () =>
+    setTempPrayers([...tempPrayers, { title: '', time: '' }]);
+
+  const removePrayer = (index) =>
+    setTempPrayers(tempPrayers.filter((_, i) => i !== index));
+
+  // ── Render ──────────────────────────────────────────────────────────────────
+  if (loading) {
+    return (
+      <div className="text-center py-10 text-[#0d2340] font-medium" dir="rtl">
+        <div className="animate-pulse">טוען נתונים...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-10 text-[#a61b1b] font-medium" dir="rtl">
+        {error}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="bg-[#f7f4e9] shadow-2xl rounded-xl p-6 max-w-md mx-auto my-8 border border-[#cfa756]/30 relative overflow-hidden"
+      dir="rtl"
+    >
+      {/* פס קישוט עליון בסגנון הכתר */}
+      <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-[#0d2340] via-[#cfa756] to-[#0d2340]"></div>
+
+      <h2 className="text-3xl font-bold text-[#0d2340] mb-8 mt-2 text-center drop-shadow-sm">
+        זמני תפילה ומידע
+      </h2>
+
+      {specialMessage && (
+        <div className="mb-8 p-4 bg-white border-r-4 border-[#a61b1b] shadow-sm rounded-l-lg relative">
+          <div className="absolute -top-3 -right-2 bg-[#a61b1b] text-white text-xs font-bold px-2 py-1 rounded shadow">
+            הודעת גבאי
+          </div>
+          <p className="text-[#0d2340] font-medium mt-2 leading-relaxed whitespace-pre-wrap">
+            {specialMessage}
+          </p>
+        </div>
+      )}
+
+      <div className="mb-6 bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+        <h3 className="text-xl font-bold text-[#0d2340] mb-2 flex items-center gap-2">
+          <svg className="w-5 h-5 text-[#cfa756]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          כתובתנו:
+        </h3>
+        <p className="text-lg text-gray-700 font-medium pr-7">הרב רפאל ברוך טולדנו 20 | רמת שלמה</p>
+      </div>
+
+      <div className="mb-8">
+        <h3 className="text-xl font-bold text-[#0d2340] mb-4 border-b-2 border-[#cfa756] pb-2 inline-block">
+          זמני תפילות:
+        </h3>
+        <ul className="space-y-3">
+          {prayers.map((prayer, index) => (
+            <li
+              key={prayer._id ?? index}
+              className="flex justify-between items-center text-lg bg-white px-4 py-3 rounded-lg shadow-sm border border-gray-100 hover:border-[#cfa756]/50 transition-colors"
+            >
+              <span className="font-bold text-[#1a365d]">{prayer.title ?? prayer.name}</span>
+              <span className="bg-[#0d2340] text-[#cfa756] font-bold text-md px-4 py-1 rounded-full shadow-inner tracking-wide">
+                {prayer.time}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="text-center">
+        {isAdmin() && (
+          <button
+            onClick={openModal}
+            className="bg-[#cfa756] text-[#0d2340] font-bold px-6 py-2.5 rounded-md hover:bg-[#b8860b] hover:text-white transition-all shadow-md focus:outline-none focus:ring-2 focus:ring-[#0d2340] ring-offset-2 ring-offset-[#f7f4e9]"
+            style={{ opacity: isButtonTransparent ? 0 : 1 }}
+          >
+            ערוך זמני תפילה והודעה
+          </button>
+        )}
+      </div>
+
+      {/* Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-[#0d2340]/70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div
+            className="bg-[#f7f4e9] p-6 rounded-xl shadow-2xl max-w-md w-full border-2 border-[#cfa756]"
+            dir="rtl"
+          >
+            <h3 className="text-2xl font-bold mb-6 text-center text-[#0d2340] border-b border-[#cfa756]/30 pb-3">
+              עריכת תוכן
+            </h3>
+
+            <div className="mb-6">
+              <label className="block text-[#0d2340] font-bold mb-2">הודעה מיוחדת (גבאי):</label>
+              <textarea
+                className="border border-gray-300 rounded-md px-3 py-2 w-full text-gray-800 focus:ring-2 focus:ring-[#cfa756] focus:border-[#cfa756] outline-none shadow-sm"
+                rows="3"
+                value={tempMessage}
+                onChange={(e) => setTempMessage(e.target.value)}
+                placeholder="כתבו כאן הודעה למתפללים..."
+              />
+            </div>
+
+            <div className="mb-4 flex items-center justify-between">
+              <h4 className="font-bold text-[#0d2340]">עריכת זמני תפילה:</h4>
+            </div>
+            
+            <div className="space-y-4 max-h-[35vh] overflow-y-auto pr-2 custom-scrollbar">
+              {tempPrayers.map((prayer, index) => (
+                <div key={prayer._id ?? index} className="flex flex-col gap-2 bg-white p-3 rounded-md shadow-sm border border-gray-200">
+                  <div className="flex justify-between gap-3">
+                    <input
+                      className="border border-gray-300 rounded px-3 py-2 w-full text-gray-800 focus:ring-1 focus:ring-[#cfa756] outline-none"
+                      value={prayer.title ?? prayer.name ?? ''}
+                      onChange={(e) => handleChange(index, 'title', e.target.value)}
+                      placeholder="שם התפילה (לדוג': שחרית)"
+                    />
+                    <input
+                      className="border border-gray-300 rounded px-3 py-2 w-full text-gray-800 focus:ring-1 focus:ring-[#cfa756] outline-none text-center"
+                      value={prayer.time}
+                      onChange={(e) => handleChange(index, 'time', e.target.value)}
+                      placeholder="זמן (לדוג': 06:15)"
+                      dir="ltr"
+                    />
+                  </div>
+                  <div className="text-right mt-1">
+                    <button
+                      onClick={() => removePrayer(index)}
+                      className="text-sm font-medium text-[#a61b1b] hover:text-red-800 hover:underline flex items-center gap-1"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                      מחק תפילה
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-4 border-t border-[#cfa756]/30 pt-4">
+              <button 
+                onClick={addPrayer} 
+                className="text-[#1a365d] font-bold hover:text-[#cfa756] transition-colors flex items-center gap-1"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
+                הוסף תפילה
+              </button>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-8">
+              <button
+                onClick={closeModal}
+                className="px-5 py-2 rounded-md border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 font-medium transition-colors"
+              >
+                ביטול
+              </button>
+              <button
+                onClick={saveChanges}
+                className="px-5 py-2 rounded-md bg-[#0d2340] hover:bg-[#1a365d] text-[#cfa756] font-bold transition-colors shadow-md"
+              >
+                שמור שינויים
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default ContactAndPrayerTimes;
+</file>
+
 <file path="client/src/components/Prayers/PrayerList.jsx">
 import { useEffect, useState } from 'react';
 import { fetchPrayers } from '../../services/api';
@@ -2536,58 +3493,41 @@ export default function PrayerList() {
 }
 </file>
 
-<file path="client/src/services/api.js">
-import axios from 'axios';
+<file path="server/controllers/prayerController.js">
+const prayerService = require('../services/prayerService');
 
-const API = axios.create({
-  baseURL: 'http://localhost:5000/api',
-});
-
-// --- התוספת שלנו: המיירט שמוסיף את הטוקן ---
-API.interceptors.request.use((req) => {
-  // ודא שהשם 'token' תואם לשם שבו אתה שומר את הטוקן ב-localStorage בזמן ההתחברות
-  const token = localStorage.getItem('token'); 
-  if (token) {
-    req.headers.Authorization = `Bearer ${token}`;
-  }
-  return req;
-});
-// -------------------------------------------
-
-export const fetchAnnouncements = () => API.get('/announcements');
-export const createAnnouncement = (data) => API.post('/announcements', data);
-export const updatePrayers      = (prayers) => API.put('/prayers', { prayers });
-export const updateAnnouncement = (id, data) => API.put(`/announcements/${id}`, data);
-
-export const fetchPrayers = () => API.get('/prayers');
-export const createPrayer = (data) => API.post('/prayers', data);
-
-export const sendContactMessage = (data) => API.post('/contact', data);
-export const fetchContactMessages = () => API.get('/contact');
-
-export const updateContactMessageHandled = async (id, handled) => {
-  const payload = { handled };
-
-  try {
-    return await API.patch(`/contact/${id}/handled`, payload);
-  } catch (error) {
-    const status = error?.response?.status;
-
-    // Fallback for environments running older/different backend route shapes.
-    if (status === 404 || status === 405) {
-      try {
-        return await API.patch(`/contact/${id}`, payload);
-      } catch (secondError) {
-        const secondStatus = secondError?.response?.status;
-        if (secondStatus === 404 || secondStatus === 405) {
-          return API.put(`/contact/${id}/handled`, payload);
-        }
-        throw secondError;
-      }
+// שליפת כל התפילות
+exports.getPrayers = async (req, res) => {
+    try {
+        const prayers = await prayerService.getAllPrayers();
+        res.json(prayers);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
     }
+};
 
-    throw error;
-  }
+// עדכון כל רשימת התפילות (עבור האדמין)
+exports.replacePrayers = async (req, res) => {
+    try {
+        const { prayers } = req.body;
+        if (!Array.isArray(prayers)) {
+            return res.status(400).json({ message: 'prayers must be an array' });
+        }
+        const updated = await prayerService.replaceAllPrayers(prayers);
+        res.json(updated);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
+
+// יצירה (אם אתה עדיין צריך את זה בנפרד)
+exports.create = async (req, res) => {
+    try {
+        const saved = await prayerService.create(req.body);
+        res.status(201).json(saved);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
 };
 </file>
 
@@ -2615,6 +3555,120 @@ export const updateContactMessageHandled = async (id, handled) => {
 }
 </file>
 
+<file path="server/services/prayerService.js">
+const Prayer = require('../models/Prayer');
+
+exports.getAll = () => Prayer.find();
+exports.create = (data) => {
+    console.log({data})
+    new Prayer(data).save()
+};
+
+const getAllPrayers = () => Prayer.find();
+
+// Replaces the entire collection with a new array in one transaction
+const replaceAllPrayers = async (prayersArray) => {
+  await Prayer.deleteMany({});
+  return Prayer.insertMany(prayersArray);
+};
+
+module.exports = { getAllPrayers, replaceAllPrayers };
+
+// server/services/announcementService.js
+// const Announcement = require('../models/Announcement');
+
+// exports.getAll = () => Announcement.find();
+// exports.create = (data) => new Announcement(data).save();
+
+// server/services/contactService.js
+// const ContactMessage = require('../models/ContactMessage');
+
+// exports.getAll = () => ContactMessage.find();
+// exports.create = (data) => new ContactMessage(data).save();
+</file>
+
+<file path="client/src/services/api.js">
+import axios from 'axios';
+
+const API = axios.create({
+  baseURL: 'http://localhost:5000/api',
+});
+
+API.interceptors.request.use((req) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    req.headers.Authorization = `Bearer ${token}`;
+  }
+  return req;
+});
+
+// ── קיים ──────────────────────────────────────────────────────────────────────
+export const fetchAnnouncements   = () => API.get('/announcements');
+export const createAnnouncement   = (data) => API.post('/announcements', data);
+export const updateAnnouncement   = (id, data) => API.put(`/announcements/${id}`, data);
+
+export const fetchPrayers         = () => API.get('/prayers');
+export const createPrayer         = (data) => API.post('/prayers', data);
+export const updatePrayers        = (prayers) => API.put('/prayers', { prayers });
+
+export const sendContactMessage   = (data) => API.post('/contact', data);
+export const fetchContactMessages = () => API.get('/contact');
+
+export const updateContactMessageHandled = async (id, handled) => {
+  const payload = { handled };
+  try {
+    return await API.patch(`/contact/${id}/handled`, payload);
+  } catch (error) {
+    const status = error?.response?.status;
+    if (status === 404 || status === 405) {
+      try {
+        return await API.patch(`/contact/${id}`, payload);
+      } catch (secondError) {
+        const secondStatus = secondError?.response?.status;
+        if (secondStatus === 404 || secondStatus === 405) {
+          return API.put(`/contact/${id}/handled`, payload);
+        }
+        throw secondError;
+      }
+    }
+    throw error;
+  }
+};
+
+// ── תשלומים – חדש ────────────────────────────────────────────────────────────
+
+/** משתמש רגיל */
+export const fetchMyPayments        = () => API.get('/payments/me');
+export const addMyDebt              = (data) => API.post('/payments/me/debts', data);
+export const markMyDebtPaid         = (debtId, isPaid) =>
+  API.patch(`/payments/me/debts/${debtId}`, { isPaid });
+export const setMyStandingOrder     = (data) => API.post('/payments/me/standing-order', data);
+export const cancelMyStandingOrder  = () => API.delete('/payments/me/standing-order');
+export const addMyDonation          = (data) => API.post('/payments/me/donations', data);
+
+/** אדמין */
+export const fetchAllPayments       = () => API.get('/payments');
+export const fetchUserPayments      = (userId) => API.get(`/payments/${userId}`);
+export const addUserDebt            = (userId, data) => API.post(`/payments/${userId}/debts`, data);
+export const markUserDebtPaid       = (userId, debtId, isPaid) =>
+  API.patch(`/payments/${userId}/debts/${debtId}`, { isPaid });
+export const deleteUserDebt         = (userId, debtId) =>
+  API.delete(`/payments/${userId}/debts/${debtId}`);
+export const setUserStandingOrder   = (userId, data) =>
+  API.post(`/payments/${userId}/standing-order`, data);
+export const cancelUserStandingOrder = (userId) =>
+  API.delete(`/payments/${userId}/standing-order`);
+export const addUserDonation        = (userId, data) =>
+  API.post(`/payments/${userId}/donations`, data);
+export const deleteUserDonation     = (userId, donationId) =>
+  API.delete(`/payments/${userId}/donations/${donationId}`);
+export const updateUserNotes        = (userId, notes) =>
+  API.patch(`/payments/${userId}/notes`, { notes });
+
+/** משתמשים */
+export const fetchAllUsers          = () => API.get('/users');
+</file>
+
 <file path="server/server.js">
 const express = require('express');
 const cors = require('cors');
@@ -2629,20 +3683,18 @@ connectDB();
 app.use(cors());
 app.use(express.json());
 
-app.use('/api/prayers', require('./routes/prayers'));
+app.use('/api/prayers',       require('./routes/prayers'));
 app.use('/api/announcements', require('./routes/announcements'));
-app.use('/api/contact', require('./routes/contact'));
-app.use('/api/auth', require('./routes/auth'));
-app.get('/api/health', (_req, res) => res.status(200).json({ status: 'ok' }));
+app.use('/api/contact',       require('./routes/contact'));
+app.use('/api/auth',          require('./routes/auth'));
+app.use('/api/payments',      require('./routes/payments'));   // חדש
+app.use('/api/users',         require('./routes/users'));       // חדש – ניהול משתמשים
 
+app.get('/api/health', (_req, res) => res.status(200).json({ status: 'ok' }));
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  const rootPath = process.cwd();
-console.log(rootPath);
-});
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 </file>
 
 <file path="client/src/components/common/Header.jsx">
@@ -2873,6 +3925,7 @@ import Register from './components/auth/Register';
 import Footer from './components/common/Footer';
 import HalachicTimes from './components/HalachicTimes';
 import { ROUTES } from './constants/routes';
+import Payments from './pages/Payments';
 
 function App() {
   return (
@@ -2889,6 +3942,7 @@ function App() {
             <Route path={ROUTES.LOGIN} element={<Login />} />
             <Route path={ROUTES.REGISTER} element={<Register />} />
             <Route path={ROUTES.HEBCAL} element={<HalachicTimes />} />
+            <Route path={ROUTES.PAYMENTS}      element={<Payments />} /> 
             <Route path="*" element={<div className="text-center text-xl">העמוד לא נמצא אין לך מה לחפש פה</div>} />
           </Routes>
         </main>

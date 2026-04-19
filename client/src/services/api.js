@@ -1,8 +1,13 @@
 import axios from 'axios';
+import { API_URL } from '../config'; 
 
 const API = axios.create({
-  baseURL: 'http://localhost:5000/api',
+  baseURL: `${API_URL}/api`,
 });
+
+// const API = axios.create({
+//   baseURL: 'http://localhost:5000/api',
+// });
 
 API.interceptors.request.use((req) => {
   const token = localStorage.getItem('token');
@@ -12,7 +17,7 @@ API.interceptors.request.use((req) => {
   return req;
 });
 
-// ── קיים ──────────────────────────────────────────────────────────────────────
+
 export const fetchAnnouncements   = () => API.get('/announcements');
 export const createAnnouncement   = (data) => API.post('/announcements', data);
 export const updateAnnouncement   = (id, data) => API.put(`/announcements/${id}`, data);
