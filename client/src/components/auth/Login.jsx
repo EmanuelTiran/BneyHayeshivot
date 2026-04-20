@@ -27,8 +27,15 @@ function Login() {
         setLoading(true);
 
         try {
-            const response = await login(formData);
-            const data = response.data;
+            const response = await fetch(`${API_URL}/api/auth/login`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            });
+
+            const data = await response.json();
             console.log(data);
             if (!response.ok) {
                 throw new Error(data.message || 'שגיאה בהתחברות');
