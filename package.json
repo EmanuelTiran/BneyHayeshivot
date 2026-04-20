@@ -6,6 +6,7 @@
     "build:client": "npm run build --prefix client"
   },
   "dependencies": {
+    "cors": "^2.8.6",
     "react-router-dom": "^6.24.0"
   }
 }
