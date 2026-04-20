@@ -1,6 +1,9 @@
 // components/auth/Login.jsx
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { API_URL } from '../../config';
+import { login } from '../../services/api';
+
 
 function Login() {
     const [formData, setFormData] = useState({
@@ -24,15 +27,8 @@ function Login() {
         setLoading(true);
 
         try {
-            const response = await fetch('http://localhost:5000/api/auth/login', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(formData)
-            });
-
-            const data = await response.json();
+            const response = await login(formData);
+            const data = response.data;
             console.log(data);
             if (!response.ok) {
                 throw new Error(data.message || 'שגיאה בהתחברות');
