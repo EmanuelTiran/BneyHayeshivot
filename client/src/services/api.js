@@ -19,6 +19,7 @@ API.interceptors.request.use((req) => {
 });
 
 export const login = (credentials) => API.post('/auth/login', credentials);
+export const register = (userData) => API.post('/auth/register', userData);
 
 export const fetchAnnouncements   = () => API.get('/announcements');
 export const createAnnouncement   = (data) => API.post('/announcements', data);

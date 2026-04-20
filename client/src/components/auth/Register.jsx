@@ -1,8 +1,7 @@
 // components/auth/Register.jsx
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { login } from '../../services/api';
-
+import { API_URL } from '../../config';
 function Register() {
   const [formData, setFormData] = useState({
     name: '',
@@ -34,7 +33,7 @@ function Register() {
     setLoading(true);
 
     try {
-      const response = await fetch('${API_URL}/api/auth/register', {
+      const response = await fetch(`${API_URL}/api/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
