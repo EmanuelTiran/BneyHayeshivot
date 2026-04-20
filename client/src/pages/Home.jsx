@@ -26,7 +26,7 @@ const Home = () => {
     <div
       className="text-center element-to-print"
       style={{
-        backgroundImage: 'url("/backgroundBnH.jpg")',
+        backgroundImage: 'url("/1776676161060 (1).png")',
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat',
