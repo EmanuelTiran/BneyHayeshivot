@@ -7,7 +7,8 @@ export const ROUTES = {
   LOGIN:        '/login',
   REGISTER:     '/register',
   HEBCAL:       '/hebcal',
-  PAYMENTS:     '/payments',   // ← חדש
+  PAYMENTS:     '/payments',   
+  COMMEMORATIONS: '/commemorations'
 };
 
 export const NAVIGATION_ITEMS = [
@@ -15,5 +16,6 @@ export const NAVIGATION_ITEMS = [
   { path: ROUTES.PRAYERS,       label: 'תפילות' },
   { path: ROUTES.ANNOUNCEMENTS, label: 'הודעות' },
   { path: ROUTES.CONTACT,       label: 'צור קשר' },
-  { path: ROUTES.PAYMENTS,      label: 'תשלומים' },  // ← חדש
+  { path: ROUTES.PAYMENTS,      label: 'תשלומים' },
+  { path: ROUTES.COMMEMORATIONS, label: 'הנצחות' }  // ← חדש
 ];

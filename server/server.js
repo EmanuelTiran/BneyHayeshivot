@@ -10,20 +10,21 @@ connectDB();
 
 app.use(cors({
     origin: [
-        'http://localhost:5173', // בשביל הפיתוח (Vite)
-        'https://bneyhayeshivot.onrender.com', // הכתובת של האתר שלך ב-Render
-        'https://your-frontend-domain.com' // אם יש לך דומיין נוסף לפרונטנד (למשל ב-Vercel/Netlify)
+        'http://localhost:5173',
+        'https://bneyhayeshivot.onrender.com',
+        'https://your-frontend-domain.com'
     ],
-    credentials: true // מאפשר שליחת עוגיות וטוקנים אם צריך
+    credentials: true
 }));
 app.use(express.json());
 
-app.use('/api/prayers', require('./routes/prayers'));
-app.use('/api/announcements', require('./routes/announcements'));
-app.use('/api/contact', require('./routes/contact'));
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/payments', require('./routes/payments'));   // חדש
-app.use('/api/users', require('./routes/users'));       // חדש – ניהול משתמשים
+app.use('/api/prayers',        require('./routes/prayers'));
+app.use('/api/announcements',  require('./routes/announcements'));
+app.use('/api/contact',        require('./routes/contact'));
+app.use('/api/auth',           require('./routes/auth'));
+app.use('/api/payments',       require('./routes/payments'));
+app.use('/api/users',          require('./routes/users'));
+app.use('/api/commemorations', require('./routes/commemorations')); // ← חדש
 
 app.get('/api/health', (_req, res) => res.status(200).json({ status: 'ok' }));
 app.use(errorHandler);

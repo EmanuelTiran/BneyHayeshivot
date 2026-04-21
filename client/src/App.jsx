@@ -4,6 +4,7 @@ import Header from './components/common/Header';
 import Home from './pages/Home';
 import Prayers from './pages/Prayers';
 import Announcements from './pages/Announcements';
+import Commemorations from './pages/Commemorations'; // ג† ׳—׳“׳©
 import Contact from './pages/Contact';
 import Admin from './pages/Admin';
 import Login from './components/auth/Login';
@@ -20,16 +21,17 @@ function App() {
         <Header />
         <main className="flex-1 p-4">
           <Routes>
-            <Route path={ROUTES.HOME} element={<Home />} />
-            <Route path={ROUTES.PRAYERS} element={<Prayers />} />
+            <Route path={ROUTES.HOME}          element={<Home />} />
+            <Route path={ROUTES.PRAYERS}       element={<Prayers />} />
             <Route path={ROUTES.ANNOUNCEMENTS} element={<Announcements />} />
-            <Route path={ROUTES.CONTACT} element={<Contact />} />
-            <Route path={`${ROUTES.ADMIN}/*`} element={<Admin />} />
-            <Route path={ROUTES.LOGIN} element={<Login />} />
-            <Route path={ROUTES.REGISTER} element={<Register />} />
-            <Route path={ROUTES.HEBCAL} element={<HalachicTimes />} />
-            <Route path={ROUTES.PAYMENTS}      element={<Payments />} /> 
-            <Route path="*" element={<div className="text-center text-xl">העמוד לא נמצא אין לך מה לחפש פה</div>} />
+            <Route path={ROUTES.COMMEMORATIONS} element={<Commemorations />} /> {/* ג† ׳—׳“׳© */}
+            <Route path={ROUTES.CONTACT}       element={<Contact />} />
+            <Route path={`${ROUTES.ADMIN}/*`}  element={<Admin />} />
+            <Route path={ROUTES.LOGIN}         element={<Login />} />
+            <Route path={ROUTES.REGISTER}      element={<Register />} />
+            <Route path={ROUTES.HEBCAL}        element={<HalachicTimes />} />
+            <Route path={ROUTES.PAYMENTS}      element={<Payments />} />
+            <Route path="*" element={<div className="text-center text-xl">hamud lo nimtsa ein lecha  ma lechapes po</div>} />
           </Routes>
         </main>
         <Footer />
