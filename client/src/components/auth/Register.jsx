@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { API_URL } from '../../config';
+
 function Register() {
   const [formData, setFormData] = useState({
     name: '',
@@ -24,7 +25,6 @@ function Register() {
     e.preventDefault();
     setError('');
 
-    // בדיקת התאמת סיסמאות
     if (formData.password !== formData.confirmPassword) {
       setError('הסיסמאות אינן תואמות');
       return;
@@ -51,7 +51,6 @@ function Register() {
         throw new Error(data.message || 'שגיאה בהרשמה');
       }
 
-      // הרשמה הצליחה, ניווט לדף התחברות
       navigate('/login', { state: { message: 'ההרשמה הושלמה בהצלחה, כעת ניתן להתחבר' } });
     } catch (err) {
       setError(err.message);
@@ -60,84 +59,99 @@ function Register() {
     }
   };
 
+  // Helper styles
+  const inputClass = (hasError) => `
+    w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#cfa756] text-right transition-all
+    ${hasError ? 'border-red-300 bg-red-50' : 'border-gray-300 focus:border-[#cfa756]'}
+  `;
+
   return (
-    <div className="max-w-md mx-auto bg-white rounded-lg shadow-md p-6 mt-10">
-      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">הרשמה</h2>
-      
+    <div dir="rtl" className="max-w-md mx-auto mt-10">
+      <h2 className="text-2xl font-bold text-[#0d2340] mb-6 flex items-center gap-2">
+        <span className="text-[#cfa756]">✦</span>
+        הרשמה
+      </h2>
+
       {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 text-right" role="alert">
-          <span>{error}</span>
+        <div className="mb-5 rounded-lg px-4 py-3 text-sm font-medium bg-red-50 border border-red-200 text-red-700 text-right">
+          {error}
         </div>
       )}
-      
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="text-right">
-          <label htmlFor="name" className="block text-gray-700 mb-2">שם מלא</label>
-          <input
-            type="text"
-            id="name"
-            name="name"
-            value={formData.name}
-            onChange={handleChange}
-            required
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-right"
-          />
-        </div>
-        
-        <div className="text-right">
-          <label htmlFor="email" className="block text-gray-700 mb-2">דוא"ל</label>
-          <input
-            type="email"
-            id="email"
-            name="email"
-            value={formData.email}
-            onChange={handleChange}
-            required
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-right"
-          />
-        </div>
-        
-        <div className="text-right">
-          <label htmlFor="password" className="block text-gray-700 mb-2">סיסמה</label>
-          <input
-            type="password"
-            id="password"
-            name="password"
-            value={formData.password}
-            onChange={handleChange}
-            required
-            minLength="6"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-right"
-          />
-        </div>
-        
-        <div className="text-right">
-          <label htmlFor="confirmPassword" className="block text-gray-700 mb-2">אימות סיסמה</label>
-          <input
-            type="password"
-            id="confirmPassword"
-            name="confirmPassword"
-            value={formData.confirmPassword}
-            onChange={handleChange}
-            required
-            minLength="6"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-right"
-          />
-        </div>
-        
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
-        >
-          {loading ? 'מעבד את הרישום...' : 'הירשם'}
-        </button>
-      </form>
-      
-      <div className="mt-4 text-center">
-        <p>
+
+      <div className="bg-white rounded-2xl shadow-md p-6 space-y-5 border border-gray-100">
+        <form onSubmit={handleSubmit} className="space-y-5">
+          
+          <div className="space-y-1">
+            <label htmlFor="name" className="block text-sm font-medium text-gray-700 text-right">שם מלא</label>
+            <input
+              name="name"
+              id="name"
+              type="text"
+              value={formData.name}
+              onChange={handleChange}
+              required
+              className={inputClass(error)}
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700 text-right">דוא״ל</label>
+            <input
+              name="email"
+              id="email"
+              type="email"
+              value={formData.email}
+              onChange={handleChange}
+              required
+              className={inputClass(error)}
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label htmlFor="password" id="password-label" className="block text-sm font-medium text-gray-700 text-right">סיסמה</label>
+            <input
+              type="password"
+              name="password"
+              id="password"
+              value={formData.password}
+              onChange={handleChange}
+              required
+              minLength="6"
+              className={inputClass(error)}
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 text-right">אימות סיסמה</label>
+            <input
+              type="password"
+              name="confirmPassword"
+              id="confirmPassword"
+              value={formData.confirmPassword}
+              onChange={handleChange}
+              required
+              minLength="6"
+              className={inputClass(error)}
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-[#cfa756] hover:bg-[#b8860b] disabled:opacity-50 text-[#0d2340] font-bold px-6 py-2.5 rounded-lg transition-colors shadow-sm"
+          >
+            {loading ? 'שומר...' : 'הירשם'}
+          </button>
+        </form>
+
+        <p className="text-sm text-center text-gray-500 mt-4">
           כבר יש לך חשבון?{' '}
-          <a href="/login" className="text-blue-600 hover:underline">התחבר כאן</a>
+          <span
+            onClick={() => navigate('/login')}
+            className="text-[#cfa756] cursor-pointer hover:underline font-medium"
+          >
+            התחבר כאן
+          </span>
         </p>
       </div>
     </div>
