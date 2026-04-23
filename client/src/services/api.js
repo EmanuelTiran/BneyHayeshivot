@@ -22,7 +22,7 @@ export const register = (userData)    => API.post('/auth/register', userData);
 export const fetchAnnouncements = ()           => API.get('/announcements');
 export const createAnnouncement = (data)       => API.post('/announcements', data);
 export const updateAnnouncement = (id, data)   => API.put(`/announcements/${id}`, data);
-
+export const deleteAnnouncement = (id) => API.delete(`/announcements/${id}`);
 // ── תפילות ────────────────────────────────────────────────────────────────────
 export const fetchPrayers  = ()        => API.get('/prayers');
 export const createPrayer  = (data)    => API.post('/prayers', data);

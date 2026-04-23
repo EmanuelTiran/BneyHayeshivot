@@ -1,17 +1,19 @@
-import { fetchAnnouncements, createAnnouncement, updateAnnouncement } from './api';
+import { fetchAnnouncements, createAnnouncement, updateAnnouncement, deleteAnnouncement } from './api';
 
 export const getAnnouncements = async () => {
   const res = await fetchAnnouncements();
-  return res.data; // [{_id, title, content, date}, ...]
+  return res.data; // [{ _id, title, content, date }, ...]
 };
 
 export const saveAnnouncement = async (announcement) => {
   if (announcement._id) {
-    // Existing — update
     const res = await updateAnnouncement(announcement._id, announcement);
     return res.data;
   }
-  // New — create
   const res = await createAnnouncement(announcement);
   return res.data;
+};
+
+export const removeAnnouncement = async (id) => {
+  await deleteAnnouncement(id);
 };

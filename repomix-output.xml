@@ -32,7 +32,7 @@ The content is organized as follows:
 <notes>
 - Some files may have been excluded based on .gitignore rules and Repomix's configuration
 - Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
-- Only files matching these patterns are included: server/server.js, server/models/Announcement.js, server/controllers/announcementController.js, server/routes/announcements.js, client/src/App.jsx, client/src/services/api.js, client/src/components/Announcements/AnnouncementList.jsx, client/tailwind.config.js, client/src/components/common/Header.jsx
+- Only files matching these patterns are included: server/models/Announcement.js, server/controllers/announcementController.js, server/services/announcementService.js, server/routes/announcements.js, server/server.js, client/src/components/ContactAndPrayerTimes/ContactAndPrayerTimes.jsx, client/src/services/announcementsService.js
 - Files matching patterns in .gitignore are excluded
 - Files matching default ignore patterns are excluded
 - Files are sorted by Git change count (files with more changes are at the bottom)
@@ -41,61 +41,17 @@ The content is organized as follows:
 </file_summary>
 
 <directory_structure>
-client/src/App.jsx
-client/src/components/Announcements/AnnouncementList.jsx
-client/src/components/common/Header.jsx
-client/src/services/api.js
-client/tailwind.config.js
+client/src/components/ContactAndPrayerTimes/ContactAndPrayerTimes.jsx
+client/src/services/announcementsService.js
 server/controllers/announcementController.js
 server/models/Announcement.js
 server/routes/announcements.js
 server/server.js
+server/services/announcementService.js
 </directory_structure>
 
 <files>
 This section contains the contents of the repository's files.
-
-<file path="client/src/components/Announcements/AnnouncementList.jsx">
-import { useEffect, useState } from 'react';
-import { fetchAnnouncements } from '../../services/api';
-
-export default function AnnouncementList() {
-  const [announcements, setAnnouncements] = useState([]);
-
-  useEffect(() => {
-    fetchAnnouncements().then(res => setAnnouncements(res.data));
-  }, []);
-
-  return (
-    <div className="p-4">
-      <h2 className="text-xl font-bold mb-4">לוח מודעות</h2>
-      <ul className="space-y-4">
-        {announcements.map((a) => (
-          <li key={a._id} className="p-4 bg-white shadow rounded">
-            <h3 className="text-lg font-semibold">{a.title}</h3>
-            <p>{a.content}</p>
-            <p className="text-sm text-gray-500">{new Date(a.date).toLocaleDateString()}</p>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-</file>
-
-<file path="client/tailwind.config.js">
-/** @type {import('tailwindcss').Config} */
-export default {
-  content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-  ],
-  theme: {
-    extend: {},
-  },
-  plugins: [],
-}
-</file>
 
 <file path="server/models/Announcement.js">
 const mongoose = require('mongoose');
@@ -107,6 +63,26 @@ const announcementSchema = new mongoose.Schema({
 });
 
 module.exports = mongoose.model('Announcement', announcementSchema);
+</file>
+
+<file path="client/src/services/announcementsService.js">
+import { fetchAnnouncements, createAnnouncement, updateAnnouncement } from './api';
+
+export const getAnnouncements = async () => {
+  const res = await fetchAnnouncements();
+  return res.data; // [{_id, title, content, date}, ...]
+};
+
+export const saveAnnouncement = async (announcement) => {
+  if (announcement._id) {
+    // Existing — update
+    const res = await updateAnnouncement(announcement._id, announcement);
+    return res.data;
+  }
+  // New — create
+  const res = await createAnnouncement(announcement);
+  return res.data;
+};
 </file>
 
 <file path="server/controllers/announcementController.js">
@@ -173,218 +149,289 @@ router.delete('/:id', protect, ctrl.deleteAnnouncement);
 module.exports = router;
 </file>
 
-<file path="client/src/components/common/Header.jsx">
-// components/common/Header.jsx
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { NAVIGATION_ITEMS, ROUTES } from '../../constants/routes';
+<file path="server/services/announcementService.js">
+const Announcement = require('../models/Announcement');
+
+exports.getAll = () => Announcement.find();
+exports.create = (data) => new Announcement(data).save();
+
+
+const getAllAnnouncements = () => Announcement.find().sort({ date: -1 });
+
+const createAnnouncement = (data) => Announcement.create(data);
+
+// Update a single announcement by id
+const updateAnnouncement = (id, data) =>
+  Announcement.findByIdAndUpdate(id, data, { new: true });
+
+const deleteAnnouncement = (id) => Announcement.findByIdAndDelete(id);
+
+module.exports = {
+  getAllAnnouncements,
+  createAnnouncement,
+  updateAnnouncement,
+  deleteAnnouncement,
+};
+</file>
+
+<file path="client/src/components/ContactAndPrayerTimes/ContactAndPrayerTimes.jsx">
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/authContext';
+import { getPrayers, savePrayers } from '../../services/prayersService';
+import { getAnnouncements, saveAnnouncement } from '../../services/announcementsService';
 
-function Header() {
-  const { user, isAuthenticated, isAdmin, logout } = useAuth();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const navigate = useNavigate();
-  const location = useLocation();
+const ContactAndPrayerTimes = ({ isButtonTransparent }) => {
+  const { isAdmin } = useAuth();
 
-  // סגירת תפריט נייד בעת שינוי route
+  const [specialMessage, setSpecialMessage] = useState('');
+  const [pinnedAnnouncement, setPinnedAnnouncement] = useState(null);
+  const [prayers, setPrayers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [tempPrayers, setTempPrayers] = useState([]);
+  const [tempMessage, setTempMessage] = useState('');
+
+  // ── Fetch on mount ──────────────────────────────────────────────────────────
   useEffect(() => {
-    setIsMenuOpen(false);
-  }, [location.pathname]);
+    const loadData = async () => {
+      try {
+        const [fetchedPrayers, fetchedAnnouncements] = await Promise.all([
+          getPrayers(),
+          getAnnouncements(),
+        ]);
 
-  const toggleMenu = useCallback(() => {
-    setIsMenuOpen(prev => !prev);
+        setPrayers(fetchedPrayers);
+
+        if (fetchedAnnouncements.length > 0) {
+          const pinned = fetchedAnnouncements[0];
+          setPinnedAnnouncement(pinned);
+          setSpecialMessage(pinned.content);
+        }
+      } catch (err) {
+        setError('שגיאה בטעינת הנתונים. אנא רענן את הדף.');
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
   }, []);
 
-  // פונקציה לבדיקה אם הקישור הנוכחי פעיל
-  const isActiveLink = useCallback((path) => {
-    return location.pathname === path;
-  }, [location.pathname]);
+  // ── Modal helpers ───────────────────────────────────────────────────────────
+  const openModal = () => {
+    setTempPrayers(prayers.map((p) => ({ ...p })));
+    setTempMessage(specialMessage);
+    setIsModalOpen(true);
+  };
 
-  // רכיב לקישורי ניווט
-  const NavigationLink = ({ to, children, className = "", onClick = null }) => (
-    <Link
-      to={to}
-      className={`hover:text-[#cfa756] transition-colors duration-300 ${
-        isActiveLink(to) 
-          ? 'text-[#cfa756] font-bold border-b-2 border-[#cfa756] pb-1' 
-          : 'text-[#f7f4e9]'
-      } ${className}`}
-      onClick={onClick}
-    >
-      {children}
-    </Link>
-  );
+  const closeModal = () => setIsModalOpen(false);
 
-  // רכיב לכפתורי התחברות/הרשמה
-  const AuthButtons = useMemo(() => {
-    if (isAuthenticated) {
-      return (
-        <div className="flex items-center">
-          <span className="ml-4 text-lg font-medium text-[#f7f4e9]">
-            שלום, {user?.name || 'משתמש'}!
-          </span>
-          <button
-            onClick={logout}
-            className="bg-[#a61b1b] hover:bg-[#801515] text-white px-5 py-2 rounded-md transition-colors ml-4 focus:outline-none focus:ring-2 focus:ring-[#cfa756] shadow-md"
-            aria-label="התנתק מהמערכת"
-          >
-            התנתק
-          </button>
-        </div>
-      );
+  const saveChanges = async () => {
+    try {
+      const updatedPrayers = await savePrayers(tempPrayers);
+      setPrayers(updatedPrayers);
+
+      const announcementPayload = pinnedAnnouncement
+        ? { ...pinnedAnnouncement, content: tempMessage, title: 'הודעת גבאי' }
+        : { title: 'הודעת גבאי', content: tempMessage };
+
+      const savedAnnouncement = await saveAnnouncement(announcementPayload);
+      setPinnedAnnouncement(savedAnnouncement);
+      setSpecialMessage(savedAnnouncement.content);
+
+      setIsModalOpen(false);
+    } catch (err) {
+      console.error('שגיאה בשמירת הנתונים:', err);
+      alert('שגיאה בשמירת הנתונים. אנא נסה שוב.');
     }
+  };
 
+  const handleChange = (index, field, value) => {
+    const updated = [...tempPrayers];
+    updated[index] = { ...updated[index], [field]: value };
+    setTempPrayers(updated);
+  };
+
+  const addPrayer = () =>
+    setTempPrayers([...tempPrayers, { title: '', time: '' }]);
+
+  const removePrayer = (index) =>
+    setTempPrayers(tempPrayers.filter((_, i) => i !== index));
+
+  // ── Render ──────────────────────────────────────────────────────────────────
+  if (loading) {
     return (
-      <div className="flex items-center space-x-3 rtl:space-x-reverse">
-        <Link
-          to={ROUTES.LOGIN}
-          className="border-2 border-[#cfa756] text-[#cfa756] hover:bg-[#cfa756] hover:text-[#0d2340] px-5 py-2 rounded-md transition-all focus:outline-none focus:ring-2 focus:ring-[#cfa756] font-medium"
-        >
-          התחבר
-        </Link>
-        <Link
-          to={ROUTES.REGISTER}
-          className="bg-[#cfa756] hover:bg-[#b8860b] text-[#0d2340] px-5 py-2 rounded-md transition-all focus:outline-none focus:ring-2 focus:ring-[#cfa756] font-bold shadow-md"
-        >
-          הירשם
-        </Link>
+      <div className="text-center py-10 text-[#0d2340] font-medium" dir="rtl">
+        <div className="animate-pulse">טוען נתונים...</div>
       </div>
     );
-  }, [isAuthenticated, user?.name, logout]);
+  }
 
-  // רכיב לתפריט נייד
-  const MobileAuthButtons = useMemo(() => {
-    if (isAuthenticated) {
-      return (
-        <div className="flex flex-col space-y-3 mt-4 border-t border-[#cfa756]/30 pt-4">
-          <span className="text-lg font-medium text-[#cfa756]">
-            שלום, {user?.name || 'משתמש'}!
-          </span>
-          <button
-            onClick={() => {
-              logout();
-              setIsMenuOpen(false);
-            }}
-            className="bg-[#a61b1b] hover:bg-[#801515] text-white px-4 py-2 rounded-md transition-colors text-right focus:outline-none shadow-sm"
-            aria-label="התנתק מהמערכת"
-          >
-            התנתק
-          </button>
-        </div>
-      );
-    }
-
+  if (error) {
     return (
-      <div className="flex flex-col space-y-3 mt-4 border-t border-[#cfa756]/30 pt-4">
-        <Link
-          to={ROUTES.LOGIN}
-          className="border border-[#cfa756] text-[#cfa756] hover:bg-[#cfa756] hover:text-[#0d2340] px-4 py-2 rounded-md transition-colors text-right"
-          onClick={() => setIsMenuOpen(false)}
-        >
-          התחבר
-        </Link>
-        <Link
-          to={ROUTES.REGISTER}
-          className="bg-[#cfa756] hover:bg-[#b8860b] text-[#0d2340] font-bold px-4 py-2 rounded-md transition-colors text-right"
-          onClick={() => setIsMenuOpen(false)}
-        >
-          הירשם
-        </Link>
+      <div className="text-center py-10 text-[#a61b1b] font-medium" dir="rtl">
+        {error}
       </div>
     );
-  }, [isAuthenticated, user?.name, logout]);
+  }
 
   return (
-    <header className="bg-gradient-to-r from-[#0d2340] to-[#1a365d] border-b-4 border-[#cfa756] shadow-lg relative z-50">
-      <div className="container mx-auto px-4 py-3">
-        <div className="flex items-center justify-between">
-          {/* לוגו / שם האתר */}
-         {/* לוגו - תמונה במקום טקסט */}
-<Link 
-  to={ROUTES.HOME}
-  className="flex items-center"
-  aria-label="דף הבית"
->
-  <img 
-    src="/logo.png" 
-    alt="לוגו" 
-    className="h-10 md:h-14 w-auto object-contain transition-transform duration-300 hover:scale-105"
-  />
-</Link>
+    <div
+      className="bg-[#f7f4e9] shadow-2xl rounded-xl p-6 max-w-md mx-auto my-8 border border-[#cfa756]/30 relative overflow-hidden"
+      dir="rtl"
+    >
+      {/* פס קישוט עליון בסגנון הכתר */}
+      <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-[#0d2340] via-[#cfa756] to-[#0d2340]"></div>
 
-          {/* תפריט המבורגר למובייל */}
-          <div className="lg:hidden">
-            <button
-              onClick={toggleMenu}
-              className="text-[#cfa756] hover:text-[#f7f4e9] focus:outline-none p-2 rounded transition-colors"
-              aria-label={isMenuOpen ? 'סגור תפריט' : 'פתח תפריט'}
-              aria-expanded={isMenuOpen}
-            >
-              <svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                <path 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round" 
-                  d={isMenuOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"} 
-                />
-              </svg>
-            </button>
+      <h2 className="text-3xl font-bold text-[#0d2340] mb-8 mt-2 text-center drop-shadow-sm">
+        זמני תפילה ומידע
+      </h2>
+
+      {specialMessage && (
+        <div className="mb-8 p-4 bg-white border-r-4 border-[#a61b1b] shadow-sm rounded-l-lg relative">
+          <div className="absolute -top-3 -right-2 bg-[#a61b1b] text-white text-xs font-bold px-2 py-1 rounded shadow">
+            הודעת גבאי
           </div>
-
-          {/* תפריט למחשב */}
-          <nav className="hidden lg:flex items-center space-x-6 rtl:space-x-reverse" role="navigation">
-            {NAVIGATION_ITEMS.map(({ path, label }) => (
-              <NavigationLink key={path} to={path}>
-                {label}
-              </NavigationLink>
-            ))}
-
-            {isAuthenticated && isAdmin() && (
-              <NavigationLink to={ROUTES.ADMIN}>
-                ניהול
-              </NavigationLink>
-            )}
-
-            <div className="mr-6 border-r border-[#cfa756]/30 pr-6 h-8 flex items-center">
-              {AuthButtons}
-            </div>
-          </nav>
+          <p className="text-[#0d2340] font-medium mt-2 leading-relaxed whitespace-pre-wrap">
+            {specialMessage}
+          </p>
         </div>
+      )}
 
-        {/* תפריט נייד */}
-        {isMenuOpen && (
-          <div className="lg:hidden mt-4 pb-4" role="navigation">
-            <div className="flex flex-col space-y-4 text-right">
-              {NAVIGATION_ITEMS.map(({ path, label }) => (
-                <NavigationLink 
-                  key={path} 
-                  to={path} 
-                  className="text-lg"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  {label}
-                </NavigationLink>
-              ))}
+      <div className="mb-6 bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+        <h3 className="text-xl font-bold text-[#0d2340] mb-2 flex items-center gap-2">
+          <svg className="w-5 h-5 text-[#cfa756]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          כתובתנו:
+        </h3>
+        <p className="text-lg text-gray-700 font-medium pr-7">הרב רפאל ברוך טולדנו 20 | רמת שלמה</p>
+      </div>
 
-              {isAuthenticated && isAdmin() && (
-                <NavigationLink 
-                  to={ROUTES.ADMIN} 
-                  className="text-lg"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  ניהול
-                </NavigationLink>
-              )}
+      <div className="mb-8">
+        <h3 className="text-xl font-bold text-[#0d2340] mb-4 border-b-2 border-[#cfa756] pb-2 inline-block">
+          זמני תפילות:
+        </h3>
+        <ul className="space-y-3">
+          {prayers.map((prayer, index) => (
+            <li
+              key={prayer._id ?? index}
+              className="flex justify-between items-center text-lg bg-white px-4 py-3 rounded-lg shadow-sm border border-gray-100 hover:border-[#cfa756]/50 transition-colors"
+            >
+              <span className="font-bold text-[#1a365d]">{prayer.title ?? prayer.name}</span>
+              <span className="bg-[#0d2340] text-[#cfa756] font-bold text-md px-4 py-1 rounded-full shadow-inner tracking-wide">
+                {prayer.time}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
 
-              {MobileAuthButtons}
-            </div>
-          </div>
+      <div className="text-center">
+        {isAdmin() && (
+          <button
+            onClick={openModal}
+            className="bg-[#cfa756] text-[#0d2340] font-bold px-6 py-2.5 rounded-md hover:bg-[#b8860b] hover:text-white transition-all shadow-md focus:outline-none focus:ring-2 focus:ring-[#0d2340] ring-offset-2 ring-offset-[#f7f4e9]"
+            style={{ opacity: isButtonTransparent ? 0 : 1 }}
+          >
+            ערוך זמני תפילה והודעה
+          </button>
         )}
       </div>
-    </header>
-  );
-}
 
-export default Header;
+      {/* Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-[#0d2340]/70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div
+            className="bg-[#f7f4e9] p-6 rounded-xl shadow-2xl max-w-md w-full border-2 border-[#cfa756]"
+            dir="rtl"
+          >
+            <h3 className="text-2xl font-bold mb-6 text-center text-[#0d2340] border-b border-[#cfa756]/30 pb-3">
+              עריכת תוכן
+            </h3>
+
+            <div className="mb-6">
+              <label className="block text-[#0d2340] font-bold mb-2">הודעה מיוחדת (גבאי):</label>
+              <textarea
+                className="border border-gray-300 rounded-md px-3 py-2 w-full text-gray-800 focus:ring-2 focus:ring-[#cfa756] focus:border-[#cfa756] outline-none shadow-sm"
+                rows="3"
+                value={tempMessage}
+                onChange={(e) => setTempMessage(e.target.value)}
+                placeholder="כתבו כאן הודעה למתפללים..."
+              />
+            </div>
+
+            <div className="mb-4 flex items-center justify-between">
+              <h4 className="font-bold text-[#0d2340]">עריכת זמני תפילה:</h4>
+            </div>
+            
+            <div className="space-y-4 max-h-[35vh] overflow-y-auto pr-2 custom-scrollbar">
+              {tempPrayers.map((prayer, index) => (
+                <div key={prayer._id ?? index} className="flex flex-col gap-2 bg-white p-3 rounded-md shadow-sm border border-gray-200">
+                  <div className="flex justify-between gap-3">
+                    <input
+                      className="border border-gray-300 rounded px-3 py-2 w-full text-gray-800 focus:ring-1 focus:ring-[#cfa756] outline-none"
+                      value={prayer.title ?? prayer.name ?? ''}
+                      onChange={(e) => handleChange(index, 'title', e.target.value)}
+                      placeholder="שם התפילה (לדוג': שחרית)"
+                    />
+                    <input
+                      className="border border-gray-300 rounded px-3 py-2 w-full text-gray-800 focus:ring-1 focus:ring-[#cfa756] outline-none text-center"
+                      value={prayer.time}
+                      onChange={(e) => handleChange(index, 'time', e.target.value)}
+                      placeholder="זמן (לדוג': 06:15)"
+                      dir="ltr"
+                    />
+                  </div>
+                  <div className="text-right mt-1">
+                    <button
+                      onClick={() => removePrayer(index)}
+                      className="text-sm font-medium text-[#a61b1b] hover:text-red-800 hover:underline flex items-center gap-1"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                      מחק תפילה
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-4 border-t border-[#cfa756]/30 pt-4">
+              <button 
+                onClick={addPrayer} 
+                className="text-[#1a365d] font-bold hover:text-[#cfa756] transition-colors flex items-center gap-1"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
+                הוסף תפילה
+              </button>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-8">
+              <button
+                onClick={closeModal}
+                className="px-5 py-2 rounded-md border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 font-medium transition-colors"
+              >
+                ביטול
+              </button>
+              <button
+                onClick={saveChanges}
+                className="px-5 py-2 rounded-md bg-[#0d2340] hover:bg-[#1a365d] text-[#cfa756] font-bold transition-colors shadow-md"
+              >
+                שמור שינויים
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default ContactAndPrayerTimes;
 </file>
 
 <file path="server/server.js">
@@ -400,160 +447,27 @@ connectDB();
 
 app.use(cors({
     origin: [
-        'http://localhost:5173', // בשביל הפיתוח (Vite)
-        'https://bneyhayeshivot.onrender.com', // הכתובת של האתר שלך ב-Render
-        'https://your-frontend-domain.com' // אם יש לך דומיין נוסף לפרונטנד (למשל ב-Vercel/Netlify)
+      'http://localhost:3000',
+      'http://localhost:5173',
+      'https://bneyhayeshivot-1.onrender.com'
     ],
-    credentials: true // מאפשר שליחת עוגיות וטוקנים אם צריך
-}));
+    credentials: true
+  }));
 app.use(express.json());
 
-app.use('/api/prayers', require('./routes/prayers'));
-app.use('/api/announcements', require('./routes/announcements'));
-app.use('/api/contact', require('./routes/contact'));
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/payments', require('./routes/payments'));   // חדש
-app.use('/api/users', require('./routes/users'));       // חדש – ניהול משתמשים
+app.use('/api/prayers',        require('./routes/prayers'));
+app.use('/api/announcements',  require('./routes/announcements'));
+app.use('/api/contact',        require('./routes/contact'));
+app.use('/api/auth',           require('./routes/auth'));
+app.use('/api/payments',       require('./routes/payments'));
+app.use('/api/users',          require('./routes/users'));
+app.use('/api/commemorations', require('./routes/commemorations')); // ← חדש
 
 app.get('/api/health', (_req, res) => res.status(200).json({ status: 'ok' }));
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-</file>
-
-<file path="client/src/App.jsx">
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-
-import Header from './components/common/Header';
-import Home from './pages/Home';
-import Prayers from './pages/Prayers';
-import Announcements from './pages/Announcements';
-import Contact from './pages/Contact';
-import Admin from './pages/Admin';
-import Login from './components/auth/Login';
-import Register from './components/auth/Register';
-import Footer from './components/common/Footer';
-import HalachicTimes from './components/HalachicTimes';
-import { ROUTES } from './constants/routes';
-import Payments from './pages/Payments';
-
-function App() {
-  return (
-    <Router>
-      <div className="flex flex-col min-h-screen">
-        <Header />
-        <main className="flex-1 p-4">
-          <Routes>
-            <Route path={ROUTES.HOME} element={<Home />} />
-            <Route path={ROUTES.PRAYERS} element={<Prayers />} />
-            <Route path={ROUTES.ANNOUNCEMENTS} element={<Announcements />} />
-            <Route path={ROUTES.CONTACT} element={<Contact />} />
-            <Route path={`${ROUTES.ADMIN}/*`} element={<Admin />} />
-            <Route path={ROUTES.LOGIN} element={<Login />} />
-            <Route path={ROUTES.REGISTER} element={<Register />} />
-            <Route path={ROUTES.HEBCAL} element={<HalachicTimes />} />
-            <Route path={ROUTES.PAYMENTS}      element={<Payments />} /> 
-            <Route path="*" element={<div className="text-center text-xl">העמוד לא נמצא אין לך מה לחפש פה</div>} />
-          </Routes>
-        </main>
-        <Footer />
-      </div>
-    </Router>
-  );
-}
-
-export default App;
-</file>
-
-<file path="client/src/services/api.js">
-// api.js
-import axios from 'axios';
-import { API_URL } from '../config'; 
-
-const API = axios.create({
-  baseURL: `${API_URL}/api`,
-});
-
-// const API = axios.create({
-//   baseURL: 'http://localhost:5000/api',
-// });
-
-API.interceptors.request.use((req) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    req.headers.Authorization = `Bearer ${token}`;
-  }
-  return req;
-});
-
-export const login = (credentials) => API.post('/auth/login', credentials);
-export const register = (userData) => API.post('/auth/register', userData);
-
-export const fetchAnnouncements   = () => API.get('/announcements');
-export const createAnnouncement   = (data) => API.post('/announcements', data);
-export const updateAnnouncement   = (id, data) => API.put(`/announcements/${id}`, data);
-
-export const fetchPrayers         = () => API.get('/prayers');
-export const createPrayer         = (data) => API.post('/prayers', data);
-export const updatePrayers        = (prayers) => API.put('/prayers', { prayers });
-
-export const sendContactMessage   = (data) => API.post('/contact', data);
-export const fetchContactMessages = () => API.get('/contact');
-
-export const updateContactMessageHandled = async (id, handled) => {
-  const payload = { handled };
-  try {
-    return await API.patch(`/contact/${id}/handled`, payload);
-  } catch (error) {
-    const status = error?.response?.status;
-    if (status === 404 || status === 405) {
-      try {
-        return await API.patch(`/contact/${id}`, payload);
-      } catch (secondError) {
-        const secondStatus = secondError?.response?.status;
-        if (secondStatus === 404 || secondStatus === 405) {
-          return API.put(`/contact/${id}/handled`, payload);
-        }
-        throw secondError;
-      }
-    }
-    throw error;
-  }
-};
-
-// ── תשלומים – חדש ────────────────────────────────────────────────────────────
-
-/** משתמש רגיל */
-export const fetchMyPayments        = () => API.get('/payments/me');
-export const addMyDebt              = (data) => API.post('/payments/me/debts', data);
-export const markMyDebtPaid         = (debtId, isPaid) =>
-  API.patch(`/payments/me/debts/${debtId}`, { isPaid });
-export const setMyStandingOrder     = (data) => API.post('/payments/me/standing-order', data);
-export const cancelMyStandingOrder  = () => API.delete('/payments/me/standing-order');
-export const addMyDonation          = (data) => API.post('/payments/me/donations', data);
-
-/** אדמין */
-export const fetchAllPayments       = () => API.get('/payments');
-export const fetchUserPayments      = (userId) => API.get(`/payments/${userId}`);
-export const addUserDebt            = (userId, data) => API.post(`/payments/${userId}/debts`, data);
-export const markUserDebtPaid       = (userId, debtId, isPaid) =>
-  API.patch(`/payments/${userId}/debts/${debtId}`, { isPaid });
-export const deleteUserDebt         = (userId, debtId) =>
-  API.delete(`/payments/${userId}/debts/${debtId}`);
-export const setUserStandingOrder   = (userId, data) =>
-  API.post(`/payments/${userId}/standing-order`, data);
-export const cancelUserStandingOrder = (userId) =>
-  API.delete(`/payments/${userId}/standing-order`);
-export const addUserDonation        = (userId, data) =>
-  API.post(`/payments/${userId}/donations`, data);
-export const deleteUserDonation     = (userId, donationId) =>
-  API.delete(`/payments/${userId}/donations/${donationId}`);
-export const updateUserNotes        = (userId, notes) =>
-  API.patch(`/payments/${userId}/notes`, { notes });
-
-/** משתמשים */
-export const fetchAllUsers          = () => API.get('/users');
 </file>
 
 </files>
