@@ -1,3 +1,4 @@
+//client\src\constants\routes.js
 export const ROUTES = {
   HOME:         '/',
   PRAYERS:      '/prayers',
@@ -8,7 +9,11 @@ export const ROUTES = {
   REGISTER:     '/register',
   HEBCAL:       '/hebcal',
   PAYMENTS:     '/payments',   
-  COMMEMORATIONS: '/commemorations'
+  COMMEMORATIONS: '/commemorations',
+
+  PORTAL:          '/portal',
+  PORTAL_CATEGORY: '/portal/:categoryId',
+  PORTAL_ITEM:     '/portal/item/:itemId',
 };
 
 export const NAVIGATION_ITEMS = [
@@ -16,6 +21,7 @@ export const NAVIGATION_ITEMS = [
   { path: ROUTES.PRAYERS,       label: 'תפילות' },
   { path: ROUTES.ANNOUNCEMENTS, label: 'הודעות' },
   { path: ROUTES.CONTACT,       label: 'צור קשר' },
+  { path: ROUTES.PORTAL,        label: ' הקדשות' }, // ← זה הלינק למערכת החדשה
   { path: ROUTES.PAYMENTS,      label: 'תשלומים' },
   { path: ROUTES.COMMEMORATIONS, label: 'הנצחות' }  // ← חדש
 ];

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 
 import { fetchContactMessages, updateContactMessageHandled } from '../services/api';
 import CommemorationForm from '../components/Admin/CommemorationForm';
+import { fetchAllSponsorships, updateSponsorshipStatus } from '../services/portalService';
 
 // ── טאב: הודעות צור קשר ──────────────────────────────────────────────────────
 function ContactMessages() {
@@ -120,10 +121,93 @@ function ContactMessages() {
   );
 }
 
+function SponsorshipRequests() {
+  const [requests, setRequests]         = useState([]);
+  const [loading, setLoading]           = useState(true);
+  const [error, setError]               = useState('');
+  const [activeFilter, setActiveFilter] = useState('all');
+
+  const load = async () => {
+    try {
+      setLoading(true);
+      const res = await fetchAllSponsorships();
+      setRequests(Array.isArray(res.data) ? res.data : []);
+    } catch { setError('שגיאה בטעינת הבקשות'); }
+    finally { setLoading(false); }
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const handleStatus = async (id, status) => {
+    await updateSponsorshipStatus(id, status);
+    load();
+  };
+
+  const STATUS_LABELS = { pending: 'ממתין', approved: 'אושר', rejected: 'נדחה' };
+  const STATUS_COLORS = {
+    pending:  'bg-yellow-100 text-yellow-800 border-yellow-300',
+    approved: 'bg-green-100  text-green-800  border-green-300',
+    rejected: 'bg-red-100    text-red-800    border-red-300',
+  };
+
+  const filtered = requests.filter((r) => activeFilter === 'all' || r.status === activeFilter);
+
+  return (
+    <section className="max-w-5xl mx-auto">
+      <div className="flex flex-wrap gap-2 justify-center mb-4">
+        {['all', 'pending', 'approved', 'rejected'].map((f) => (
+          <button key={f} type="button" onClick={() => setActiveFilter(f)}
+            className={`px-3 py-1 rounded border text-sm ${activeFilter === f ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300'}`}>
+            {f === 'all' ? `הכל (${requests.length})` : `${STATUS_LABELS[f]} (${requests.filter((r) => r.status === f).length})`}
+          </button>
+        ))}
+      </div>
+      {loading && <p className="text-center">טוען...</p>}
+      {error   && <p className="text-center text-red-600">{error}</p>}
+      {!loading && !error && filtered.length === 0 && <p className="text-center text-gray-500">אין בקשות להצגה</p>}
+      <div className="grid gap-4">
+        {filtered.map((r) => (
+          <article key={r._id} className="bg-white shadow rounded-lg p-4 border border-gray-200">
+            <div className="flex flex-wrap justify-between items-start gap-2 mb-2">
+              <div>
+                <h2 className="font-semibold text-[#0d2340]">{r.name}</h2>
+                <p className="text-xs text-gray-500">{r.email} | {r.phone}</p>
+              </div>
+              <span className={`text-xs font-bold border px-2 py-1 rounded-full ${STATUS_COLORS[r.status]}`}>
+                {STATUS_LABELS[r.status]}
+              </span>
+            </div>
+            <div className="text-sm text-gray-700 space-y-0.5 mb-3">
+              <p><span className="font-medium">קטגוריה:</span> {r.categoryId?.name || '—'}</p>
+              <p><span className="font-medium">פריט:</span> {r.itemId?.title || '—'}</p>
+              <p><span className="font-medium">סוג הנצחה:</span> {r.dedicationType} — {r.dedicationName || '—'}</p>
+              {r.adminNote && <p><span className="font-medium">הערה:</span> {r.adminNote}</p>}
+            </div>
+            <div className="flex gap-2 justify-end">
+              {r.status !== 'approved' && (
+                <button onClick={() => handleStatus(r._id, 'approved')}
+                  className="text-xs bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700">✓ אשר</button>
+              )}
+              {r.status !== 'rejected' && (
+                <button onClick={() => handleStatus(r._id, 'rejected')}
+                  className="text-xs bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700">✕ דחה</button>
+              )}
+              {r.status !== 'pending' && (
+                <button onClick={() => handleStatus(r._id, 'pending')}
+                  className="text-xs bg-gray-400 text-white px-3 py-1 rounded hover:bg-gray-500">↩ ממתין</button>
+              )}
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
 // ── הגדרת הטאבים ─────────────────────────────────────────────────────────────
 const TABS = [
   { id: 'contact',          label: 'הודעות צור קשר' },
   { id: 'commemorations',   label: 'ניהול הנצחות'   },
+  { id: 'sponsorships',   label: 'בקשות הנצחה'    }
 ];
 
 // ── Admin ראשי ────────────────────────────────────────────────────────────────
@@ -156,6 +240,7 @@ export default function Admin() {
       {/* תוכן הטאב הפעיל */}
       {activeTab === 'contact'        && <ContactMessages />}
       {activeTab === 'commemorations' && <CommemorationForm />}
+      {activeTab === 'sponsorships'   && <SponsorshipRequests />}
     </div>
   );
 }

@@ -24,8 +24,10 @@ app.use('/api/contact',        require('./routes/contact'));
 app.use('/api/auth',           require('./routes/auth'));
 app.use('/api/payments',       require('./routes/payments'));
 app.use('/api/users',          require('./routes/users'));
-app.use('/api/commemorations', require('./routes/commemorations')); // ← חדש
-
+app.use('/api/commemorations', require('./routes/commemorations')); 
+app.use('/api/categories',   require('./routes/categories'));
+app.use('/api/portal-items', require('./routes/portalItems'));
+app.use('/api/sponsorships', require('./routes/sponsorships'));
 app.get('/api/health', (_req, res) => res.status(200).json({ status: 'ok' }));
 app.use(errorHandler);
 
