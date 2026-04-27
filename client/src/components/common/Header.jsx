@@ -175,7 +175,7 @@ function Header() {
 
             {/* Logo */}
             <Link to={ROUTES.HOME}>
-              <img src="/logo.png" className="h-12" alt="לוגו" />
+              <img src="/logo.png" className="h-16" alt="לוגו" />
             </Link>
 
             {/* Desktop Nav */}
