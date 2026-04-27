@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import "./Home.css"; // ודא שנתיב הקובץ נכון
-import CommunityPaymentButton from '../components/export default CommunityPaymentButton;';
+import CommunityPaymentButton from '../components/CommunityPaymentButton';
 import ContactAndPrayerTimes from '../components/ContactAndPrayerTimes/ContactAndPrayerTimes'; // ודא שנתיב הקומפוננטה נכון
 
 const Home = () => {
@@ -41,7 +41,6 @@ const Home = () => {
 
       }}
     >
-      {/* <h1 className="text-3xl font-bold">Welcome to the Synagogue</h1> */}
       <ContactAndPrayerTimes isButtonTransparent={isButtonTransparent}/>
       <CommunityPaymentButton />
 
