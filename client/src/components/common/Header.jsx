@@ -28,7 +28,7 @@ function GoldParticles() {
 function Header() {
   const { user, isAuthenticated, isAdmin, logout } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [scrolled, setScrolled]     = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const [underlineStyle, setUnderlineStyle] = useState({ left: 0, width: 0, opacity: 0 });
   const [crownLeft, setCrownLeft] = useState(0);
   const navRef = useRef(null);
@@ -149,10 +149,11 @@ function Header() {
           to   { opacity: 1; transform: translateX(0); }
         }
 
-        .glass-dark {
-          background: rgba(13, 35, 64, 0.9);
-          backdrop-filter: blur(20px);
-        }
+       .glass-dark {
+  background: rgba(22, 38, 65, 0.95);
+  backdrop-filter: blur(20px);
+  border-bottom: 3px solid #cfa756;
+}
 
         .mobile-menu-enter {
           animation: mobileMenuIn 0.22s cubic-bezier(.4,0,.2,1) both;
@@ -187,11 +188,10 @@ function Header() {
                   key={path}
                   to={path}
                   data-path={path}
-                  className={`relative text-[18px] tracking-widest uppercase font-bold transition-colors duration-200 pb-2 ${
-                    location.pathname === path
+                  className={`relative text-[18px] tracking-widest uppercase font-bold transition-colors duration-200 pb-2 ${location.pathname === path
                       ? 'text-[#cfa756]'
                       : 'text-[#f7f4e9]/80 hover:text-[#cfa756]'
-                  }`}
+                    }`}
                   style={{ animationDelay: `${i * 80}ms` }}
                 >
                   {label}
@@ -223,18 +223,18 @@ function Header() {
                   <defs>
                     <linearGradient id="crownGrad" x1="0%" y1="0%" x2="0%" y2="100%">
                       <stop offset="0%" stopColor="#ffe9a0">
-                        <animate attributeName="stop-color" values="#ffe9a0;#f7d98a;#cfa756;#f7d98a;#ffe9a0" dur="2.2s" repeatCount="indefinite"/>
+                        <animate attributeName="stop-color" values="#ffe9a0;#f7d98a;#cfa756;#f7d98a;#ffe9a0" dur="2.2s" repeatCount="indefinite" />
                       </stop>
                       <stop offset="100%" stopColor="#b8860b">
-                        <animate attributeName="stop-color" values="#b8860b;#cfa756;#f7d98a;#cfa756;#b8860b" dur="2.2s" repeatCount="indefinite"/>
+                        <animate attributeName="stop-color" values="#b8860b;#cfa756;#f7d98a;#cfa756;#b8860b" dur="2.2s" repeatCount="indefinite" />
                       </stop>
                     </linearGradient>
                   </defs>
-                  <polygon points="1,14 1,7 5,11 10,2 15,11 19,7 19,14" fill="url(#crownGrad)" stroke="#b8860b" strokeWidth="0.6" strokeLinejoin="round"/>
-                  <rect x="1" y="13" width="18" height="2.5" rx="1" fill="url(#crownGrad)" stroke="#b8860b" strokeWidth="0.5"/>
-                  <circle cx="10" cy="2.5" r="1.2" fill="#fff8e0"/>
-                  <circle cx="1.2" cy="7.2" r="1" fill="#fff8e0"/>
-                  <circle cx="18.8" cy="7.2" r="1" fill="#fff8e0"/>
+                  <polygon points="1,14 1,7 5,11 10,2 15,11 19,7 19,14" fill="url(#crownGrad)" stroke="#b8860b" strokeWidth="0.6" strokeLinejoin="round" />
+                  <rect x="1" y="13" width="18" height="2.5" rx="1" fill="url(#crownGrad)" stroke="#b8860b" strokeWidth="0.5" />
+                  <circle cx="10" cy="2.5" r="1.2" fill="#fff8e0" />
+                  <circle cx="1.2" cy="7.2" r="1" fill="#fff8e0" />
+                  <circle cx="18.8" cy="7.2" r="1" fill="#fff8e0" />
                 </svg>
               </span>
             </nav>
@@ -262,11 +262,10 @@ function Header() {
                   key={path}
                   to={path}
                   onClick={() => setIsMenuOpen(false)}
-                  className={`mobile-link-enter px-2 py-3 text-[17px] font-bold tracking-wide border-b border-[#cfa756]/10 transition-colors ${
-                    location.pathname === path
+                  className={`mobile-link-enter px-2 py-3 text-[17px] font-bold tracking-wide border-b border-[#cfa756]/10 transition-colors ${location.pathname === path
                       ? 'text-[#cfa756]'
                       : 'text-[#f7f4e9]/80 hover:text-[#cfa756]'
-                  }`}
+                    }`}
                   style={{ animationDelay: `${i * 50}ms` }}
                 >
                   {location.pathname === path && (
@@ -275,18 +274,18 @@ function Header() {
                         <defs>
                           <linearGradient id="crownGradMobile" x1="0%" y1="0%" x2="0%" y2="100%">
                             <stop offset="0%" stopColor="#ffe9a0">
-                              <animate attributeName="stop-color" values="#ffe9a0;#f7d98a;#cfa756;#f7d98a;#ffe9a0" dur="2.2s" repeatCount="indefinite"/>
+                              <animate attributeName="stop-color" values="#ffe9a0;#f7d98a;#cfa756;#f7d98a;#ffe9a0" dur="2.2s" repeatCount="indefinite" />
                             </stop>
                             <stop offset="100%" stopColor="#b8860b">
-                              <animate attributeName="stop-color" values="#b8860b;#cfa756;#f7d98a;#cfa756;#b8860b" dur="2.2s" repeatCount="indefinite"/>
+                              <animate attributeName="stop-color" values="#b8860b;#cfa756;#f7d98a;#cfa756;#b8860b" dur="2.2s" repeatCount="indefinite" />
                             </stop>
                           </linearGradient>
                         </defs>
-                        <polygon points="1,14 1,7 5,11 10,2 15,11 19,7 19,14" fill="url(#crownGradMobile)" stroke="#b8860b" strokeWidth="0.6" strokeLinejoin="round"/>
-                        <rect x="1" y="13" width="18" height="2.5" rx="1" fill="url(#crownGradMobile)" stroke="#b8860b" strokeWidth="0.5"/>
-                        <circle cx="10" cy="2.5" r="1.2" fill="#fff8e0"/>
-                        <circle cx="1.2" cy="7.2" r="1" fill="#fff8e0"/>
-                        <circle cx="18.8" cy="7.2" r="1" fill="#fff8e0"/>
+                        <polygon points="1,14 1,7 5,11 10,2 15,11 19,7 19,14" fill="url(#crownGradMobile)" stroke="#b8860b" strokeWidth="0.6" strokeLinejoin="round" />
+                        <rect x="1" y="13" width="18" height="2.5" rx="1" fill="url(#crownGradMobile)" stroke="#b8860b" strokeWidth="0.5" />
+                        <circle cx="10" cy="2.5" r="1.2" fill="#fff8e0" />
+                        <circle cx="1.2" cy="7.2" r="1" fill="#fff8e0" />
+                        <circle cx="18.8" cy="7.2" r="1" fill="#fff8e0" />
                       </svg>
                     </span>
                   )}

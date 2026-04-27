@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import "./Home.css"; // ודא שנתיב הקובץ נכון
+import CommunityPaymentButton from '../components/export default CommunityPaymentButton;';
 import ContactAndPrayerTimes from '../components/ContactAndPrayerTimes/ContactAndPrayerTimes'; // ודא שנתיב הקומפוננטה נכון
 
 const Home = () => {
@@ -36,10 +37,14 @@ const Home = () => {
         justifyContent: 'center',
         alignItems: 'center',
         color: 'white', // Text color
+        width: '100%', // ← הוסף את זה
+
       }}
     >
-      <h1 className="text-3xl font-bold">Welcome to the Synagogue</h1>
+      {/* <h1 className="text-3xl font-bold">Welcome to the Synagogue</h1> */}
       <ContactAndPrayerTimes isButtonTransparent={isButtonTransparent}/>
+      <CommunityPaymentButton />
+
       <button
         onClick={printDiv}
         style={{ opacity: isButtonTransparent ? 0 : 1 }}

@@ -115,7 +115,7 @@ const ContactAndPrayerTimes = ({ isButtonTransparent }) => {
 
   return (
     <div
-      className="bg-[#f7f4e9] shadow-2xl rounded-xl p-6 max-w-md mx-auto my-8 border border-[#cfa756]/30 relative overflow-hidden"
+      className="bg-[#f7f4e9] shadow-2xl rounded-xl p-6 max-w-md mx-auto my-8 w-full border border-[#cfa756]/30 relative overflow-hidden"
       dir="rtl"
     >
       {/* פס קישוט עליון */}
@@ -168,7 +168,7 @@ const ContactAndPrayerTimes = ({ isButtonTransparent }) => {
               className="flex justify-between items-center text-lg bg-white px-4 py-3 rounded-lg shadow-sm border border-gray-100 hover:border-[#cfa756]/50 transition-colors"
             >
               <span className="font-bold text-[#1a365d]">{prayer.title ?? prayer.name}</span>
-              <span className="bg-[#0d2340] text-[#cfa756] font-bold text-md px-4 py-1 rounded-full shadow-inner tracking-wide">
+              <span className="bg-[#162641] text-[#cfa756] font-bold text-md px-4 py-1 rounded-full shadow-inner tracking-wide">
                 {prayer.time}
               </span>
             </li>
