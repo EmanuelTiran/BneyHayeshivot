@@ -27,3 +27,17 @@ exports.updateStatus = async (req, res) => {
     res.json(updated);
   } catch (err) { res.status(400).json({ message: err.message }); }
 };
+// ← חדש — בקשה מדף ההנצחות (ללא itemId/categoryId)
+exports.createFromCommemoration = async (req, res) => {
+  try {
+    const { itemName, commemorationId } = req.body;
+    if (!itemName) return res.status(400).json({ message: 'חסר שם פריט' });
+
+    const request = await service.create(
+      { ...req.body, source: 'commemoration' },
+      itemName,
+      'הנצחות'
+    );
+    res.status(201).json(request);
+  } catch (err) { res.status(400).json({ message: err.message }); }
+};

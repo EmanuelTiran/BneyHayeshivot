@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../components/context/authContext';
 import { fetchCategories, createCategory, updateCategory, deleteCategory } from '../services/portalService';
-import {ROUTES} from '../constants/routes';
+import { ROUTES } from '../constants/routes'; 
 
 function CategoryModal({ initial, onClose, onSave }) {
   const [form, setForm] = useState(

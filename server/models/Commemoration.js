@@ -6,6 +6,11 @@ const commemorationSchema = new mongoose.Schema({
     required: [true, 'שם הפריט הוא שדה חובה'],
     trim: true,
   },
+  commemorationStatus: {
+    type: String,
+    enum: ['commemorated', 'pending', 'none'],
+    default: 'none',
+  },
   contributorName: {
     type: String,
     required: [true, 'שם התורם הוא שדה חובה'],

@@ -83,3 +83,5 @@ export const fetchCommemorationById = (id)        => API.get(`/commemorations/${
 export const createCommemoration   = (data)       => API.post('/commemorations', data);
 export const updateCommemoration   = (id, data)   => API.put(`/commemorations/${id}`, data);
 export const deleteCommemoration   = (id)         => API.delete(`/commemorations/${id}`);
+export const updateCommemorationStatus = (id, status) =>  // ← חדש
+  API.patch(`/commemorations/${id}/status`, { commemorationStatus: status });

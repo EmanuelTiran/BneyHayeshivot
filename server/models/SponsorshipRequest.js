@@ -1,8 +1,15 @@
 const mongoose = require('mongoose');
 
 const sponsorshipRequestSchema = new mongoose.Schema({
-  itemId:         { type: mongoose.Schema.Types.ObjectId, ref: 'PortalItem', required: true },
-  categoryId:     { type: mongoose.Schema.Types.ObjectId, ref: 'Category',   required: true },
+  // פורטל — אופציונלי כי הנצחות לא עובדות עם PortalItem
+  itemId:     { type: mongoose.Schema.Types.ObjectId, ref: 'PortalItem', default: null },
+  categoryId: { type: mongoose.Schema.Types.ObjectId, ref: 'Category',   default: null },
+
+  // הנצחות — שם חופשי כשאין PortalItem
+  itemName:        { type: String, default: '' },
+  commemorationId: { type: String, default: '' }, // ה-_id של ה-Commemoration
+  source:          { type: String, enum: ['portal', 'commemoration'], default: 'portal' },
+
   name:           { type: String, required: true, trim: true },
   phone:          { type: String, required: true, trim: true },
   email:          { type: String, required: true, trim: true, lowercase: true },

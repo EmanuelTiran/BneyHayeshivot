@@ -67,3 +67,21 @@ exports.deleteCommemoration = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+/**
+ * PATCH /api/commemorations/:id/status
+ * מעדכן רק את סטטוס ההנצחה (מנהל בלבד)
+ */
+exports.updateCommemorationStatus = async (req, res) => {
+  try {
+    const { commemorationStatus } = req.body;
+    const valid = ['commemorated', 'pending', 'none'];
+    if (!valid.includes(commemorationStatus)) {
+      return res.status(400).json({ message: 'סטטוס לא תקין' });
+    }
+    const updated = await service.updateCommemoration(req.params.id, { commemorationStatus });
+    if (!updated) return res.status(404).json({ message: 'ההנצחה לא נמצאה' });
+    res.json(updated);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+};

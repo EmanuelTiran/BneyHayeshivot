@@ -27,7 +27,7 @@ function App() {
             <Route path={ROUTES.HOME} element={<Home />} />
             <Route path={ROUTES.PRAYERS} element={<Prayers />} />
             <Route path={ROUTES.ANNOUNCEMENTS} element={<Announcements />} />
-            <Route path={ROUTES.COMMEMORATIONS} element={<Commemorations />} /> {/* ג† ׳—׳“׳© */}
+            <Route path={ROUTES.COMMEMORATIONS} element={<Commemorations />} /> 
             <Route path={ROUTES.CONTACT} element={<Contact />} />
             <Route path={`${ROUTES.ADMIN}/*`} element={<Admin />} />
             <Route path={ROUTES.LOGIN} element={<Login />} />
