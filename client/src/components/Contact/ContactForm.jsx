@@ -5,15 +5,17 @@ import { useAuth } from '../context/authContext';
 import { sendContactMessage } from '../../services/api';
 
 export default function ContactForm() {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated,  loading: authLoading } = useAuth(); // ← הוסף loading
+
   const [message, setMessage] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
+    setSubmitting(true);
     setError('');
     try {
       await sendContactMessage({
@@ -26,10 +28,22 @@ export default function ContactForm() {
     } catch {
       setError('שגיאה בשליחת ההודעה, נסה שוב');
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
-
+  if (authLoading) {
+    return (
+      <div dir="rtl" className="max-w-lg mx-auto py-8 px-4">
+        <div className="bg-white rounded-xl border border-[#cfa756]/30 shadow-md overflow-hidden">
+          <div className="bg-gradient-to-r from-[#0d2340] to-[#1a365d] px-5 py-3 flex items-center gap-2">
+            <span className="text-[#cfa756] text-xl">✉️</span>
+            <h2 className="text-[#f7f4e9] font-bold text-lg">צור קשר</h2>
+          </div>
+          <div className="p-8 text-center text-gray-400">טוען...</div>
+        </div>
+      </div>
+    );
+  }
   // ── לא מחובר ─────────────────────────────────────────────────────────────
 
   if (!isAuthenticated) {
@@ -138,10 +152,10 @@ export default function ContactForm() {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={submitting}
               className="bg-[#0d2340] hover:bg-[#1a365d] disabled:opacity-50 text-[#cfa756] font-bold px-4 py-2.5 rounded-lg transition-colors shadow-sm"
             >
-              {loading ? 'שולח...' : 'שלח הודעה ✉️'}
+              {submitting ? 'שולח...' : 'שלח הודעה ✉️'}
             </button>
           </form>
         </div>
