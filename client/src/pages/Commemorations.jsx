@@ -3,6 +3,7 @@ import { fetchCommemorations } from '../services/api';
 // TODO (שרת): ייבא כאן את פונקציית submitSponsorshipRequest כשתחבר לשרת
 // import { submitSponsorshipRequest } from '../services/portalService';
 import { submitCommemorationRequest } from '../services/portalService';
+import CommunityPaymentButton from '../components/CommunityPaymentButton';
 const DEDICATION_TYPES = ['לזכות', 'לעילוי נשמת', 'לרפואת', 'לעילוי נשמת ולהצלחת', 'אחר'];
 
 // סטטוס הנצחה — ערכים: 'commemorated' | 'pending' | 'none'
@@ -133,6 +134,7 @@ function RequestModal({ item, onClose, onSuccess }) {
             <p style={{ color: '#a32d2d', fontSize: '12px', fontWeight: 600 }}>{formError}</p>
           )}
 
+            <CommunityPaymentButton />
           <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '4px' }}>
             <button onClick={onClose} style={cancelBtnStyle}>ביטול</button>
             <button onClick={handleSubmit} disabled={sending} style={submitBtnStyle}>

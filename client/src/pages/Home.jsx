@@ -44,12 +44,12 @@ const Home = () => {
       <ContactAndPrayerTimes isButtonTransparent={isButtonTransparent}/>
       <CommunityPaymentButton />
 
-      <button
+      {/* <button
         onClick={printDiv}
         style={{ opacity: isButtonTransparent ? 0 : 1 }}
       >
         Print
-      </button>
+      </button> */}
     </div>
   );
 };

@@ -1,7 +1,7 @@
 import React from 'react';
 import { CreditCard, ArrowLeft } from 'lucide-react';
 
-const CommunityPaymentButton = () => {
+const CommunityPaymentButton = ({ buttonText = "לתרומות ותשלומים" }) => {
   return (
     <div 
       // המעטפת הותאמה בדיוק לרוחב ולריווח של הקומפוננטה השנייה: max-w-md, mx-auto, my-8, rounded-xl
@@ -20,7 +20,7 @@ const CommunityPaymentButton = () => {
 
         <span className="relative z-10 flex items-center gap-3">
           <CreditCard className="w-6 h-6 text-[#d3a84e]" strokeWidth={2.5} />
-          לתשלומי הקהילה
+          {buttonText}
           <ArrowLeft 
             className="w-5 h-5 text-[#d3a84e] transition-transform duration-300 group-hover:-translate-x-1.5" 
             strokeWidth={2.5} 

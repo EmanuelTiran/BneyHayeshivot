@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { fetchItemById, submitSponsorshipRequest } from '../services/portalService';
 import {ROUTES} from '../constants/routes';
+import CommunityPaymentButton from '../components/CommunityPaymentButton';
 
 const DEDICATION_TYPES = ['לזכות', 'לעילוי נשמת', 'לרפואת', 'לעילוי נשמת ולהצלחת', 'אחר'];
 
@@ -100,7 +101,7 @@ export default function PortalItem() {
         {item.available && (
           <div className="bg-white rounded-xl shadow border border-[#cfa756]/30 p-6">
             <div className="h-1 -mt-6 -mx-6 mb-5 bg-gradient-to-r from-[#cfa756] via-[#0d2340] to-[#cfa756] rounded-t-xl" />
-            <h2 className="text-xl font-bold text-[#0d2340] mb-5">📝 טופס הנצחה / תמיכה</h2>
+            <h2 className="text-xl font-bold text-[#0d2340] mb-5">📝 טופס הקדשה / תמיכה</h2>
             <div className="space-y-4">
               <div>
                 <label className="text-sm font-medium text-[#0d2340]">שם מלא *</label>
@@ -139,6 +140,7 @@ export default function PortalItem() {
                   rows={3} value={form.adminNote} onChange={(e) => setForm({ ...form, adminNote: e.target.value })}
                   placeholder="פרטים נוספים, בקשות מיוחדות..." />
               </div>
+              <CommunityPaymentButton />
               {formError && <p className="text-red-600 text-sm font-medium">{formError}</p>}
               <button onClick={handleSubmit} disabled={sending}
                 className="w-full bg-[#0d2340] text-[#cfa756] font-bold py-3 rounded-lg hover:bg-[#1a365d] disabled:opacity-50 shadow-md text-base">
