@@ -32,7 +32,7 @@ The content is organized as follows:
 <notes>
 - Some files may have been excluded based on .gitignore rules and Repomix's configuration
 - Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
-- Only files matching these patterns are included: client/src/components/Contact/ContactForm.jsx, client/src/services/api.js, client/src/components/context/authContext.jsx, client/src/components/auth/Login.jsx, client/src/pages/Payments.jsx, client/src/components/common/Header.jsx, client/tailwind.config.js, client/src/index.css, server/models/ContactMessage.js, server/controllers/contactController.js, server/middleware/authMiddleware.js, server/routes/contact.js, server/controllers/paymentController.js, client/src/App.jsx, server/models/User.js, server/models/userModel.js
+- Only files matching these patterns are included: client/src/main.jsx, client/src/components/auth/Login.jsx, client/src/components/auth/Register.jsx, client/src/components/context/authContext.jsx, client/src/config.js, client/src/services/api.js, server/models/User.js, server/models/userModel.js, server/controllers/authController.js, server/services/authService.js, server/routes/auth.js, server/server.js
 - Files matching patterns in .gitignore are excluded
 - Files matching default ignore patterns are excluded
 - Files are sorted by Git change count (files with more changes are at the bottom)
@@ -41,898 +41,41 @@ The content is organized as follows:
 </file_summary>
 
 <directory_structure>
-client/src/App.jsx
 client/src/components/auth/Login.jsx
-client/src/components/common/Header.jsx
-client/src/components/Contact/ContactForm.jsx
+client/src/components/auth/Register.jsx
 client/src/components/context/authContext.jsx
-client/src/index.css
-client/src/pages/Payments.jsx
+client/src/config.js
+client/src/main.jsx
 client/src/services/api.js
-client/tailwind.config.js
-server/controllers/contactController.js
-server/controllers/paymentController.js
-server/middleware/authMiddleware.js
-server/models/ContactMessage.js
+server/controllers/authController.js
 server/models/User.js
 server/models/userModel.js
-server/routes/contact.js
+server/routes/auth.js
+server/server.js
+server/services/authService.js
 </directory_structure>
 
 <files>
 This section contains the contents of the repository's files.
 
-<file path="client/src/components/Contact/ContactForm.jsx">
-import { useState } from 'react';
-import { sendContactMessage } from '../../services/api';
+<file path="server/controllers/authController.js">
+const authService = require('../services/authService');
 
-export default function ContactForm() {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [message, setMessage] = useState('');
-  const [submitted, setSubmitted] = useState(false);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    await sendContactMessage({ name, email, message });
-    setSubmitted(true);
-    setName('');
-    setEmail('');
-    setMessage('');
-  };
-
-  if (submitted) {
-    return <p className="p-4 text-green-600">הודעה נשלחה בהצלחה!</p>;
-  }
-
-  return (
-    <form onSubmit={handleSubmit} className="bg-gray-100 p-4 rounded max-w-md mx-auto">
-      <input
-        className="block w-full mb-2 p-2 border"
-        placeholder="שם"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-      />
-      <input
-        className="block w-full mb-2 p-2 border"
-        placeholder="אימייל"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-      />
-      <textarea
-        className="block w-full mb-2 p-2 border"
-        placeholder="הודעה"
-        value={message}
-        onChange={(e) => setMessage(e.target.value)}
-      />
-      <button className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">שלח הודעה</button>
-    </form>
-  );
-}
-</file>
-
-<file path="client/src/pages/Payments.jsx">
-import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import {
-  fetchMyPayments, fetchAllPayments, fetchAllUsers,
-  addMyDebt, markMyDebtPaid,
-  setMyStandingOrder, cancelMyStandingOrder,
-  addMyDonation,
-  addUserDebt, markUserDebtPaid, deleteUserDebt,
-  setUserStandingOrder, cancelUserStandingOrder,
-  addUserDonation, deleteUserDonation,
-  updateUserNotes,
-} from '../services/api';
-
-// ─── כלי עזר ────────────────────────────────────────────────────────────────
-
-const fmt = (amount) =>
-  new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS' }).format(amount);
-
-const fmtDate = (dateStr) =>
-  dateStr ? new Date(dateStr).toLocaleDateString('he-IL') : '—';
-
-// ─── Badge סטטוס ─────────────────────────────────────────────────────────────
-
-const Badge = ({ active, labels }) => (
-  <span className={`text-xs font-bold px-2 py-1 rounded-full ${
-    active
-      ? 'bg-green-100 text-green-800 border border-green-300'
-      : 'bg-red-100 text-red-700 border border-red-300'
-  }`}>
-    {active ? labels[0] : labels[1]}
-  </span>
-);
-
-// ─── כרטיסית סעיף ────────────────────────────────────────────────────────────
-
-const Section = ({ title, icon, children }) => (
-  <div className="bg-white rounded-xl border border-[#cfa756]/30 shadow-md overflow-hidden mb-6">
-    <div className="bg-gradient-to-r from-[#0d2340] to-[#1a365d] px-5 py-3 flex items-center gap-2">
-      <span className="text-[#cfa756] text-xl">{icon}</span>
-      <h2 className="text-[#f7f4e9] font-bold text-lg">{title}</h2>
-    </div>
-    <div className="p-5">{children}</div>
-  </div>
-);
-
-// ─── טופס הוספת חוב ──────────────────────────────────────────────────────────
-
-function AddDebtForm({ onSubmit, loading }) {
-  const [form, setForm] = useState({ description: '', amount: '', dueDate: '' });
-
-  const handle = (e) => setForm({ ...form, [e.target.name]: e.target.value });
-
-  const submit = (e) => {
-    e.preventDefault();
-    onSubmit({ ...form, amount: Number(form.amount) });
-    setForm({ description: '', amount: '', dueDate: '' });
-  };
-
-  return (
-    <form onSubmit={submit} className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4 pt-4 border-t border-gray-200">
-      <input
-        name="description" value={form.description} onChange={handle} required
-        placeholder="תיאור החוב"
-        className="border border-gray-300 rounded-lg px-3 py-2 text-right focus:ring-2 focus:ring-[#cfa756] outline-none"
-      />
-      <input
-        name="amount" value={form.amount} onChange={handle} required type="number" min="0"
-        placeholder="סכום (₪)"
-        className="border border-gray-300 rounded-lg px-3 py-2 text-right focus:ring-2 focus:ring-[#cfa756] outline-none"
-      />
-      <input
-        name="dueDate" value={form.dueDate} onChange={handle} type="date"
-        className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#cfa756] outline-none"
-      />
-      <button
-        type="submit" disabled={loading}
-        className="sm:col-span-3 bg-[#0d2340] hover:bg-[#1a365d] text-[#cfa756] font-bold px-4 py-2 rounded-lg transition-colors"
-      >
-        {loading ? 'שומר...' : '+ הוסף חוב'}
-      </button>
-    </form>
-  );
-}
-
-// ─── טופס הוספת תרומה ────────────────────────────────────────────────────────
-
-function AddDonationForm({ onSubmit, loading }) {
-  const [form, setForm] = useState({ description: 'תרומה', amount: '', date: '' });
-
-  const handle = (e) => setForm({ ...form, [e.target.name]: e.target.value });
-
-  const submit = (e) => {
-    e.preventDefault();
-    onSubmit({ ...form, amount: Number(form.amount) });
-    setForm({ description: 'תרומה', amount: '', date: '' });
-  };
-
-  return (
-    <form onSubmit={submit} className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4 pt-4 border-t border-gray-200">
-      <input
-        name="description" value={form.description} onChange={handle} required
-        placeholder="תיאור התרומה"
-        className="border border-gray-300 rounded-lg px-3 py-2 text-right focus:ring-2 focus:ring-[#cfa756] outline-none"
-      />
-      <input
-        name="amount" value={form.amount} onChange={handle} required type="number" min="0"
-        placeholder="סכום (₪)"
-        className="border border-gray-300 rounded-lg px-3 py-2 text-right focus:ring-2 focus:ring-[#cfa756] outline-none"
-      />
-      <input
-        name="date" value={form.date} onChange={handle} type="date"
-        className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#cfa756] outline-none"
-      />
-      <button
-        type="submit" disabled={loading}
-        className="sm:col-span-3 bg-[#0d2340] hover:bg-[#1a365d] text-[#cfa756] font-bold px-4 py-2 rounded-lg transition-colors"
-      >
-        {loading ? 'שומר...' : '+ הוסף תרומה'}
-      </button>
-    </form>
-  );
-}
-
-// ─── טופס הוראת קבע ──────────────────────────────────────────────────────────
-
-function StandingOrderForm({ current, onSave, onCancel, loading }) {
-  const [form, setForm] = useState({
-    amount:      current?.amount     || '',
-    dayOfMonth:  current?.dayOfMonth || 1,
-    description: current?.description || 'הוראת קבע חודשית',
-  });
-
-  const handle = (e) => setForm({ ...form, [e.target.name]: e.target.value });
-
-  const submit = (e) => {
-    e.preventDefault();
-    onSave({ ...form, amount: Number(form.amount), dayOfMonth: Number(form.dayOfMonth) });
-  };
-
-  return (
-    <form onSubmit={submit} className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4 pt-4 border-t border-gray-200">
-      <input
-        name="description" value={form.description} onChange={handle} required
-        placeholder="תיאור"
-        className="border border-gray-300 rounded-lg px-3 py-2 text-right focus:ring-2 focus:ring-[#cfa756] outline-none"
-      />
-      <input
-        name="amount" value={form.amount} onChange={handle} required type="number" min="0"
-        placeholder="סכום חודשי (₪)"
-        className="border border-gray-300 rounded-lg px-3 py-2 text-right focus:ring-2 focus:ring-[#cfa756] outline-none"
-      />
-      <input
-        name="dayOfMonth" value={form.dayOfMonth} onChange={handle} type="number" min="1" max="28"
-        placeholder="יום בחודש (1-28)"
-        className="border border-gray-300 rounded-lg px-3 py-2 text-right focus:ring-2 focus:ring-[#cfa756] outline-none"
-      />
-      <div className="sm:col-span-3 flex gap-3">
-        <button type="submit" disabled={loading}
-          className="flex-1 bg-[#0d2340] hover:bg-[#1a365d] text-[#cfa756] font-bold px-4 py-2 rounded-lg transition-colors">
-          {loading ? 'שומר...' : 'שמור הוראת קבע'}
-        </button>
-        {current?.isActive && (
-          <button type="button" onClick={onCancel} disabled={loading}
-            className="bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-2 rounded-lg transition-colors">
-            בטל הוראת קבע
-          </button>
-        )}
-      </div>
-    </form>
-  );
-}
-
-// ─── תצוגת תשלומים – משתמש רגיל ──────────────────────────────────────────────
-
-function MyPaymentsView() {
-  const [data, setData]       = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving]   = useState(false);
-  const [error, setError]     = useState('');
-  const [showSOForm, setShowSOForm] = useState(false);
-
-  const reload = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await fetchMyPayments();
-      setData(res.data);
-    } catch {
-      setError('שגיאה בטעינת נתוני התשלומים');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { reload(); }, [reload]);
-
-  const withSave = async (fn) => {
-    setSaving(true);
-    setError('');
-    try {
-      await fn();
-      await reload();
-    } catch {
-      setError('שגיאה בשמירה, נסה שוב');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  if (loading) return <p className="text-center py-10 text-[#0d2340]">טוען נתונים...</p>;
-  if (!data)   return <p className="text-center py-10 text-red-600">{error}</p>;
-
-  const openDebts  = data.debts?.filter(d => !d.isPaid) || [];
-  const closedDebts = data.debts?.filter(d => d.isPaid) || [];
-  const totalDebt  = openDebts.reduce((s, d) => s + d.amount, 0);
-
-  return (
-    <div dir="rtl" className="max-w-3xl mx-auto py-8 px-4">
-      <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-[#0d2340]">הנתונים הכספיים שלי</h1>
-        <p className="text-gray-500 mt-1">כל המידע הפיננסי שלך במקום אחד</p>
-      </div>
-
-      {error && (
-        <div className="bg-red-50 border border-red-300 text-red-700 rounded-lg px-4 py-3 mb-4 text-right">
-          {error}
-        </div>
-      )}
-
-      {/* סיכום */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        {[
-          { label: 'סך חובות פתוחים', value: fmt(totalDebt), color: totalDebt > 0 ? 'text-red-600' : 'text-green-600' },
-          { label: 'תרומות שבוצעו',  value: data.donations?.length || 0, color: 'text-[#0d2340]' },
-          { label: 'הוראת קבע',      value: data.standingOrder?.isActive ? fmt(data.standingOrder.amount) : 'לא פעילה', color: 'text-[#0d2340]' },
-        ].map(card => (
-          <div key={card.label} className="bg-white rounded-xl border border-[#cfa756]/30 shadow-sm p-4 text-center">
-            <p className="text-sm text-gray-500 mb-1">{card.label}</p>
-            <p className={`text-2xl font-bold ${card.color}`}>{card.value}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* חובות */}
-      <Section title="חובות פתוחים" icon="⚠️">
-        {openDebts.length === 0 ? (
-          <p className="text-green-600 font-medium">אין חובות פתוחים 🎉</p>
-        ) : (
-          <table className="w-full text-right text-sm">
-            <thead>
-              <tr className="border-b border-gray-200 text-gray-500">
-                <th className="pb-2">תיאור</th>
-                <th className="pb-2">סכום</th>
-                <th className="pb-2">תאריך יעד</th>
-                <th className="pb-2">שולם</th>
-              </tr>
-            </thead>
-            <tbody>
-              {openDebts.map(debt => (
-                <tr key={debt._id} className="border-b border-gray-100 hover:bg-gray-50">
-                  <td className="py-2 font-medium">{debt.description}</td>
-                  <td className="py-2 text-red-600 font-bold">{fmt(debt.amount)}</td>
-                  <td className="py-2 text-gray-500">{fmtDate(debt.dueDate)}</td>
-                  <td className="py-2">
-                    <input
-                      type="checkbox"
-                      checked={false}
-                      onChange={() => withSave(() => markMyDebtPaid(debt._id, true))}
-                      className="w-4 h-4 accent-[#0d2340] cursor-pointer"
-                    />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-
-        {closedDebts.length > 0 && (
-          <details className="mt-4">
-            <summary className="cursor-pointer text-sm text-gray-500 hover:text-[#0d2340]">
-              הצג חובות ששולמו ({closedDebts.length})
-            </summary>
-            <table className="w-full text-right text-sm mt-2">
-              <tbody>
-                {closedDebts.map(debt => (
-                  <tr key={debt._id} className="opacity-60 border-b border-gray-100">
-                    <td className="py-1 line-through">{debt.description}</td>
-                    <td className="py-1">{fmt(debt.amount)}</td>
-                    <td className="py-1 text-green-600">שולם {fmtDate(debt.paidAt)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </details>
-        )}
-      </Section>
-
-      {/* הוראת קבע */}
-      <Section title="הוראת קבע" icon="🔄">
-        {data.standingOrder ? (
-          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-            <div className="flex-1">
-              <p className="font-semibold text-[#0d2340]">{data.standingOrder.description}</p>
-              <p className="text-2xl font-bold text-[#0d2340] mt-1">{fmt(data.standingOrder.amount)}</p>
-              <p className="text-sm text-gray-500 mt-1">
-                בכל ה-{data.standingOrder.dayOfMonth} לחודש
-              </p>
-            </div>
-            <Badge active={data.standingOrder.isActive} labels={['פעילה', 'מבוטלת']} />
-          </div>
-        ) : (
-          <p className="text-gray-500">לא הוגדרה הוראת קבע</p>
-        )}
-
-        <button
-          onClick={() => setShowSOForm(v => !v)}
-          className="mt-3 text-sm text-[#0d2340] hover:text-[#cfa756] underline"
-        >
-          {showSOForm ? 'סגור' : data.standingOrder ? 'ערוך הוראת קבע' : 'הגדר הוראת קבע'}
-        </button>
-
-        {showSOForm && (
-          <StandingOrderForm
-            current={data.standingOrder}
-            loading={saving}
-            onSave={(d) => withSave(() => setMyStandingOrder(d)).then(() => setShowSOForm(false))}
-            onCancel={() => withSave(() => cancelMyStandingOrder()).then(() => setShowSOForm(false))}
-          />
-        )}
-      </Section>
-
-      {/* תרומות */}
-      <Section title="היסטוריית תרומות" icon="💛">
-        {(!data.donations || data.donations.length === 0) ? (
-          <p className="text-gray-500">טרם בוצעו תרומות</p>
-        ) : (
-          <table className="w-full text-right text-sm">
-            <thead>
-              <tr className="border-b border-gray-200 text-gray-500">
-                <th className="pb-2">תיאור</th>
-                <th className="pb-2">סכום</th>
-                <th className="pb-2">תאריך</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[...data.donations].reverse().map(don => (
-                <tr key={don._id} className="border-b border-gray-100 hover:bg-gray-50">
-                  <td className="py-2 font-medium">{don.description}</td>
-                  <td className="py-2 text-green-600 font-bold">{fmt(don.amount)}</td>
-                  <td className="py-2 text-gray-500">{fmtDate(don.date)}</td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr className="font-bold text-[#0d2340]">
-                <td className="pt-3">סה"כ</td>
-                <td className="pt-3 text-green-700">
-                  {fmt(data.donations.reduce((s, d) => s + d.amount, 0))}
-                </td>
-                <td />
-              </tr>
-            </tfoot>
-          </table>
-        )}
-      </Section>
-    </div>
-  );
-}
-
-// ─── תצוגת תשלומים – אדמין ───────────────────────────────────────────────────
-
-function AdminPaymentsView() {
-  const [allData, setAllData]   = useState([]);
-  const [users, setUsers]       = useState([]);
-  const [selectedId, setSelectedId] = useState(null);
-  const [loading, setLoading]   = useState(true);
-  const [saving, setSaving]     = useState(false);
-  const [error, setError]       = useState('');
-  const [notesText, setNotesText] = useState('');
-  const [showDebtForm, setShowDebtForm]   = useState(false);
-  const [showDonForm, setShowDonForm]     = useState(false);
-  const [showSOForm, setShowSOForm]       = useState(false);
-
-  const reload = useCallback(async () => {
-    try {
-      setLoading(true);
-      const [paymentsRes, usersRes] = await Promise.all([fetchAllPayments(), fetchAllUsers()]);
-      setAllData(paymentsRes.data);
-      setUsers(usersRes.data);
-    } catch {
-      setError('שגיאה בטעינת נתונים');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { reload(); }, [reload]);
-
-  const selected = allData.find(p => p.user?._id === selectedId);
-
-  useEffect(() => {
-    if (selected) setNotesText(selected.notes || '');
-  }, [selected]);
-
-  const withSave = async (fn) => {
-    setSaving(true);
-    setError('');
-    try {
-      await fn();
-      await reload();
-    } catch {
-      setError('שגיאה בשמירה');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  if (loading) return <p className="text-center py-10">טוען נתונים...</p>;
-
-  return (
-    <div dir="rtl" className="max-w-6xl mx-auto py-8 px-4">
-      <h1 className="text-3xl font-bold text-[#0d2340] text-center mb-8">ניהול תשלומים</h1>
-
-      {error && (
-        <div className="bg-red-50 border border-red-300 text-red-700 rounded-lg px-4 py-3 mb-4">
-          {error}
-        </div>
-      )}
-
-      <div className="flex flex-col lg:flex-row gap-6">
-
-        {/* רשימת מתפללים */}
-        <aside className="lg:w-72 bg-white rounded-xl border border-[#cfa756]/30 shadow-md overflow-hidden">
-          <div className="bg-gradient-to-r from-[#0d2340] to-[#1a365d] px-4 py-3">
-            <h2 className="text-[#cfa756] font-bold">רשימת מתפללים</h2>
-          </div>
-          <ul className="divide-y divide-gray-100 max-h-[70vh] overflow-y-auto">
-            {users.map(user => {
-              const rec = allData.find(p => p.user?._id === user._id);
-              const openDebt = rec?.debts?.filter(d => !d.isPaid).reduce((s, d) => s + d.amount, 0) || 0;
-              return (
-                <li key={user._id}>
-                  <button
-                    onClick={() => setSelectedId(user._id)}
-                    className={`w-full text-right px-4 py-3 hover:bg-[#f7f4e9] transition-colors ${
-                      selectedId === user._id ? 'bg-[#f7f4e9] border-r-4 border-[#cfa756]' : ''
-                    }`}
-                  >
-                    <p className="font-semibold text-[#0d2340]">{user.name}</p>
-                    <p className="text-xs text-gray-500">{user.email}</p>
-                    {openDebt > 0 && (
-                      <p className="text-xs text-red-600 font-bold mt-0.5">חוב: {fmt(openDebt)}</p>
-                    )}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </aside>
-
-        {/* פרטי משתמש נבחר */}
-        <main className="flex-1">
-          {!selectedId ? (
-            <div className="flex items-center justify-center h-48 text-gray-400">
-              בחר מתפלל מהרשימה
-            </div>
-          ) : !selected ? (
-            <div className="text-center text-gray-500 py-10">
-              <p>אין עדיין נתוני תשלום למתפלל זה</p>
-              <button
-                onClick={() => withSave(() => addUserDebt(selectedId, { description: 'חוב ראשוני', amount: 0 }))}
-                className="mt-4 bg-[#0d2340] text-[#cfa756] px-4 py-2 rounded-lg font-bold"
-              >
-                צור רשומה
-              </button>
-            </div>
-          ) : (
-            <>
-              {/* כותרת */}
-              <div className="bg-white rounded-xl border border-[#cfa756]/30 shadow-md p-5 mb-4">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                  <div>
-                    <h2 className="text-xl font-bold text-[#0d2340]">{selected.user?.name}</h2>
-                    <p className="text-sm text-gray-500">{selected.user?.email}</p>
-                  </div>
-                  <div className="text-left">
-                    <p className="text-sm text-gray-500">עודכן לאחרונה</p>
-                    <p className="font-medium">{fmtDate(selected.updatedAt)}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* חובות */}
-              <Section title="חובות" icon="⚠️">
-                {selected.debts?.length === 0 ? (
-                  <p className="text-gray-500 text-sm">אין חובות רשומים</p>
-                ) : (
-                  <table className="w-full text-right text-sm">
-                    <thead>
-                      <tr className="border-b border-gray-200 text-gray-500">
-                        <th className="pb-2">תיאור</th>
-                        <th className="pb-2">סכום</th>
-                        <th className="pb-2">יעד</th>
-                        <th className="pb-2">סטטוס</th>
-                        <th className="pb-2">פעולות</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {selected.debts.map(debt => (
-                        <tr key={debt._id} className={`border-b border-gray-100 ${debt.isPaid ? 'opacity-50' : ''}`}>
-                          <td className="py-2">{debt.description}</td>
-                          <td className="py-2 font-bold">{fmt(debt.amount)}</td>
-                          <td className="py-2 text-gray-500">{fmtDate(debt.dueDate)}</td>
-                          <td className="py-2">
-                            <Badge active={debt.isPaid} labels={['שולם', 'פתוח']} />
-                          </td>
-                          <td className="py-2">
-                            <div className="flex gap-2 justify-end">
-                              <button
-                                onClick={() => withSave(() => markUserDebtPaid(selectedId, debt._id, !debt.isPaid))}
-                                className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200"
-                              >
-                                {debt.isPaid ? 'סמן כפתוח' : 'סמן כשולם'}
-                              </button>
-                              <button
-                                onClick={() => withSave(() => deleteUserDebt(selectedId, debt._id))}
-                                className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded hover:bg-red-200"
-                              >
-                                מחק
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-                <button onClick={() => setShowDebtForm(v => !v)}
-                  className="mt-3 text-sm text-[#0d2340] hover:text-[#cfa756] underline">
-                  {showDebtForm ? 'סגור' : '+ הוסף חוב'}
-                </button>
-                {showDebtForm && (
-                  <AddDebtForm
-                    loading={saving}
-                    onSubmit={(d) => withSave(() => addUserDebt(selectedId, d)).then(() => setShowDebtForm(false))}
-                  />
-                )}
-              </Section>
-
-              {/* הוראת קבע */}
-              <Section title="הוראת קבע" icon="🔄">
-                {selected.standingOrder ? (
-                  <div className="flex items-center gap-4">
-                    <div className="flex-1">
-                      <p className="font-semibold">{selected.standingOrder.description}</p>
-                      <p className="text-xl font-bold text-[#0d2340]">{fmt(selected.standingOrder.amount)}</p>
-                      <p className="text-sm text-gray-500">יום {selected.standingOrder.dayOfMonth} בחודש</p>
-                    </div>
-                    <Badge active={selected.standingOrder.isActive} labels={['פעילה', 'מבוטלת']} />
-                  </div>
-                ) : (
-                  <p className="text-gray-500 text-sm">לא הוגדרה הוראת קבע</p>
-                )}
-                <button onClick={() => setShowSOForm(v => !v)}
-                  className="mt-3 text-sm text-[#0d2340] hover:text-[#cfa756] underline">
-                  {showSOForm ? 'סגור' : selected.standingOrder ? 'ערוך' : 'הגדר'}
-                </button>
-                {showSOForm && (
-                  <StandingOrderForm
-                    current={selected.standingOrder}
-                    loading={saving}
-                    onSave={(d) => withSave(() => setUserStandingOrder(selectedId, d)).then(() => setShowSOForm(false))}
-                    onCancel={() => withSave(() => cancelUserStandingOrder(selectedId)).then(() => setShowSOForm(false))}
-                  />
-                )}
-              </Section>
-
-              {/* תרומות */}
-              <Section title="תרומות" icon="💛">
-                {!selected.donations?.length ? (
-                  <p className="text-gray-500 text-sm">אין תרומות רשומות</p>
-                ) : (
-                  <table className="w-full text-right text-sm">
-                    <thead>
-                      <tr className="border-b border-gray-200 text-gray-500">
-                        <th className="pb-2">תיאור</th>
-                        <th className="pb-2">סכום</th>
-                        <th className="pb-2">תאריך</th>
-                        <th className="pb-2"></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {[...selected.donations].reverse().map(don => (
-                        <tr key={don._id} className="border-b border-gray-100">
-                          <td className="py-2">{don.description}</td>
-                          <td className="py-2 text-green-600 font-bold">{fmt(don.amount)}</td>
-                          <td className="py-2 text-gray-500">{fmtDate(don.date)}</td>
-                          <td className="py-2">
-                            <button
-                              onClick={() => withSave(() => deleteUserDonation(selectedId, don._id))}
-                              className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded hover:bg-red-200"
-                            >
-                              מחק
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-                <button onClick={() => setShowDonForm(v => !v)}
-                  className="mt-3 text-sm text-[#0d2340] hover:text-[#cfa756] underline">
-                  {showDonForm ? 'סגור' : '+ הוסף תרומה'}
-                </button>
-                {showDonForm && (
-                  <AddDonationForm
-                    loading={saving}
-                    onSubmit={(d) => withSave(() => addUserDonation(selectedId, d)).then(() => setShowDonForm(false))}
-                  />
-                )}
-              </Section>
-
-              {/* הערות */}
-              <Section title="הערות פנימיות" icon="📝">
-                <textarea
-                  value={notesText}
-                  onChange={e => setNotesText(e.target.value)}
-                  rows={4}
-                  placeholder="הערות פנימיות (לא גלויות למתפלל)..."
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-right focus:ring-2 focus:ring-[#cfa756] outline-none"
-                />
-                <button
-                  onClick={() => withSave(() => updateUserNotes(selectedId, notesText))}
-                  disabled={saving}
-                  className="mt-2 bg-[#0d2340] hover:bg-[#1a365d] text-[#cfa756] font-bold px-4 py-2 rounded-lg transition-colors"
-                >
-                  {saving ? 'שומר...' : 'שמור הערות'}
-                </button>
-              </Section>
-            </>
-          )}
-        </main>
-      </div>
-    </div>
-  );
-}
-
-// ─── עמוד ראשי – מחליט מה להציג ─────────────────────────────────────────────
-
-export default function Payments() {
-  const navigate = useNavigate();
-
-  const rawUser = localStorage.getItem('user');
-  const user    = rawUser ? JSON.parse(rawUser) : null;
-
-  useEffect(() => {
-    if (!user) navigate('/login', { state: { from: '/payments' } });
-  }, [user, navigate]);
-
-  if (!user) return null;
-
-  return user.role === 'admin'
-    ? <AdminPaymentsView />
-    : <MyPaymentsView />;
-}
-</file>
-
-<file path="client/tailwind.config.js">
-/** @type {import('tailwindcss').Config} */
-export default {
-  content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-  ],
-  theme: {
-    extend: {},
-  },
-  plugins: [],
-}
-</file>
-
-<file path="server/controllers/paymentController.js">
-const service = require('../services/paymentService');
-
-// ── משתמש רגיל: הנתונים שלו בלבד ────────────────────────────────────────────
-
-exports.getMyPayments = async (req, res) => {
+exports.register = async (req, res, next) => {
   try {
-    const record = await service.getOrCreateByUser(req.user.userId);
-    res.json(record);
+    const newUser = await authService.register(req.body);
+    res.status(201).json({ user: newUser });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 };
 
-// ── אדמין: כלל המשתמשים ──────────────────────────────────────────────────────
-
-exports.getAllPayments = async (req, res) => {
+exports.login = async (req, res, next) => {
   try {
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'גישה אסורה' });
-    }
-    const all = await service.getAllPayments();
-    res.json(all);
+    const data = await authService.login(req.body);
+    res.json(data);
   } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-};
-
-exports.getUserPayments = async (req, res) => {
-  try {
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'גישה אסורה' });
-    }
-    const record = await service.getOrCreateByUser(req.params.userId);
-    res.json(record);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-};
-
-// ── חובות ────────────────────────────────────────────────────────────────────
-
-exports.addDebt = async (req, res) => {
-  try {
-    const targetId = req.user.role === 'admin' && req.params.userId
-      ? req.params.userId
-      : req.user.userId;
-    const record = await service.addDebt(targetId, req.body);
-    res.status(201).json(record);
-  } catch (err) {
-    res.status(400).json({ message: err.message });
-  }
-};
-
-exports.markDebtPaid = async (req, res) => {
-  try {
-    const targetId = req.user.role === 'admin' && req.params.userId
-      ? req.params.userId
-      : req.user.userId;
-    const record = await service.markDebtPaid(targetId, req.params.debtId, req.body.isPaid);
-    res.json(record);
-  } catch (err) {
-    res.status(400).json({ message: err.message });
-  }
-};
-
-exports.deleteDebt = async (req, res) => {
-  try {
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'גישה אסורה' });
-    }
-    const record = await service.deleteDebt(req.params.userId, req.params.debtId);
-    res.json(record);
-  } catch (err) {
-    res.status(400).json({ message: err.message });
-  }
-};
-
-// ── הוראת קבע ────────────────────────────────────────────────────────────────
-
-exports.setStandingOrder = async (req, res) => {
-  try {
-    const targetId = req.user.role === 'admin' && req.params.userId
-      ? req.params.userId
-      : req.user.userId;
-    const record = await service.setStandingOrder(targetId, req.body);
-    res.json(record);
-  } catch (err) {
-    res.status(400).json({ message: err.message });
-  }
-};
-
-exports.cancelStandingOrder = async (req, res) => {
-  try {
-    const targetId = req.user.role === 'admin' && req.params.userId
-      ? req.params.userId
-      : req.user.userId;
-    const record = await service.cancelStandingOrder(targetId);
-    res.json(record);
-  } catch (err) {
-    res.status(400).json({ message: err.message });
-  }
-};
-
-// ── תרומות ───────────────────────────────────────────────────────────────────
-
-exports.addDonation = async (req, res) => {
-  try {
-    const targetId = req.user.role === 'admin' && req.params.userId
-      ? req.params.userId
-      : req.user.userId;
-    const record = await service.addDonation(targetId, req.body);
-    res.status(201).json(record);
-  } catch (err) {
-    res.status(400).json({ message: err.message });
-  }
-};
-
-exports.deleteDonation = async (req, res) => {
-  try {
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'גישה אסורה' });
-    }
-    const record = await service.deleteDonation(req.params.userId, req.params.donationId);
-    res.json(record);
-  } catch (err) {
-    res.status(400).json({ message: err.message });
-  }
-};
-
-// ── הערות ────────────────────────────────────────────────────────────────────
-
-exports.updateNotes = async (req, res) => {
-  try {
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'גישה אסורה' });
-    }
-    const record = await service.updateNotes(req.params.userId, req.body.notes);
-    res.json(record);
-  } catch (err) {
-    res.status(400).json({ message: err.message });
+    res.status(401).json({ error: 'אימייל או סיסמה שגויים' });
   }
 };
 </file>
@@ -991,6 +134,17 @@ const userSchema = new Schema({
 const User = mongoose.model('User', userSchema);
 
 module.exports = User;
+</file>
+
+<file path="server/routes/auth.js">
+const express = require('express');
+const router = express.Router();
+const authController = require('../controllers/authController');
+
+router.post('/register', authController.register);
+router.post('/login', authController.login);
+
+module.exports = router;
 </file>
 
 <file path="client/src/components/context/authContext.jsx">
@@ -1063,81 +217,20 @@ export const useAuth = () => {
 export default AuthContext;
 </file>
 
-<file path="server/controllers/contactController.js">
-const contactService = require('../services/contactService');
-
-exports.getAll = async (req, res) => {
-  const filters = {};
-
-  if (req.query.handled === 'true') {
-    filters.handled = true;
-  } else if (req.query.handled === 'false') {
-    filters.handled = false;
-  }
-
-  const data = await contactService.getAllMessages(filters);
-  res.json(data);
-};
-
-exports.create = async (req, res) => {
-  const created = await contactService.createMessage(req.body);
-  res.status(201).json(created);
-};
-
-exports.updateHandledStatus = async (req, res) => {
-  const { handled } = req.body;
-
-  if (typeof handled !== 'boolean') {
-    return res.status(400).json({ error: 'handled חייב להיות boolean' });
-  }
-
-  const updated = await contactService.updateHandledStatus(req.params.id, handled);
-
-  if (!updated) {
-    return res.status(404).json({ error: 'הודעה לא נמצאה' });
-  }
-
-  return res.json(updated);
-};
-</file>
-
-<file path="server/middleware/authMiddleware.js">
-// middleware/auth.js
-const jwt = require('jsonwebtoken');
-
-module.exports = (req, res, next) => {
-  // Get token from header
-  const token = req.header('Authorization')?.replace('Bearer ', '');
-
-  // Check if no token
-  if (!token) {
-    return res.status(401).json({ message: 'אין טוקן אימות, הגישה נדחתה' });
-  }
-
-  // Verify token
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded;
-    next();
-  } catch (err) {
-    res.status(401).json({ message: 'הטוקן אינו תקף' });
-  }
-};
-</file>
-
-<file path="server/models/ContactMessage.js">
-const mongoose = require('mongoose');
-
-const contactSchema = new mongoose.Schema({
-  name: String,
-  email: String,
-  message: String,
-  date: { type: Date, default: Date.now },
-  handled: { type: Boolean, default: false },
-  handledAt: { type: Date, default: null }
-});
-
-module.exports = mongoose.model('ContactMessage', contactSchema);
+<file path="client/src/main.jsx">
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import App from './App.jsx'
+import './index.css'
+import { AuthProvider } from './components/context/authContext.jsx'
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <AuthProvider>
+    <React.StrictMode>
+    <App />
+  </React.StrictMode>,
+  </AuthProvider>
+  
+)
 </file>
 
 <file path="server/models/User.js">
@@ -1167,30 +260,202 @@ userSchema.methods.comparePassword = function (candidate) {
 module.exports = mongoose.model('User', userSchema);
 </file>
 
-<file path="server/routes/contact.js">
-const express = require('express');
-const router = express.Router();
-const controller = require('../controllers/contactController');
+<file path="server/services/authService.js">
+const User = require('../models/User');
+const jwt = require('jsonwebtoken');
 
-router.get('/', controller.getAll);
-router.post('/', controller.create);
-router.patch('/:id/handled', controller.updateHandledStatus);
-router.patch('/:id', controller.updateHandledStatus);
-router.put('/:id/handled', controller.updateHandledStatus);
+exports.register = async (userData) => {
+  const user = new User(userData);
+  return await user.save();
+};
 
-module.exports = router;
+exports.login = async ({ email, password }) => {
+  console.log('email', email);
+  const user = await User.findOne({ email });
+  if (!user || !(await user.comparePassword(password))) {
+    throw new Error('Invalid credentials');
+  }
+
+  const token = jwt.sign(
+    { userId: user._id, role: user.role },
+    process.env.JWT_SECRET,
+    { expiresIn: '2h' }
+  );
+
+  return { token, user };
+};
 </file>
 
-<file path="client/src/index.css">
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+<file path="client/src/components/auth/Register.jsx">
+// components/auth/Register.jsx
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { API_URL } from '../../config';
 
-body {
-  font-family: 'Assistant', sans-serif;
+function Register() {
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    password: '',
+    confirmPassword: ''
+  });
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
-  background-color: #f9f9f9;
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+
+    if (formData.password !== formData.confirmPassword) {
+      setError('הסיסמאות אינן תואמות');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const response = await fetch(`${API_URL}/api/auth/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          password: formData.password
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'שגיאה בהרשמה');
+      }
+
+      navigate('/login', { state: { message: 'ההרשמה הושלמה בהצלחה, כעת ניתן להתחבר' } });
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Helper styles
+  const inputClass = (hasError) => `
+    w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#cfa756] text-right transition-all
+    ${hasError ? 'border-red-300 bg-red-50' : 'border-gray-300 focus:border-[#cfa756]'}
+  `;
+
+  return (
+    <div dir="rtl" className="max-w-md mx-auto mt-10">
+      <h2 className="text-2xl font-bold text-[#0d2340] mb-6 flex items-center gap-2">
+        <span className="text-[#cfa756]">✦</span>
+        הרשמה
+      </h2>
+
+      {error && (
+        <div className="mb-5 rounded-lg px-4 py-3 text-sm font-medium bg-red-50 border border-red-200 text-red-700 text-right">
+          {error}
+        </div>
+      )}
+
+      <div className="bg-white rounded-2xl shadow-md p-6 space-y-5 border border-gray-100">
+        <form onSubmit={handleSubmit} className="space-y-5">
+          
+          <div className="space-y-1">
+            <label htmlFor="name" className="block text-sm font-medium text-gray-700 text-right">שם מלא</label>
+            <input
+              name="name"
+              id="name"
+              type="text"
+              value={formData.name}
+              onChange={handleChange}
+              required
+              className={inputClass(error)}
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700 text-right">דוא״ל</label>
+            <input
+              name="email"
+              id="email"
+              type="email"
+              value={formData.email}
+              onChange={handleChange}
+              required
+              className={inputClass(error)}
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label htmlFor="password" id="password-label" className="block text-sm font-medium text-gray-700 text-right">סיסמה</label>
+            <input
+              type="password"
+              name="password"
+              id="password"
+              value={formData.password}
+              onChange={handleChange}
+              required
+              minLength="6"
+              className={inputClass(error)}
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 text-right">אימות סיסמה</label>
+            <input
+              type="password"
+              name="confirmPassword"
+              id="confirmPassword"
+              value={formData.confirmPassword}
+              onChange={handleChange}
+              required
+              minLength="6"
+              className={inputClass(error)}
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-[#cfa756] hover:bg-[#b8860b] disabled:opacity-50 text-[#0d2340] font-bold px-6 py-2.5 rounded-lg transition-colors shadow-sm"
+          >
+            {loading ? 'שומר...' : 'הירשם'}
+          </button>
+        </form>
+
+        <p className="text-sm text-center text-gray-500 mt-4">
+          כבר יש לך חשבון?{' '}
+          <span
+            onClick={() => navigate('/login')}
+            className="text-[#cfa756] cursor-pointer hover:underline font-medium"
+          >
+            התחבר כאן
+          </span>
+        </p>
+      </div>
+    </div>
+  );
 }
+
+export default Register;
+</file>
+
+<file path="client/src/config.js">
+// config.js
+export const API_URL =
+  import.meta.env.MODE === "production"
+    ? "https://bneyhayeshivot1.onrender.com"
+    : "http://localhost:5000";
 </file>
 
 <file path="client/src/components/auth/Login.jsx">
@@ -1320,372 +585,42 @@ function Login() {
 export default Login;
 </file>
 
-<file path="client/src/components/common/Header.jsx">
-// components/common/Header.jsx
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { NAVIGATION_ITEMS, ROUTES } from '../../constants/routes';
-import { useAuth } from '../context/authContext';
+<file path="server/server.js">
+const express = require('express');
+const cors = require('cors');
+const connectDB = require('./config/db');
+const errorHandler = require('./middleware/errorHandler');
 
-function GoldParticles() {
-  return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
-      {[...Array(8)].map((_, i) => (
-        <div
-          key={i}
-          className="absolute rounded-full bg-[#cfa756] opacity-20"
-          style={{
-            width: `${Math.random() * 3 + 1}px`,
-            height: `${Math.random() * 3 + 1}px`,
-            left: `${10 + i * 11}%`,
-            top: `${20 + (i % 3) * 30}%`,
-            animation: `floatParticle ${3 + i * 0.4}s ease-in-out infinite`,
-            animationDelay: `${i * 0.3}s`,
-          }}
-        />
-      ))}
-    </div>
-  );
-}
+require('dotenv').config();
 
-function Header() {
-  const { user, isAuthenticated, isAdmin, logout } = useAuth();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
-  const [underlineStyle, setUnderlineStyle] = useState({ left: 0, width: 0, opacity: 0 });
-  const [crownLeft, setCrownLeft] = useState(0);
-  const navRef = useRef(null);
-  const location = useLocation();
+const app = express();
+connectDB();
 
-  // בנה רשימת לינקי ניווט כולל אדמין
-  const navItems = useMemo(() => {
-    const items = [...NAVIGATION_ITEMS];
-    if (isAuthenticated && isAdmin()) items.push({ path: ROUTES.ADMIN, label: 'ניהול' });
-    return items;
-  }, [isAuthenticated, isAdmin]);
+app.use(cors({
+    origin: [
+      'http://localhost:3000',
+      'http://localhost:5173',
+      'https://bneyhayeshivot-1.onrender.com'
+    ],
+    credentials: true
+  }));
+app.use(express.json());
 
-  // סגור מובייל מנו בניווט
-  useEffect(() => {
-    setIsMenuOpen(false);
-  }, [location.pathname]);
+app.use('/api/prayers',        require('./routes/prayers'));
+app.use('/api/announcements',  require('./routes/announcements'));
+app.use('/api/contact',        require('./routes/contact'));
+app.use('/api/auth',           require('./routes/auth'));
+app.use('/api/payments',       require('./routes/payments'));
+app.use('/api/users',          require('./routes/users'));
+app.use('/api/commemorations', require('./routes/commemorations')); 
+app.use('/api/categories',   require('./routes/categories'));
+app.use('/api/portal-items', require('./routes/portalItems'));
+app.use('/api/sponsorships', require('./routes/sponsorships'));
+app.get('/api/health', (_req, res) => res.status(200).json({ status: 'ok' }));
+app.use(errorHandler);
 
-  // scroll listener
-  useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 20);
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  // הזזת underline לכפתור הפעיל
-  const moveUnderline = useCallback((path) => {
-    const btn = navRef.current?.querySelector(`[data-path="${path}"]`);
-    if (btn) {
-      const centerLeft = btn.offsetLeft + btn.offsetWidth / 2 - 7;
-      setUnderlineStyle({ left: btn.offsetLeft, width: btn.offsetWidth, opacity: 1 });
-      setCrownLeft(centerLeft);
-    }
-  }, []);
-
-  // מיקום ראשוני
-  useEffect(() => {
-    moveUnderline(location.pathname);
-  }, [location.pathname, navItems]);
-
-  // resize
-  useEffect(() => {
-    const handleResize = () => moveUnderline(location.pathname);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [location.pathname, moveUnderline]);
-
-  const toggleMenu = useCallback(() => setIsMenuOpen((prev) => !prev), []);
-
-  const AuthButtons = useMemo(() => {
-    if (isAuthenticated) {
-      return (
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-[#cfa756]/30 bg-[#cfa756]/5">
-            <div className="w-2 h-2 rounded-full bg-[#cfa756] animate-pulse" />
-            <span className="text-[16px] font-semibold text-[#f7f4e9]/90">
-              {user?.name || 'משתמש'}
-            </span>
-          </div>
-          <button
-            onClick={logout}
-            className="px-4 py-1.5 rounded-full border border-[#a61b1b]/60 bg-[#a61b1b]/10 text-[#f7f4e9]/80 text-[16px] hover:bg-[#a61b1b] hover:text-white transition"
-          >
-            התנתק
-          </button>
-        </div>
-      );
-    }
-    return (
-      <div className="flex items-center gap-3">
-        <Link
-          to={ROUTES.LOGIN}
-          className="px-4 py-1.5 rounded-full border border-[#cfa756]/50 text-[#cfa756] text-[16px] font-semibold hover:bg-[#cfa756]/10 transition"
-        >
-          התחבר
-        </Link>
-        <Link
-          to={ROUTES.REGISTER}
-          className="px-5 py-1.5 rounded-full bg-gradient-to-r from-[#cfa756] to-[#b8860b] text-[#0d2340] text-[16px] font-bold hover:scale-105 transition"
-        >
-          הירשם
-        </Link>
-      </div>
-    );
-  }, [isAuthenticated, user?.name, logout]);
-
-  return (
-    <>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&display=swap');
-
-        .header-font {
-          font-family: 'Assistant', sans-serif;
-          font-weight: 600;
-        }
-
-        @keyframes floatParticle {
-          0%,100% { transform: translateY(0); }
-          50%      { transform: translateY(-8px); }
-        }
-
-        @keyframes crownGlow {
-          0%,100% { filter: drop-shadow(0 0 2px rgba(207,167,86,0.5)) drop-shadow(0 0 6px rgba(207,167,86,0.25)); }
-          50%      { filter: drop-shadow(0 0 5px rgba(247,217,138,0.95)) drop-shadow(0 0 12px rgba(207,167,86,0.5)); }
-        }
-
-        .crown-icon {
-          animation: crownGlow 2.2s ease-in-out infinite;
-          display: block;
-        }
-
-        @keyframes mobileMenuIn {
-          from { opacity: 0; transform: translateY(-8px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-
-        @keyframes mobileLinkIn {
-          from { opacity: 0; transform: translateX(12px); }
-          to   { opacity: 1; transform: translateX(0); }
-        }
-
-       .glass-dark {
-  background: rgba(22, 38, 65, 0.95);
-  backdrop-filter: blur(20px);
-  border-bottom: 3px solid #cfa756;
-}
-
-        .mobile-menu-enter {
-          animation: mobileMenuIn 0.22s cubic-bezier(.4,0,.2,1) both;
-        }
-
-        .mobile-link-enter {
-          animation: mobileLinkIn 0.2s cubic-bezier(.4,0,.2,1) both;
-        }
-      `}</style>
-
-      <header
-        className="header-font fixed top-0 left-0 right-0 z-50 glass-dark"
-        style={{ direction: 'rtl' }}
-      >
-        <GoldParticles />
-
-        <div className="container mx-auto px-6 py-3">
-          <div className="flex items-center justify-between">
-
-            {/* Logo */}
-            <Link to={ROUTES.HOME}>
-              <img src="/logo.png" className="h-16" alt="לוגו" />
-            </Link>
-
-            {/* Desktop Nav */}
-            <nav
-              ref={navRef}
-              className="hidden lg:flex items-center justify-center flex-1 gap-10 relative"
-            >
-              {navItems.map(({ path, label }, i) => (
-                <Link
-                  key={path}
-                  to={path}
-                  data-path={path}
-                  className={`relative text-[18px] tracking-widest uppercase font-bold transition-colors duration-200 pb-2 ${location.pathname === path
-                      ? 'text-[#cfa756]'
-                      : 'text-[#f7f4e9]/80 hover:text-[#cfa756]'
-                    }`}
-                  style={{ animationDelay: `${i * 80}ms` }}
-                >
-                  {label}
-                </Link>
-              ))}
-
-              {/* underline נע */}
-              <span
-                className="absolute bottom-0 h-px bg-gradient-to-r from-[#cfa756] to-[#f7d98a] pointer-events-none"
-                style={{
-                  left: underlineStyle.left,
-                  width: underlineStyle.width,
-                  opacity: underlineStyle.opacity,
-                  transition: 'left 0.28s cubic-bezier(.4,0,.2,1), width 0.28s cubic-bezier(.4,0,.2,1), opacity 0.2s',
-                }}
-              />
-
-              {/* כתר נע — אחד שנע מעל הלינק הפעיל */}
-              <span
-                className="absolute pointer-events-none"
-                style={{
-                  top: '-18px',
-                  left: crownLeft,
-                  opacity: underlineStyle.opacity,
-                  transition: 'left 0.28s cubic-bezier(.4,0,.2,1), opacity 0.2s',
-                }}
-              >
-                <svg className="crown-icon" width="14" height="11" viewBox="0 0 20 16" xmlns="http://www.w3.org/2000/svg">
-                  <defs>
-                    <linearGradient id="crownGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                      <stop offset="0%" stopColor="#ffe9a0">
-                        <animate attributeName="stop-color" values="#ffe9a0;#f7d98a;#cfa756;#f7d98a;#ffe9a0" dur="2.2s" repeatCount="indefinite" />
-                      </stop>
-                      <stop offset="100%" stopColor="#b8860b">
-                        <animate attributeName="stop-color" values="#b8860b;#cfa756;#f7d98a;#cfa756;#b8860b" dur="2.2s" repeatCount="indefinite" />
-                      </stop>
-                    </linearGradient>
-                  </defs>
-                  <polygon points="1,14 1,7 5,11 10,2 15,11 19,7 19,14" fill="url(#crownGrad)" stroke="#b8860b" strokeWidth="0.6" strokeLinejoin="round" />
-                  <rect x="1" y="13" width="18" height="2.5" rx="1" fill="url(#crownGrad)" stroke="#b8860b" strokeWidth="0.5" />
-                  <circle cx="10" cy="2.5" r="1.2" fill="#fff8e0" />
-                  <circle cx="1.2" cy="7.2" r="1" fill="#fff8e0" />
-                  <circle cx="18.8" cy="7.2" r="1" fill="#fff8e0" />
-                </svg>
-              </span>
-            </nav>
-
-            {/* Auth */}
-            <div className="hidden lg:flex items-center">
-              {AuthButtons}
-            </div>
-
-            {/* Mobile burger */}
-            <button
-              onClick={toggleMenu}
-              className="lg:hidden text-[#cfa756] text-2xl focus:outline-none"
-              aria-label={isMenuOpen ? 'סגור תפריט' : 'פתח תפריט'}
-            >
-              {isMenuOpen ? '✕' : '☰'}
-            </button>
-          </div>
-
-          {/* Mobile menu */}
-          {isMenuOpen && (
-            <div className="mobile-menu-enter lg:hidden mt-4 pb-4 flex flex-col border-t border-[#cfa756]/20">
-              {navItems.map(({ path, label }, i) => (
-                <Link
-                  key={path}
-                  to={path}
-                  onClick={() => setIsMenuOpen(false)}
-                  className={`mobile-link-enter px-2 py-3 text-[17px] font-bold tracking-wide border-b border-[#cfa756]/10 transition-colors ${location.pathname === path
-                      ? 'text-[#cfa756]'
-                      : 'text-[#f7f4e9]/80 hover:text-[#cfa756]'
-                    }`}
-                  style={{ animationDelay: `${i * 50}ms` }}
-                >
-                  {location.pathname === path && (
-                    <span className="inline-block ml-2 mb-0.5 align-middle">
-                      <svg className="crown-icon" width="12" height="9" viewBox="0 0 20 16" xmlns="http://www.w3.org/2000/svg">
-                        <defs>
-                          <linearGradient id="crownGradMobile" x1="0%" y1="0%" x2="0%" y2="100%">
-                            <stop offset="0%" stopColor="#ffe9a0">
-                              <animate attributeName="stop-color" values="#ffe9a0;#f7d98a;#cfa756;#f7d98a;#ffe9a0" dur="2.2s" repeatCount="indefinite" />
-                            </stop>
-                            <stop offset="100%" stopColor="#b8860b">
-                              <animate attributeName="stop-color" values="#b8860b;#cfa756;#f7d98a;#cfa756;#b8860b" dur="2.2s" repeatCount="indefinite" />
-                            </stop>
-                          </linearGradient>
-                        </defs>
-                        <polygon points="1,14 1,7 5,11 10,2 15,11 19,7 19,14" fill="url(#crownGradMobile)" stroke="#b8860b" strokeWidth="0.6" strokeLinejoin="round" />
-                        <rect x="1" y="13" width="18" height="2.5" rx="1" fill="url(#crownGradMobile)" stroke="#b8860b" strokeWidth="0.5" />
-                        <circle cx="10" cy="2.5" r="1.2" fill="#fff8e0" />
-                        <circle cx="1.2" cy="7.2" r="1" fill="#fff8e0" />
-                        <circle cx="18.8" cy="7.2" r="1" fill="#fff8e0" />
-                      </svg>
-                    </span>
-                  )}
-                  {label}
-                </Link>
-              ))}
-
-              {/* Auth במובייל */}
-              <div
-                className="mobile-link-enter mt-4 flex flex-col gap-2"
-                style={{ animationDelay: `${navItems.length * 50}ms` }}
-              >
-                {AuthButtons}
-              </div>
-            </div>
-          )}
-        </div>
-      </header>
-
-      <div className="h-[72px]" />
-    </>
-  );
-}
-
-export default Header;
-</file>
-
-<file path="client/src/App.jsx">
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-
-import Header from './components/common/Header';
-import Home from './pages/Home';
-import Prayers from './pages/Prayers';
-import Announcements from './pages/Announcements';
-import Commemorations from './pages/Commemorations'; // ג† ׳—׳“׳©
-import Contact from './pages/Contact';
-import Admin from './pages/Admin';
-import Login from './components/auth/Login';
-import Register from './components/auth/Register';
-import Footer from './components/common/Footer';
-import HalachicTimes from './components/HalachicTimes';
-import { ROUTES } from './constants/routes';
-import Payments from './pages/Payments';
-import PortalItem from './pages/PortalItem';
-import PortalCategory from './pages/PortalCategory';
-import Portal from './pages/Portal';
-
-function App() {
-  return (
-    <Router>
-      <div className="flex flex-col min-h-screen">
-        <Header />
-        <main className="flex-1 p-4">
-          <Routes>
-            <Route path={ROUTES.HOME} element={<Home />} />
-            <Route path={ROUTES.PRAYERS} element={<Prayers />} />
-            <Route path={ROUTES.ANNOUNCEMENTS} element={<Announcements />} />
-            <Route path={ROUTES.COMMEMORATIONS} element={<Commemorations />} /> 
-            <Route path={ROUTES.CONTACT} element={<Contact />} />
-            <Route path={`${ROUTES.ADMIN}/*`} element={<Admin />} />
-            <Route path={ROUTES.LOGIN} element={<Login />} />
-            <Route path={ROUTES.REGISTER} element={<Register />} />
-            <Route path={ROUTES.HEBCAL} element={<HalachicTimes />} />
-            <Route path={ROUTES.PAYMENTS} element={<Payments />} />
-            <Route path="/portal/item/:itemId" element={<PortalItem />} />
-            <Route path="/portal/:categoryId" element={<PortalCategory />} />
-            <Route path={ROUTES.PORTAL} element={<Portal />} />
-            <Route path="*" element={<div className="text-center text-xl">hamud lo nimtsa ein lecha  ma lechapes po</div>} />
-          </Routes>
-        </main>
-        <Footer />
-      </div>
-    </Router>
-  );
-}
-
-export default App;
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 </file>
 
 <file path="client/src/services/api.js">
