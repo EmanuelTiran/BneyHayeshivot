@@ -133,7 +133,7 @@ export default function Portal() {
   return (
     <div dir="rtl" className="min-h-screen bg-[#f7f4e9]">
       <div className="bg-gradient-to-b from-[#0d2340] to-[#1a365d] py-12 px-6 text-center">
-        <h1 className="text-4xl font-bold text-[#cfa756] mb-2">פורטל הנצחות ותמיכה</h1>
+        <h1 className="text-4xl font-bold text-[#cfa756] mb-2">פורטל הקדשות ותמיכה</h1>
         <p className="text-[#f7f4e9]/80 text-lg">בחר קטגוריה כדי לצפות בפרטים ולהגיש בקשת הנצחה</p>
       </div>
       <div className="max-w-5xl mx-auto px-4 py-10">

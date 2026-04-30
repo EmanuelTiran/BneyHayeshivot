@@ -186,8 +186,8 @@ export default function HeroSection() {
             }}
           >
             <span className="block h-px w-28" style={{ background: "linear-gradient(90deg, transparent, rgba(201,168,76,0.5), transparent)" }} />
-            <span className="rotate-star text-[#c9a84c] text-sm opacity-80 inline-block">✦</span>
-            <span className="block h-px w-28" style={{ background: "linear-gradient(90deg, transparent, rgba(201,168,76,0.5), transparent)" }} />
+            <span className="rotate-star text-[#c9a84c] text-sm opacityr-gradient(90deg, tr-80 inline-block">✦</span>
+            <span className="block h-px w-28" style={{ background: "lineaansparent, rgba(201,168,76,0.5), transparent)" }} />
           </div>
 
           {/* Sub-title */}

@@ -85,3 +85,9 @@ export const updateCommemoration   = (id, data)   => API.put(`/commemorations/${
 export const deleteCommemoration   = (id)         => API.delete(`/commemorations/${id}`);
 export const updateCommemorationStatus = (id, status) =>  // ← חדש
   API.patch(`/commemorations/${id}/status`, { commemorationStatus: status });
+
+  // ── גלריה ─────────────────────────────────────────────────────────────────────
+export const fetchGalleryImages = ()         => API.get('/gallery');
+export const createGalleryImage = (data)     => API.post('/gallery', data);
+export const updateGalleryImage = (id, data) => API.put(`/gallery/${id}`, data);
+export const deleteGalleryImage = (id)       => API.delete(`/gallery/${id}`);

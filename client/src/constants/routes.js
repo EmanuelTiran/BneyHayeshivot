@@ -10,7 +10,7 @@ export const ROUTES = {
   HEBCAL:       '/hebcal',
   PAYMENTS:     '/payments',   
   COMMEMORATIONS: '/commemorations',
-
+  GALLERY: '/gallery',
   PORTAL:          '/portal',
   PORTAL_CATEGORY: '/portal/:categoryId',
   PORTAL_ITEM:     '/portal/item/:itemId',
@@ -18,6 +18,8 @@ export const ROUTES = {
 
 export const NAVIGATION_ITEMS = [
   { path: ROUTES.HOME,          label: 'דף הבית' },
+  { path: ROUTES.GALLERY, label: 'הודעות' },
+
   // { path: ROUTES.PRAYERS,       label: 'תפילות' },
   // { path: ROUTES.ANNOUNCEMENTS, label: 'הודעות' },
   { path: ROUTES.CONTACT,       label: 'צור קשר' },

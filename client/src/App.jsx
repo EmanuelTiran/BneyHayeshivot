@@ -17,6 +17,7 @@ import Payments from './pages/Payments';
 import PortalItem from './pages/PortalItem';
 import PortalCategory from './pages/PortalCategory';
 import Portal from './pages/Portal';
+import Gallery from './pages/Gallery';
 
 const tabInStyle = `
   @keyframes tabIn {
@@ -53,6 +54,7 @@ function AnimatedRoutes() {
         <Route path="/portal/item/:itemId" element={<PortalItem />} />
         <Route path="/portal/:categoryId" element={<PortalCategory />} />
         <Route path={ROUTES.PORTAL} element={<Portal />} />
+        <Route path={ROUTES.GALLERY} element={<Gallery />} />
         <Route path="*" element={<div className="text-center text-xl">hamud lo nimtsa ein lecha ma lechapes po</div>} />
       </Routes>
     </main>

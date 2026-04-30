@@ -2,25 +2,28 @@ import React, { useState } from 'react';
 import "./Home.css"; // ודא שנתיב הקובץ נכון
 import CommunityPaymentButton from '../components/CommunityPaymentButton';
 import ContactAndPrayerTimes from '../components/ContactAndPrayerTimes/ContactAndPrayerTimes'; // ודא שנתיב הקומפוננטה נכון
+import ImageGallery from '../components/ImageGallery';
+import { useAuth } from '../components/context/authContext';
 
 const Home = () => {
   const [isButtonTransparent, setIsButtonTransparent] = useState(false);
+  const { isAdmin } = useAuth();
 
   // הפונקציה printDiv צריכה להיות מוגדרת בתוך הקומפוננטה
- const printDiv = async () => {
-  setIsButtonTransparent(true);
+  const printDiv = async () => {
+    setIsButtonTransparent(true);
 
-  // המתן לרגע שה-DOM יתעדכן לפני ההדפסה
-  await new Promise(resolve => setTimeout(resolve, 0));
+    // המתן לרגע שה-DOM יתעדכן לפני ההדפסה
+    await new Promise(resolve => setTimeout(resolve, 0));
 
-  // רק אחרי ש-React סיים לעדכן את ה-DOM, תתחיל את ההדפסה
-  window.print();
+    // רק אחרי ש-React סיים לעדכן את ה-DOM, תתחיל את ההדפסה
+    window.print();
 
-  // אופציונלי: החזר את השקיפות לאחר ההדפסה
-  // setTimeout(() => {
-  //   setIsButtonTransparent(false);
-  // }, 1000);
-};
+    // אופציונלי: החזר את השקיפות לאחר ההדפסה
+    // setTimeout(() => {
+    //   setIsButtonTransparent(false);
+    // }, 1000);
+  };
 
 
   return (
@@ -41,7 +44,8 @@ const Home = () => {
 
       }}
     >
-      <ContactAndPrayerTimes isButtonTransparent={isButtonTransparent}/>
+      {/* <ImageGallery /> */}
+      <ContactAndPrayerTimes isButtonTransparent={isButtonTransparent} />
       <CommunityPaymentButton />
 
       {/* <button

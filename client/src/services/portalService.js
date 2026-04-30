@@ -25,3 +25,7 @@ export const fetchAllSponsorships     = ()       => API.get('/sponsorships');
 export const updateSponsorshipStatus  = (id, status) => API.patch(`/sponsorships/${id}/status`, { status });
 export const submitCommemorationRequest = (data) =>
     API.post('/sponsorships/from-commemoration', data);
+
+
+
+

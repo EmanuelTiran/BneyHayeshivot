@@ -32,7 +32,7 @@ The content is organized as follows:
 <notes>
 - Some files may have been excluded based on .gitignore rules and Repomix's configuration
 - Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
-- Only files matching these patterns are included: client/src/main.jsx, client/src/components/auth/Login.jsx, client/src/components/auth/Register.jsx, client/src/components/context/authContext.jsx, client/src/config.js, client/src/services/api.js, server/models/User.js, server/models/userModel.js, server/controllers/authController.js, server/services/authService.js, server/routes/auth.js, server/server.js
+- Only files matching these patterns are included: server/server.js, server/config/db.js, server/models/Announcement.js, server/controllers/announcementController.js, server/services/announcementsService.js, server/routes/announcements.js, server/routes/commemorations.js, client/src/App.jsx, client/src/constants/routes.js, client/src/components/common/Header.jsx, client/src/components/ImageGallery.jsx, client/src/components/Admin/CommemorationForm.jsx, client/src/services/announcementsService.js
 - Files matching patterns in .gitignore are excluded
 - Files matching default ignore patterns are excluded
 - Files are sorted by Git change count (files with more changes are at the bottom)
@@ -41,548 +41,1522 @@ The content is organized as follows:
 </file_summary>
 
 <directory_structure>
-client/src/components/auth/Login.jsx
-client/src/components/auth/Register.jsx
-client/src/components/context/authContext.jsx
-client/src/config.js
-client/src/main.jsx
-client/src/services/api.js
-server/controllers/authController.js
-server/models/User.js
-server/models/userModel.js
-server/routes/auth.js
+client/src/App.jsx
+client/src/components/Admin/CommemorationForm.jsx
+client/src/components/common/Header.jsx
+client/src/components/ImageGallery.jsx
+client/src/constants/routes.js
+client/src/services/announcementsService.js
+server/config/db.js
+server/controllers/announcementController.js
+server/models/Announcement.js
+server/routes/announcements.js
+server/routes/commemorations.js
 server/server.js
-server/services/authService.js
 </directory_structure>
 
 <files>
 This section contains the contents of the repository's files.
 
-<file path="server/controllers/authController.js">
-const authService = require('../services/authService');
+<file path="client/src/components/ImageGallery.jsx">
+import { useState, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { ChevronLeft, ChevronRight, Edit3, X, Plus, Trash2, Save, Image as ImageIcon, AlignLeft, Type } from "lucide-react";
+import { Dialog } from "@headlessui/react";
+import { useAuth } from '../components/context/authContext';
 
-exports.register = async (req, res, next) => {
-  try {
-    const newUser = await authService.register(req.body);
-    res.status(201).json({ user: newUser });
-  } catch (err) {
-    next(err);
-  }
-};
+// --- MOCK AUTH (remove when using real hook) ---
+// const useAuth = () => ({ isAdmin: true });
+// const { isAdmin } = useAuth();
+const normalizeImageUrl = (url) => {
+    if (!url) return url;
 
-exports.login = async (req, res, next) => {
-  try {
-    const data = await authService.login(req.body);
-    res.json(data);
-  } catch (err) {
-    res.status(401).json({ error: 'אימייל או סיסמה שגויים' });
-  }
-};
-</file>
+    if (url.includes("drive.google.com")) {
+        const fileId =
+            url.match(/\/d\/(.*?)\//)?.[1] ||
+            url.match(/id=(.*?)(?:&|$)/)?.[1];
 
-<file path="server/models/userModel.js">
-const mongoose = require('mongoose');
-const Schema = mongoose.Schema;
-
-const userSchema = new Schema({
-  username: {
-    type: String,
-    required: true,
-    unique: true,
-    trim: true,
-    minlength: 3
-  },
-  email: {
-    type: String,
-    required: true,
-    unique: true,
-    trim: true,
-    lowercase: true,
-    match: [/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/, 'Please fill a valid email address']
-  },
-  password: {
-    type: String,
-    required: true,
-    minlength: 6
-  },
-  firstName: {
-    type: String,
-    trim: true
-  },
-  lastName: {
-    type: String,
-    trim: true
-  },
-  age: {
-    type: Number,
-    min: 0
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now
-  },
-  isActive: {
-    type: Boolean,
-    default: true
-  }
-});
-
-const User = mongoose.model('User', userSchema);
-
-module.exports = User;
-</file>
-
-<file path="server/routes/auth.js">
-const express = require('express');
-const router = express.Router();
-const authController = require('../controllers/authController');
-
-router.post('/register', authController.register);
-router.post('/login', authController.login);
-
-module.exports = router;
-</file>
-
-<file path="client/src/components/context/authContext.jsx">
-// context/authContext.jsx
-import { createContext, useState, useEffect, useContext } from 'react';
-
-const AuthContext = createContext();
-
-export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [token, setToken] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const storedToken = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
-    
-    if (storedToken && storedUser) {
-      setToken(storedToken);
-      setUser(JSON.parse(storedUser));
-    }
-    
-    setLoading(false);
-  }, []);
-
-  const login = (userData, userToken) => {
-    setUser(userData);
-    setToken(userToken);
-    localStorage.setItem('token', userToken);
-    localStorage.setItem('user', JSON.stringify(userData));
-  };
-
-  const logout = () => {
-    setUser(null);
-    setToken(null);
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-  };
-
-  const isAuthenticated = !!user;
-
-  const isAdmin = () => {
-    return isAuthenticated && user?.role?.toLowerCase() === 'admin';
-  };
-
-  const isGabbai = () => {
-    return isAuthenticated && user?.role?.toLowerCase() === 'gabbai';
-  };
-
-  return (
-    <AuthContext.Provider value={{ 
-      user, 
-      token, 
-      login, 
-      logout, 
-      isAdmin, 
-      isGabbai, 
-      isAuthenticated,
-      loading 
-    }}>
-      {children}
-    </AuthContext.Provider>
-  );
-};
-
-export const useAuth = () => {
-  return useContext(AuthContext);
-};
-
-export default AuthContext;
-</file>
-
-<file path="client/src/main.jsx">
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import App from './App.jsx'
-import './index.css'
-import { AuthProvider } from './components/context/authContext.jsx'
-ReactDOM.createRoot(document.getElementById('root')).render(
-  <AuthProvider>
-    <React.StrictMode>
-    <App />
-  </React.StrictMode>,
-  </AuthProvider>
-  
-)
-</file>
-
-<file path="server/models/User.js">
-const mongoose = require('mongoose');
-const bcrypt = require('bcrypt');
-
-const userSchema = new mongoose.Schema({
-  name: { type: String, required: true, trim: true },
-  email: { type: String, required: true, unique: true, lowercase: true, trim: true },
-  password: { type: String, required: true, minlength: 6 },
-  role: { type: String, enum: ['admin', 'gabbai', 'member'], default: 'member' },
-  phone: { type: String, trim: true, default: '' },
-  createdAt: { type: Date, default: Date.now },
-  isActive: { type: Boolean, default: true }
-});
-
-userSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) return next();
-  this.password = await bcrypt.hash(this.password, 10);
-  next();
-});
-
-userSchema.methods.comparePassword = function (candidate) {
-  return bcrypt.compare(candidate, this.password);
-};
-
-module.exports = mongoose.model('User', userSchema);
-</file>
-
-<file path="server/services/authService.js">
-const User = require('../models/User');
-const jwt = require('jsonwebtoken');
-
-exports.register = async (userData) => {
-  const user = new User(userData);
-  return await user.save();
-};
-
-exports.login = async ({ email, password }) => {
-  console.log('email', email);
-  const user = await User.findOne({ email });
-  if (!user || !(await user.comparePassword(password))) {
-    throw new Error('Invalid credentials');
-  }
-
-  const token = jwt.sign(
-    { userId: user._id, role: user.role },
-    process.env.JWT_SECRET,
-    { expiresIn: '2h' }
-  );
-
-  return { token, user };
-};
-</file>
-
-<file path="client/src/components/auth/Register.jsx">
-// components/auth/Register.jsx
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { API_URL } from '../../config';
-
-function Register() {
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    confirmPassword: ''
-  });
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
-
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-
-    if (formData.password !== formData.confirmPassword) {
-      setError('הסיסמאות אינן תואמות');
-      return;
+        if (fileId) {
+            return `https://lh3.googleusercontent.com/d/${fileId}`;
+        }
     }
 
-    setLoading(true);
+    return url;
+};
+// --- MOCK DATA ---
+const INITIAL_IMAGES = [
+    {
+        id: 1,
+        imageUrl: "https://drive.google.com/file/d/1fRlOqbhDjK7KQ9_WRlezJbajFnlpqaXo/view?usp=sharing",
+        title: "הניסיון שלי",
+        description: "Where the air is thin and every breath is earned. A moment suspended between earth and sky.",
+    },
+    {
+        id: 2,
+        imageUrl: "https://images.unsplash.com/photo-1501854140801-50d01698950b?w=600&q=80",
+        title: "Verdant Depths",
+        description: "Ancient canopies filtering light into cathedral green. The forest breathes, and so do you.",
+    },
+    {
+        id: 3,
+        imageUrl: "https://images.unsplash.com/photo-1518020382113-a7e8fc38eac9?w=600&q=80",
+        title: "Coastal Reverie",
+        description: "Salt-laced winds carry stories from distant shores. Stand here long enough, and you will hear them.",
+    },
+    {
+        id: 4,
+        imageUrl: "https://images.unsplash.com/photo-1470770903676-69b98201ea1c?w=600&q=80",
+        title: "Desert Embers",
+        description: "The last light bleeds gold across the sand. Nothing survives the dusk unchanged.",
+    },
+];
 
-    try {
-      const response = await fetch(`${API_URL}/api/auth/register`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
+// --- ANIMATION VARIANTS ---
+const slideVariants = {
+    enter: (dir) => ({
+        x: dir > 0 ? "60%" : "-60%",
+        opacity: 0,
+        scale: 0.96,
+    }),
+    center: {
+        x: 0,
+        opacity: 1,
+        scale: 1,
+        transition: { duration: 0.55, ease: [0.32, 0.72, 0, 1] },
+    },
+    exit: (dir) => ({
+        x: dir > 0 ? "-60%" : "60%",
+        opacity: 0,
+        scale: 0.96,
+        transition: { duration: 0.45, ease: [0.32, 0.72, 0, 1] },
+    }),
+};
+
+const captionVariants = {
+    hidden: { opacity: 0, y: 18 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.5, delay: 0.25, ease: "easeOut" } },
+    exit: { opacity: 0, y: -10, transition: { duration: 0.25 } },
+};
+
+const modalVariants = {
+    hidden: { opacity: 0, scale: 0.97, y: 16 },
+    visible: { opacity: 1, scale: 1, y: 0, transition: { duration: 0.35, ease: [0.32, 0.72, 0, 1] } },
+    exit: { opacity: 0, scale: 0.97, y: 16, transition: { duration: 0.25 } },
+};
+
+// ─────────────────────────────────────────────
+// ADMIN MODAL
+// ─────────────────────────────────────────────
+function AdminModal({ isOpen, onClose, images, setImages }) {
+    const [editingId, setEditingId] = useState(null);
+    const [form, setForm] = useState({ imageUrl: "", title: "", description: "" });
+    const [mode, setMode] = useState("list"); // 'list' | 'edit' | 'add'
+
+    const openAdd = () => {
+        setForm({ imageUrl: "", title: "", description: "" });
+        setEditingId(null);
+        setMode("add");
+    };
+
+    const openEdit = (img) => {
+        setForm({ imageUrl: img.imageUrl, title: img.title, description: img.description });
+        setEditingId(img.id);
+        setMode("edit");
+    };
+
+    const handleDelete = (id) => {
+        setImages((prev) => prev.filter((img) => img.id !== id));
+    };
+
+    const handleSave = () => {
+        if (!form.title.trim() || !form.imageUrl.trim()) return;
+        if (mode === "add") {
+            setImages((prev) => [
+                ...prev,
+                {
+                    id: Date.now(), ...form,
+                    imageUrl: normalizeImageUrl(form.imageUrl),
+                },
+            ]);
+        } else {
+            setImages((prev) =>
+                prev.map((img) =>
+                    img.id === editingId
+                        ? { ...img, ...form, imageUrl: normalizeImageUrl(form.imageUrl) }
+                        : img
+                ));
+        }
+        setMode("list");
+    };
+
+    const handleClose = () => {
+        setMode("list");
+        onClose();
+    };
+
+    return (
+        <Dialog open={isOpen} onClose={handleClose} className="relative z-50">
+            {/* Backdrop */}
+            <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black/70 backdrop-blur-sm"
+                aria-hidden="true"
+            />
+
+            <div className="fixed inset-0 flex items-center justify-center p-4">
+                <AnimatePresence mode="wait">
+                    <motion.div
+                        key="modal"
+                        variants={modalVariants}
+                        initial="hidden"
+                        animate="visible"
+                        exit="exit"
+                    >
+                        <Dialog.Panel
+                            className="relative w-full max-w-2xl rounded-2xl overflow-hidden shadow-2xl"
+                            style={{
+                                background: "linear-gradient(145deg, #0f0f13 0%, #17171f 100%)",
+                                border: "1px solid rgba(255,255,255,0.08)",
+                            }}
+                        >
+                            {/* Modal Header */}
+                            <div className="flex items-center justify-between px-7 py-5 border-b border-white/[0.07]">
+                                <div>
+                                    <Dialog.Title className="text-lg font-semibold text-white tracking-tight">
+                                        {mode === "list" ? "Gallery Manager" : mode === "add" ? "Add New Image" : "Edit Image"}
+                                    </Dialog.Title>
+                                    <p className="text-xs text-white/40 mt-0.5">
+                                        {mode === "list" ? `${images.length} item${images.length !== 1 ? "s" : ""} in gallery` : "Fill in the details below"}
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={handleClose}
+                                    className="p-2 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-all"
+                                >
+                                    <X size={18} />
+                                </button>
+                            </div>
+
+                            {/* Modal Body */}
+                            <div className="p-7 max-h-[70vh] overflow-y-auto custom-scroll">
+                                <AnimatePresence mode="wait">
+                                    {mode === "list" ? (
+                                        <motion.div
+                                            key="list"
+                                            initial={{ opacity: 0, x: -20 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            exit={{ opacity: 0, x: 20 }}
+                                            transition={{ duration: 0.25 }}
+                                        >
+                                            <div className="space-y-3 mb-5">
+                                                {images.map((img) => (
+                                                    <div
+                                                        key={img.id}
+                                                        className="flex items-center gap-4 p-3 rounded-xl bg-white/[0.04] border border-white/[0.06] group hover:border-white/20 transition-all"
+                                                    >
+                                                        <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-white/10">
+                                                            <img
+                                                                src={img.imageUrl}
+                                                                alt={img.title}
+                                                                className="w-full h-full object-cover"
+                                                                onError={(e) => { e.target.style.display = 'none'; }}
+                                                            />
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="text-sm font-medium text-white truncate">{img.title}</p>
+                                                            <p className="text-xs text-white/40 truncate mt-0.5">{img.description}</p>
+                                                        </div>
+                                                        <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <button
+                                                                onClick={() => openEdit(img)}
+                                                                className="p-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/10 transition-all"
+                                                            >
+                                                                <Edit3 size={14} />
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleDelete(img.id)}
+                                                                className="p-1.5 rounded-lg text-white/50 hover:text-rose-400 hover:bg-rose-400/10 transition-all"
+                                                            >
+                                                                <Trash2 size={14} />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                                {images.length === 0 && (
+                                                    <div className="text-center py-10 text-white/30">
+                                                        <ImageIcon size={32} className="mx-auto mb-3 opacity-50" />
+                                                        <p className="text-sm">No images yet. Add one below.</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <button
+                                                onClick={openAdd}
+                                                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-dashed border-white/20 text-white/50 hover:text-white hover:border-white/40 hover:bg-white/[0.04] transition-all text-sm font-medium"
+                                            >
+                                                <Plus size={16} />
+                                                Add New Image
+                                            </button>
+                                        </motion.div>
+                                    ) : (
+                                        <motion.div
+                                            key="form"
+                                            initial={{ opacity: 0, x: 20 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            exit={{ opacity: 0, x: -20 }}
+                                            transition={{ duration: 0.25 }}
+                                            className="space-y-5"
+                                        >
+                                            {/* URL Field */}
+                                            <div>
+                                                <label className="flex items-center gap-2 text-xs font-medium text-white/50 mb-2 uppercase tracking-wider">
+                                                    <ImageIcon size={12} /> Image URL
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    value={form.imageUrl}
+                                                    onChange={(e) => setForm((f) => ({ ...f, imageUrl: e.target.value }))}
+                                                    placeholder="https://example.com/image.jpg"
+                                                    className="w-full px-4 py-3 rounded-xl bg-white/[0.06] border border-white/10 text-white text-sm placeholder-white/25 focus:outline-none focus:border-amber-400/60 focus:bg-white/[0.08] transition-all"
+                                                />
+                                                {form.imageUrl && (
+                                                    <div className="mt-2 h-24 rounded-lg overflow-hidden bg-white/5">
+                                                        <img src={normalizeImageUrl(form.imageUrl)} alt="preview" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = "none"; }} />
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {/* Title Field */}
+                                            <div>
+                                                <label className="flex items-center gap-2 text-xs font-medium text-white/50 mb-2 uppercase tracking-wider">
+                                                    <Type size={12} /> Title
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    value={form.title}
+                                                    onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+                                                    placeholder="Image title"
+                                                    className="w-full px-4 py-3 rounded-xl bg-white/[0.06] border border-white/10 text-white text-sm placeholder-white/25 focus:outline-none focus:border-amber-400/60 focus:bg-white/[0.08] transition-all"
+                                                />
+                                            </div>
+
+                                            {/* Description Field */}
+                                            <div>
+                                                <label className="flex items-center gap-2 text-xs font-medium text-white/50 mb-2 uppercase tracking-wider">
+                                                    <AlignLeft size={12} /> Description
+                                                </label>
+                                                <textarea
+                                                    value={form.description}
+                                                    onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                                                    placeholder="A short description..."
+                                                    rows={3}
+                                                    className="w-full px-4 py-3 rounded-xl bg-white/[0.06] border border-white/10 text-white text-sm placeholder-white/25 focus:outline-none focus:border-amber-400/60 focus:bg-white/[0.08] transition-all resize-none"
+                                                />
+                                            </div>
+
+                                            {/* Actions */}
+                                            <div className="flex gap-3 pt-2">
+                                                <button
+                                                    onClick={() => setMode("list")}
+                                                    className="flex-1 py-3 rounded-xl border border-white/10 text-white/60 hover:text-white hover:border-white/30 transition-all text-sm font-medium"
+                                                >
+                                                    Cancel
+                                                </button>
+                                                <button
+                                                    onClick={handleSave}
+                                                    disabled={!form.title.trim() || !form.imageUrl.trim()}
+                                                    className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-amber-400 text-black font-semibold text-sm hover:bg-amber-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                                                >
+                                                    <Save size={15} />
+                                                    Save
+                                                </button>
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                            </div>
+                        </Dialog.Panel>
+                    </motion.div>
+                </AnimatePresence>
+            </div>
+        </Dialog>
+    );
+}
+
+// ─────────────────────────────────────────────
+// MAIN COMPONENT
+// ─────────────────────────────────────────────
+export default function ImageGallery() {
+    const { isAdmin } = useAuth();
+
+    const [images, setImages] = useState(INITIAL_IMAGES);
+    const [index, setIndex] = useState(0);
+    const [direction, setDirection] = useState(1);
+    const [isHovered, setIsHovered] = useState(false);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+
+    const current = images[Math.min(index, images.length - 1)];
+
+    const go = useCallback(
+        (dir) => {
+            if (images.length <= 1) return;
+            setDirection(dir);
+            setIndex((i) => (i + dir + images.length) % images.length);
         },
-        body: JSON.stringify({
-          name: formData.name,
-          email: formData.email,
-          password: formData.password
-        })
-      });
+        [images.length]
+    );
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'שגיאה בהרשמה');
-      }
-
-      navigate('/login', { state: { message: 'ההרשמה הושלמה בהצלחה, כעת ניתן להתחבר' } });
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
+    if (!images.length) {
+        return (
+            <div className="flex flex-col items-center justify-center h-64 rounded-2xl bg-neutral-950 border border-white/10 text-white/30">
+                <ImageIcon size={36} className="mb-3" />
+                <p className="text-sm">Gallery is empty</p>
+                {isAdmin && isAdmin() && (
+                    <button
+                        onClick={() => setIsModalOpen(true)}
+                        className="mt-4 px-4 py-2 rounded-lg bg-amber-400 text-black text-xs font-semibold hover:bg-amber-300 transition-all"
+                    >
+                        Add Images
+                    </button>
+                )}
+                <AdminModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} images={images} setImages={setImages} />
+            </div>
+        );
     }
+
+    return (
+        <>
+            {/* Outer shell — responsive, centered */}
+            <div className="flex justify-center items-start py-8 px-4 min-h-screen bg-neutral-950">
+                <div
+                    className="relative w-full max-w-sm select-none"
+                    onMouseEnter={() => setIsHovered(true)}
+                    onMouseLeave={() => setIsHovered(false)}
+                >
+                    {/* ── A4 Card ── */}
+                    <div className="relative w-full aspect-[210/297] rounded-2xl overflow-hidden shadow-[0_32px_80px_rgba(0,0,0,0.7)]">
+                        {/* Slide */}
+                        <AnimatePresence custom={direction} mode="popLayout">
+                            <motion.div
+                                key={current?.id ?? index}
+                                custom={direction}
+                                variants={slideVariants}
+                                initial="enter"
+                                animate="center"
+                                exit="exit"
+                                className="absolute inset-0"
+                            >
+                                <img
+                                    src={current?.imageUrl}
+                                    onError={(e) => {
+                                        console.log("IMAGE FAILED:", current?.imageUrl);
+                                        e.target.style.display = "none";
+                                    }}
+                                    alt={current?.title}
+                                    className="w-full h-full object-cover"
+                                    draggable={false}
+                                />
+                                {/* Gradient vignette */}
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
+                            </motion.div>
+                        </AnimatePresence>
+
+                        {/* ── Caption ── */}
+                        <AnimatePresence mode="wait">
+                            <motion.div
+                                key={`caption-${current?.id ?? index}`}
+                                variants={captionVariants}
+                                initial="hidden"
+                                animate="visible"
+                                exit="exit"
+                                className="absolute bottom-0 left-0 right-0 p-6 z-10"
+                            >
+                                <p
+                                    className="text-xs font-semibold tracking-[0.25em] uppercase mb-1.5"
+                                    style={{ color: "#f59e0b" }}
+                                >
+                                    {String(index + 1).padStart(2, "0")} / {String(images.length).padStart(2, "0")}
+                                </p>
+                                <h2 className="text-2xl font-bold text-white leading-tight tracking-tight drop-shadow-lg">
+                                    {current?.title}
+                                </h2>
+                                <p className="text-sm text-white/65 mt-1.5 leading-relaxed line-clamp-2">
+                                    {current?.description}
+                                </p>
+                            </motion.div>
+                        </AnimatePresence>
+
+                        {/* ── Nav Arrows ── */}
+                        {images.length > 1 && (
+                            <>
+                                <motion.button
+                                    onClick={() => go(-1)}
+                                    whileTap={{ scale: 0.88 }}
+                                    className="absolute left-3 top-1/2 -translate-y-1/2 z-20 p-2 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-white/80 hover:text-white hover:bg-black/60 transition-all"
+                                    aria-label="Previous image"
+                                >
+                                    <ChevronLeft size={20} strokeWidth={2.5} />
+                                </motion.button>
+                                <motion.button
+                                    onClick={() => go(1)}
+                                    whileTap={{ scale: 0.88 }}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 z-20 p-2 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-white/80 hover:text-white hover:bg-black/60 transition-all"
+                                    aria-label="Next image"
+                                >
+                                    <ChevronRight size={20} strokeWidth={2.5} />
+                                </motion.button>
+                            </>
+                        )}
+
+                        {/* ── Admin Edit Button ── */}
+                        {isAdmin && isAdmin() && (
+                            <AnimatePresence>
+                                {isHovered && (
+                                    <motion.button
+                                        key="edit-btn"
+                                        initial={{ opacity: 0, y: -8, scale: 0.9 }}
+                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                        exit={{ opacity: 0, y: -8, scale: 0.9 }}
+                                        transition={{ duration: 0.2 }}
+                                        onClick={() => setIsModalOpen(true)}
+                                        className="absolute top-4 right-4 z-30 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-black shadow-lg transition-all"
+                                        style={{ background: "#f59e0b" }}
+                                        whileHover={{ scale: 1.05 }}
+                                        whileTap={{ scale: 0.95 }}
+                                    >
+                                        <Edit3 size={12} strokeWidth={2.5} />
+                                        Edit Gallery
+                                    </motion.button>
+                                )}
+                            </AnimatePresence>
+                        )}
+                    </div>
+
+                    {/* ── Dot Indicators ── */}
+                    {images.length > 1 && (
+                        <div className="flex justify-center gap-1.5 mt-5">
+                            {images.map((_, i) => (
+                                <motion.button
+                                    key={i}
+                                    onClick={() => { setDirection(i > index ? 1 : -1); setIndex(i); }}
+                                    animate={{ width: i === index ? 24 : 8, opacity: i === index ? 1 : 0.35 }}
+                                    transition={{ duration: 0.3 }}
+                                    className="h-1.5 rounded-full bg-amber-400"
+                                    aria-label={`Go to slide ${i + 1}`}
+                                />
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* ── Admin Modal ── */}
+            <AnimatePresence>
+                {isModalOpen && (
+                    <AdminModal
+                        isOpen={isModalOpen}
+                        onClose={() => setIsModalOpen(false)}
+                        images={images}
+                        setImages={(updater) => {
+                            setImages(updater);
+                            setIndex(0);
+                        }}
+                    />
+                )}
+            </AnimatePresence>
+        </>
+    );
+}
+</file>
+
+<file path="server/config/db.js">
+const mongoose = require('mongoose');
+
+const connectDB = async () => {
+  try {
+    await mongoose.connect(process.env.MONGO_URI);
+    console.log('MongoDB connected');
+  } catch (err) {
+    console.error(err.message);
+    process.exit(1);
+  }
+};
+
+module.exports = connectDB;
+</file>
+
+<file path="server/models/Announcement.js">
+const mongoose = require('mongoose');
+
+const announcementSchema = new mongoose.Schema({
+  title: String,
+  content: String,
+  date: { type: Date, default: Date.now }
+});
+
+module.exports = mongoose.model('Announcement', announcementSchema);
+</file>
+
+<file path="client/src/components/Admin/CommemorationForm.jsx">
+import { useState, useRef, useCallback } from 'react';
+import {
+  createCommemoration,
+  updateCommemoration,
+  deleteCommemoration,
+  fetchCommemorations,
+  updateCommemorationStatus, // ← הוסף
+
+} from '../../services/api';
+// TODO (שרת): הוסף פונקציה לעדכון סטטוס הנצחה, לדוגמה:
+// import { updateCommemorationStatus } from '../../services/api';
+
+const EMPTY_FORM = {
+  itemName: '',
+  contributorName: '',
+  commemoratedName: '',
+  amount: '',
+  imageUrl: '',
+  date: new Date().toISOString().split('T')[0],
+};
+
+const STATUS_CONFIG = {
+  commemorated: { label: 'הונצח', bg: '#eaf3de', color: '#3b6d11', border: '#97c459' },
+  pending: { label: 'ממתין לאישור', bg: '#faeeda', color: '#854f0b', border: '#ef9f27' },
+  none: { label: 'פנוי', bg: '#e6f1fb', color: '#185fa5', border: '#85b7eb' },
+};
+
+function Field({ label, id, error, children }) {
+  return (
+    <div>
+      <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-1">
+        {label}
+      </label>
+      {children}
+      {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+    </div>
+  );
+}
+
+// ── קומפוננטת העלאת תמונה ─────────────────────────────────────────────────────
+function ImageUploader({ value, onChange }) {
+  const [isDragging, setIsDragging] = useState(false);
+  const [urlInput, setUrlInput] = useState('');
+  const [tab, setTab] = useState('upload');
+  const fileInputRef = useRef(null);
+
+  const fileToBase64 = (file) =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+  const handleFile = useCallback(async (file) => {
+    if (!file || !file.type.startsWith('image/')) return;
+    const base64 = await fileToBase64(file);
+    onChange(base64);
+  }, [onChange]);
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) handleFile(file);
   };
 
-  // Helper styles
-  const inputClass = (hasError) => `
-    w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#cfa756] text-right transition-all
-    ${hasError ? 'border-red-300 bg-red-50' : 'border-gray-300 focus:border-[#cfa756]'}
-  `;
+  const handleFileInput = (e) => {
+    const file = e.target.files?.[0];
+    if (file) handleFile(file);
+  };
+
+  const handleUrlConfirm = () => {
+    if (urlInput.trim()) { onChange(urlInput.trim()); setUrlInput(''); }
+  };
+
+  const handleClear = () => {
+    onChange('');
+    setUrlInput('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
 
   return (
-    <div dir="rtl" className="max-w-md mx-auto mt-10">
-      <h2 className="text-2xl font-bold text-[#0d2340] mb-6 flex items-center gap-2">
-        <span className="text-[#cfa756]">✦</span>
-        הרשמה
-      </h2>
-
-      {error && (
-        <div className="mb-5 rounded-lg px-4 py-3 text-sm font-medium bg-red-50 border border-red-200 text-red-700 text-right">
-          {error}
+    <div className="space-y-3">
+      {value && (
+        <div className="relative w-full h-40 rounded-xl overflow-hidden border border-gray-200 bg-gray-50">
+          <img src={value} alt="תצוגה מקדימה" className="w-full h-full object-cover" onError={() => onChange('')} />
+          <button type="button" onClick={handleClear}
+            className="absolute top-2 left-2 bg-black/60 hover:bg-black/80 text-white rounded-full w-7 h-7 flex items-center justify-center text-xs transition-colors"
+            title="הסר תמונה">✕</button>
+          <div className="absolute bottom-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded-md">תצוגה מקדימה</div>
         </div>
       )}
 
-      <div className="bg-white rounded-2xl shadow-md p-6 space-y-5 border border-gray-100">
-        <form onSubmit={handleSubmit} className="space-y-5">
-          
-          <div className="space-y-1">
-            <label htmlFor="name" className="block text-sm font-medium text-gray-700 text-right">שם מלא</label>
-            <input
-              name="name"
-              id="name"
-              type="text"
-              value={formData.name}
-              onChange={handleChange}
-              required
-              className={inputClass(error)}
-            />
+      {!value && (
+        <>
+          <div className="flex border-b border-gray-200">
+            {[['upload', '📁 העלאה / גרירה'], ['url', '🔗 קישור URL']].map(([t, lbl]) => (
+              <button key={t} type="button" onClick={() => setTab(t)}
+                className={`px-4 py-2 text-xs font-medium transition-colors ${tab === t ? 'border-b-2 border-[#cfa756] text-[#0d2340]' : 'text-gray-400 hover:text-gray-600'
+                  }`}>{lbl}</button>
+            ))}
           </div>
 
-          <div className="space-y-1">
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 text-right">דוא״ל</label>
-            <input
-              name="email"
-              id="email"
-              type="email"
-              value={formData.email}
-              onChange={handleChange}
-              required
-              className={inputClass(error)}
-            />
-          </div>
+          {tab === 'upload' && (
+            <div
+              onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+              className={`w-full h-36 rounded-xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all select-none
+                ${isDragging ? 'border-[#cfa756] bg-[#cfa756]/10 scale-[1.01]' : 'border-gray-300 bg-gray-50 hover:border-[#cfa756] hover:bg-[#cfa756]/5'}`}
+            >
+              <svg className={`w-8 h-8 mb-2 transition-colors ${isDragging ? 'text-[#cfa756]' : 'text-gray-400'}`}
+                fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round"
+                  d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+              </svg>
+              <p className={`text-sm font-medium transition-colors ${isDragging ? 'text-[#cfa756]' : 'text-gray-500'}`}>
+                {isDragging ? 'שחרר כאן!' : 'גרור תמונה לכאן'}
+              </p>
+              <p className="text-xs text-gray-400 mt-1">או לחץ לבחירה מהמחשב</p>
+              <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileInput} />
+            </div>
+          )}
 
-          <div className="space-y-1">
-            <label htmlFor="password" id="password-label" className="block text-sm font-medium text-gray-700 text-right">סיסמה</label>
-            <input
-              type="password"
-              name="password"
-              id="password"
-              value={formData.password}
-              onChange={handleChange}
-              required
-              minLength="6"
-              className={inputClass(error)}
-            />
-          </div>
+          {tab === 'url' && (
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <input type="url" value={urlInput} onChange={(e) => setUrlInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleUrlConfirm()}
+                  placeholder="https://example.com/image.jpg"
+                  className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#cfa756] text-left"
+                  dir="ltr" />
+                <button type="button" onClick={handleUrlConfirm} disabled={!urlInput.trim()}
+                  className="bg-[#0d2340] hover:bg-[#1a365d] disabled:opacity-40 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                  אישור
+                </button>
+              </div>
+              <p className="text-xs text-gray-400">הדבק קישור לתמונה ולחץ אישור או Enter</p>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
 
-          <div className="space-y-1">
-            <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 text-right">אימות סיסמה</label>
-            <input
-              type="password"
-              name="confirmPassword"
-              id="confirmPassword"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              required
-              minLength="6"
-              className={inputClass(error)}
-            />
-          </div>
+// ── מודאל שינוי סטטוס ────────────────────────────────────────────────────────
+function StatusModal({ item, onClose, onSave }) {
+  const [selected, setSelected] = useState(item.commemorationStatus || 'none');
+  const [saving, setSaving] = useState(false);
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-[#cfa756] hover:bg-[#b8860b] disabled:opacity-50 text-[#0d2340] font-bold px-6 py-2.5 rounded-lg transition-colors shadow-sm"
-          >
-            {loading ? 'שומר...' : 'הירשם'}
+  const handleSave = async () => {
+    setSaving(true);
+    await onSave(item._id, selected);
+    setSaving(false);
+    onClose();
+  };
+
+  return (
+    <div
+      className="fixed inset-0 bg-[#0d2340]/70 flex items-center justify-center z-50 p-4"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div dir="rtl" className="bg-white rounded-2xl border-2 border-[#cfa756]/40 shadow-xl p-6 w-full max-w-sm">
+        <h3 className="text-base font-bold text-[#0d2340] mb-1">שינוי סטטוס הנצחה</h3>
+        <p className="text-xs text-gray-500 mb-5 border-b border-gray-100 pb-3">{item.itemName}</p>
+
+        <div className="flex flex-col gap-3 mb-6">
+          {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
+            <label
+              key={key}
+              className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${selected === key
+                  ? 'border-[#0d2340] bg-[#0d2340]/5'
+                  : 'border-gray-200 hover:border-gray-300'
+                }`}
+            >
+              <input
+                type="radio" name="status" value={key}
+                checked={selected === key}
+                onChange={() => setSelected(key)}
+                className="accent-[#0d2340]"
+              />
+              <span
+                className="text-xs font-semibold px-2 py-0.5 rounded-full border"
+                style={{ background: cfg.bg, color: cfg.color, borderColor: cfg.border }}
+              >
+                {cfg.label}
+              </span>
+            </label>
+          ))}
+        </div>
+
+        <div className="flex gap-3 justify-end">
+          <button onClick={onClose}
+            className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50">
+            ביטול
           </button>
-        </form>
-
-        <p className="text-sm text-center text-gray-500 mt-4">
-          כבר יש לך חשבון?{' '}
-          <span
-            onClick={() => navigate('/login')}
-            className="text-[#cfa756] cursor-pointer hover:underline font-medium"
-          >
-            התחבר כאן
-          </span>
-        </p>
+          <button onClick={handleSave} disabled={saving}
+            className="px-4 py-2 bg-[#0d2340] text-[#cfa756] font-bold rounded-lg text-sm hover:bg-[#1a365d] disabled:opacity-50">
+            {saving ? 'שומר...' : 'שמור סטטוס'}
+          </button>
+        </div>
       </div>
     </div>
   );
 }
 
-export default Register;
-</file>
+// ── CommemorationForm ────────────────────────────────────────────────────────
+export default function CommemorationForm() {
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [errors, setErrors] = useState({});
+  const [commemorations, setCommemorations] = useState([]);
+  const [editingId, setEditingId] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [loadingList, setLoadingList] = useState(false);
+  const [feedback, setFeedback] = useState(null);
+  const [listLoaded, setListLoaded] = useState(false);
+  const [activeFilter, setActiveFilter] = useState('all');
+  const [statusModal, setStatusModal] = useState(null); // item | null
 
-<file path="client/src/config.js">
-// config.js
-export const API_URL =
-  import.meta.env.MODE === "production"
-    ? "https://bneyhayeshivot1.onrender.com"
-    : "http://localhost:5000";
-</file>
+  const validate = () => {
+    const e = {};
+    if (!form.itemName.trim()) e.itemName = 'שם הפריט הוא שדה חובה';
+    if (!form.contributorName.trim()) e.contributorName = 'שם התורם הוא שדה חובה';
+    if (!form.commemoratedName.trim()) e.commemoratedName = 'שם המונצח הוא שדה חובה';
+    if (!form.amount || isNaN(Number(form.amount)) || Number(form.amount) < 0)
+      e.amount = 'יש להזין סכום חוקי';
+    return e;
+  };
 
-<file path="client/src/components/auth/Login.jsx">
-// components/auth/Login.jsx
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { API_URL } from '../../config';
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+    setErrors((prev) => ({ ...prev, [name]: undefined }));
+  };
 
-function Login() {
-    const [formData, setFormData] = useState({
-        email: '',
-        password: ''
+  const handleImageChange = (val) => setForm((prev) => ({ ...prev, imageUrl: val }));
+
+  const handleSubmit = async () => {
+    const validationErrors = validate();
+    if (Object.keys(validationErrors).length > 0) { setErrors(validationErrors); return; }
+    setLoading(true);
+    setFeedback(null);
+    const payload = { ...form, amount: Number(form.amount) };
+    try {
+      if (editingId) {
+        await updateCommemoration(editingId, payload);
+        setFeedback({ type: 'success', message: 'ההנצחה עודכנה בהצלחה!' });
+      } else {
+        await createCommemoration(payload);
+        setFeedback({ type: 'success', message: 'ההנצחה נוספה בהצלחה!' });
+      }
+      setForm(EMPTY_FORM);
+      setEditingId(null);
+      if (listLoaded) loadList();
+    } catch (err) {
+      setFeedback({ type: 'error', message: err?.response?.data?.message || 'אירעה שגיאה. אנא נסה שוב.' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setForm(EMPTY_FORM); setEditingId(null); setErrors({}); setFeedback(null);
+  };
+
+  const loadList = async () => {
+    setLoadingList(true);
+    try {
+      const res = await fetchCommemorations();
+      setCommemorations(res.data);
+      setListLoaded(true);
+    } catch {
+      setFeedback({ type: 'error', message: 'שגיאה בטעינת הרשימה' });
+    } finally {
+      setLoadingList(false);
+    }
+  };
+
+  const handleEdit = (item) => {
+    setEditingId(item._id);
+    setForm({
+      itemName: item.itemName,
+      contributorName: item.contributorName,
+      commemoratedName: item.commemoratedName,
+      amount: String(item.amount),
+      imageUrl: item.imageUrl || '',
+      date: new Date(item.date).toISOString().split('T')[0],
     });
-    const [error, setError] = useState('');
-    const [loading, setLoading] = useState(false);
-    const navigate = useNavigate();
+    setErrors({});
+    setFeedback(null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
-    const handleChange = (e) => {
-        setFormData({
-            ...formData,
-            [e.target.name]: e.target.value
-        });
-    };
+  const handleDelete = async (id) => {
+    if (!window.confirm('האם אתה בטוח שברצונך למחוק הנצחה זו?')) return;
+    try {
+      await deleteCommemoration(id);
+      setCommemorations((prev) => prev.filter((c) => c._id !== id));
+      setFeedback({ type: 'success', message: 'ההנצחה נמחקה בהצלחה' });
+    } catch {
+      setFeedback({ type: 'error', message: 'שגיאה במחיקת ההנצחה' });
+    }
+  };
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setError('');
-        setLoading(true);
-
-        try {
-            const response = await fetch(`${API_URL}/api/auth/login`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(formData)
-            });
-
-            const data = await response.json();
-            
-            if (!response.ok) {
-                throw new Error(data.message || 'שגיאה בהתחברות');
-            }
-
-            localStorage.setItem('token', data.token);
-            localStorage.setItem('user', JSON.stringify(data.user));
-
-            navigate('/');
-        } catch (err) {
-            setError(err.message);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    // עיצוב אחיד לשדות הקלט
-    const inputClass = (hasError) => `
-        w-full px-3 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#cfa756] text-right transition-all
-        ${hasError ? 'border-red-300 bg-red-50' : 'border-gray-200 focus:border-[#cfa756]'}
-    `;
-
-    return (
-        <div dir="rtl" className="max-w-md mx-auto mt-12">
-            <h2 className="text-2xl font-bold text-[#0d2340] mb-6 flex items-center gap-2">
-                <span className="text-[#cfa756]">✦</span>
-                התחברות
-            </h2>
-
-            {error && (
-                <div className="mb-5 rounded-lg px-4 py-3 text-sm font-medium bg-red-50 border border-red-200 text-red-700">
-                    {error}
-                </div>
-            )}
-
-            <div className="bg-white rounded-2xl shadow-md p-6 space-y-6 border border-gray-100">
-                <form onSubmit={handleSubmit} className="space-y-5">
-                    
-                    <div className="space-y-1.5">
-                        <label htmlFor="email" className="block text-sm font-medium text-gray-700">דוא"ל</label>
-                        <input
-                            type="email"
-                            id="email"
-                            name="email"
-                            value={formData.email}
-                            onChange={handleChange}
-                            required
-                            className={inputClass(error)}
-                        />
-                    </div>
-
-                    <div className="space-y-1.5">
-                        <label htmlFor="password" className="block text-sm font-medium text-gray-700">סיסמה</label>
-                        <input
-                            type="password"
-                            id="password"
-                            name="password"
-                            value={formData.password}
-                            onChange={handleChange}
-                            required
-                            className={inputClass(error)}
-                        />
-                    </div>
-
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full bg-[#cfa756] hover:bg-[#b8860b] disabled:opacity-50 text-[#0d2340] font-bold px-6 py-2.5 rounded-lg transition-colors shadow-sm mt-2"
-                    >
-                        {loading ? 'מתחבר...' : 'התחבר'}
-                    </button>
-                </form>
-
-                <p className="text-sm text-center text-gray-500">
-                    אין לך חשבון?{' '}
-                    <span
-                        onClick={() => navigate('/register')}
-                        className="text-[#cfa756] cursor-pointer hover:underline font-medium"
-                    >
-                        הירשם כאן
-                    </span>
-                </p>
-            </div>
-        </div>
+  const handleStatusSave = async (id, newStatus) => {
+    await updateCommemorationStatus(id, newStatus);
+    // עדכן גם locally כדי לא לטעון מחדש את כל הרשימה
+    setCommemorations((prev) =>
+      prev.map((c) => c._id === id ? { ...c, commemorationStatus: newStatus } : c)
     );
+  };
+
+  const inputClass = (field) =>
+    `w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#cfa756] transition ${errors[field] ? 'border-red-400 bg-red-50' : 'border-gray-300'
+    }`;
+
+  // ספירות לפילטר
+  const counts = {
+    all: commemorations.length,
+    commemorated: commemorations.filter((c) => c.commemorationStatus === 'commemorated').length,
+    pending: commemorations.filter((c) => c.commemorationStatus === 'pending').length,
+    none: commemorations.filter((c) => !c.commemorationStatus || c.commemorationStatus === 'none').length,
+  };
+
+  const FILTERS = [
+    { key: 'all', label: `הכל (${counts.all})` },
+    { key: 'commemorated', label: `הונצח (${counts.commemorated})` },
+    { key: 'pending', label: `ממתין (${counts.pending})` },
+    { key: 'none', label: `פנוי (${counts.none})` },
+  ];
+
+  const filteredList = activeFilter === 'all'
+    ? commemorations
+    : commemorations.filter((c) => {
+      if (activeFilter === 'none') return !c.commemorationStatus || c.commemorationStatus === 'none';
+      return c.commemorationStatus === activeFilter;
+    });
+
+  return (
+    <div dir="rtl" className="max-w-2xl mx-auto">
+      <h2 className="text-2xl font-bold text-[#0d2340] mb-6 flex items-center gap-2">
+        <span className="text-[#cfa756]">✦</span>
+        {editingId ? 'עריכת הנצחה' : 'הוספת הנצחה חדשה'}
+      </h2>
+
+      {feedback && (
+        <div className={`mb-5 rounded-lg px-4 py-3 text-sm font-medium ${feedback.type === 'success'
+            ? 'bg-green-50 border border-green-200 text-green-700'
+            : 'bg-red-50 border border-red-200 text-red-700'
+          }`}>
+          {feedback.message}
+        </div>
+      )}
+
+      {/* טופס */}
+      <div className="bg-white rounded-2xl shadow-md p-6 space-y-5 border border-gray-100">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <Field label="שם הפריט המונצח *" id="itemName" error={errors.itemName}>
+            <input id="itemName" name="itemName" value={form.itemName} onChange={handleChange}
+              placeholder="למשל: ספר תורה, עמוד תפילה..." className={inputClass('itemName')} />
+          </Field>
+
+          <Field label="שם המונצח *" id="commemoratedName" error={errors.commemoratedName}>
+            <input id="commemoratedName" name="commemoratedName" value={form.commemoratedName}
+              onChange={handleChange} placeholder="שם הנפטר לעילוי נשמתו" className={inputClass('commemoratedName')} />
+          </Field>
+
+          <Field label="שם התורם / המשפחה *" id="contributorName" error={errors.contributorName}>
+            <input id="contributorName" name="contributorName" value={form.contributorName}
+              onChange={handleChange} placeholder="שם המשפחה או התורם" className={inputClass('contributorName')} />
+          </Field>
+
+          <Field label="סכום התרומה (₪) *" id="amount" error={errors.amount}>
+            <input id="amount" name="amount" type="number" min="0" value={form.amount}
+              onChange={handleChange} placeholder="0" className={inputClass('amount')} />
+          </Field>
+
+          <Field label="תאריך" id="date" error={errors.date}>
+            <input id="date" name="date" type="date" value={form.date}
+              onChange={handleChange} className={inputClass('date')} />
+          </Field>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">תמונה (אופציונלי)</label>
+          <ImageUploader value={form.imageUrl} onChange={handleImageChange} />
+        </div>
+
+        <div className="flex gap-3 pt-2">
+          <button onClick={handleSubmit} disabled={loading}
+            className="flex-1 bg-[#cfa756] hover:bg-[#b8860b] disabled:opacity-50 text-[#0d2340] font-bold px-6 py-2.5 rounded-lg transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-[#cfa756]">
+            {loading ? 'שומר...' : editingId ? 'עדכן הנצחה' : 'הוסף הנצחה'}
+          </button>
+          {editingId && (
+            <button onClick={handleCancel}
+              className="px-6 py-2.5 border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors focus:outline-none">
+              ביטול
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* רשימה קיימת */}
+      <div className="mt-8">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold text-[#0d2340]">הנצחות קיימות</h3>
+          <button onClick={loadList} disabled={loadingList}
+            className="text-sm text-[#cfa756] hover:underline disabled:opacity-50 focus:outline-none">
+            {loadingList ? 'טוען...' : listLoaded ? 'רענן רשימה' : 'טען רשימה'}
+          </button>
+        </div>
+
+        {/* פילטר סטטוס — מוצג רק אחרי שהרשימה נטענה */}
+        {listLoaded && commemorations.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-4">
+            {FILTERS.map(({ key, label }) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setActiveFilter(key)}
+                className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${activeFilter === key
+                    ? 'bg-[#0d2340] text-[#cfa756] border-[#0d2340]'
+                    : 'bg-white text-gray-600 border-gray-300 hover:border-[#0d2340] hover:text-[#0d2340]'
+                  }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {listLoaded && commemorations.length === 0 && (
+          <p className="text-gray-400 text-sm text-center py-6">אין הנצחות במערכת</p>
+        )}
+
+        {listLoaded && filteredList.length === 0 && commemorations.length > 0 && (
+          <p className="text-gray-400 text-sm text-center py-6">אין הנצחות בסטטוס זה</p>
+        )}
+
+        <div className="space-y-3">
+          {filteredList.map((item) => {
+            const cfg = STATUS_CONFIG[item.commemorationStatus] || STATUS_CONFIG.none;
+            return (
+              <div key={item._id}
+                className="bg-white border border-gray-100 rounded-xl shadow-sm p-4 flex items-center gap-4">
+                {item.imageUrl && (
+                  <img src={item.imageUrl} alt="" className="w-12 h-12 rounded-lg object-cover flex-shrink-0 border border-gray-100" />
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <p className="font-semibold text-[#0d2340] truncate">{item.itemName}</p>
+                    {/* badge סטטוס */}
+                    <span
+                      className="text-[10px] font-semibold px-2 py-0.5 rounded-full border flex-shrink-0"
+                      style={{ background: cfg.bg, color: cfg.color, borderColor: cfg.border }}
+                    >
+                      {cfg.label}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-500 truncate">
+                    לעילוי נשמת <span className="text-[#0d2340] font-medium">{item.commemoratedName}</span>
+                    {' · '}{item.contributorName}
+                  </p>
+                </div>
+
+                {/* כפתורי פעולה */}
+                <div className="flex gap-2 flex-shrink-0">
+                  {/* שינוי סטטוס */}
+                  <button
+                    onClick={() => setStatusModal(item)}
+                    className="text-xs bg-[#cfa756]/15 text-[#854f0b] border border-[#cfa756]/40 px-3 py-1.5 rounded-lg hover:bg-[#cfa756]/30 transition-colors focus:outline-none whitespace-nowrap"
+                    title="שנה סטטוס הנצחה"
+                  >
+                    🏷 סטטוס
+                  </button>
+                  {/* עריכה */}
+                  <button onClick={() => handleEdit(item)}
+                    className="text-xs bg-[#0d2340] text-white px-3 py-1.5 rounded-lg hover:bg-[#1a365d] transition-colors focus:outline-none">
+                    עריכה
+                  </button>
+                  {/* מחיקה */}
+                  <button onClick={() => handleDelete(item._id)}
+                    className="text-xs bg-red-600 text-white px-3 py-1.5 rounded-lg hover:bg-red-700 transition-colors focus:outline-none">
+                    מחיקה
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* מודאל שינוי סטטוס */}
+      {statusModal && (
+        <StatusModal
+          item={statusModal}
+          onClose={() => setStatusModal(null)}
+          onSave={handleStatusSave}
+        />
+      )}
+    </div>
+  );
+}
+</file>
+
+<file path="server/controllers/announcementController.js">
+const announcementService = require('../services/announcementService');
+
+exports.getAll = async (req, res) => {
+    const data = await announcementService.getAll();
+    res.json(data);
+};
+
+exports.create = async (req, res) => {
+    const created = await announcementService.create(req.body);
+    res.status(201).json(created);
+};
+const service = require('../services/announcementService');
+
+exports.getAnnouncements = async (req, res) => {
+  try {
+    res.json(await service.getAllAnnouncements());
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.createAnnouncement = async (req, res) => {
+  try {
+    res.status(201).json(await service.createAnnouncement(req.body));
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+};
+
+exports.updateAnnouncement = async (req, res) => {
+  try {
+    const updated = await service.updateAnnouncement(req.params.id, req.body);
+    if (!updated) return res.status(404).json({ message: 'Not found' });
+    res.json(updated);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+};
+
+exports.deleteAnnouncement = async (req, res) => {
+  try {
+    await service.deleteAnnouncement(req.params.id);
+    res.json({ message: 'Deleted' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+</file>
+
+<file path="server/routes/announcements.js">
+const express = require('express');
+const router = express.Router();
+
+const ctrl    = require('../controllers/announcementController');
+const protect = require('../middleware/authMiddleware');
+router.get('/',           ctrl.getAnnouncements);
+router.post('/',  protect, ctrl.createAnnouncement);
+router.put('/:id', protect, ctrl.updateAnnouncement);
+router.delete('/:id', protect, ctrl.deleteAnnouncement);
+
+module.exports = router;
+</file>
+
+<file path="server/routes/commemorations.js">
+const express = require('express');
+const router  = express.Router();
+
+const ctrl    = require('../controllers/commemorationController');
+const protect = require('../middleware/authMiddleware');
+
+// פתוח לכולם – קריאה
+router.get('/',    ctrl.getCommemorations);
+router.get('/:id', ctrl.getCommemorationById);
+
+// מוגן – כתיבה / עדכון / מחיקה (מנהל בלבד)
+router.post('/',     protect, ctrl.createCommemoration);
+router.put('/:id',  protect, ctrl.updateCommemoration);
+router.patch('/:id/status', protect, ctrl.updateCommemorationStatus); // ← חדש
+router.delete('/:id', protect, ctrl.deleteCommemoration);
+
+module.exports = router;
+</file>
+
+<file path="client/src/services/announcementsService.js">
+import { fetchAnnouncements, createAnnouncement, updateAnnouncement, deleteAnnouncement } from './api';
+
+export const getAnnouncements = async () => {
+  const res = await fetchAnnouncements();
+  return res.data; // [{ _id, title, content, date }, ...]
+};
+
+export const saveAnnouncement = async (announcement) => {
+  if (announcement._id) {
+    const res = await updateAnnouncement(announcement._id, announcement);
+    return res.data;
+  }
+  const res = await createAnnouncement(announcement);
+  return res.data;
+};
+
+export const removeAnnouncement = async (id) => {
+  await deleteAnnouncement(id);
+};
+</file>
+
+<file path="client/src/constants/routes.js">
+//client\src\constants\routes.js
+export const ROUTES = {
+  HOME:         '/',
+  // PRAYERS:      '/prayers',
+  // ANNOUNCEMENTS:'/announcements',
+  CONTACT:      '/contact',
+  ADMIN:        '/admin',
+  LOGIN:        '/login',
+  REGISTER:     '/register',
+  HEBCAL:       '/hebcal',
+  PAYMENTS:     '/payments',   
+  COMMEMORATIONS: '/commemorations',
+
+  PORTAL:          '/portal',
+  PORTAL_CATEGORY: '/portal/:categoryId',
+  PORTAL_ITEM:     '/portal/item/:itemId',
+};
+
+export const NAVIGATION_ITEMS = [
+  { path: ROUTES.HOME,          label: 'דף הבית' },
+  // { path: ROUTES.PRAYERS,       label: 'תפילות' },
+  // { path: ROUTES.ANNOUNCEMENTS, label: 'הודעות' },
+  { path: ROUTES.CONTACT,       label: 'צור קשר' },
+  { path: ROUTES.PAYMENTS,      label: 'תשלומים' },
+  { path: ROUTES.PORTAL,        label: ' הקדשות' }, // ← זה הלינק למערכת החדשה
+  { path: ROUTES.COMMEMORATIONS, label: 'הנצחות' }, // ← חדש
+];
+</file>
+
+<file path="client/src/components/common/Header.jsx">
+// components/common/Header.jsx
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { NAVIGATION_ITEMS, ROUTES } from '../../constants/routes';
+import { useAuth } from '../context/authContext';
+
+function GoldParticles() {
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+      {[...Array(8)].map((_, i) => (
+        <div
+          key={i}
+          className="absolute rounded-full bg-[#cfa756] opacity-20"
+          style={{
+            width: `${Math.random() * 3 + 1}px`,
+            height: `${Math.random() * 3 + 1}px`,
+            left: `${10 + i * 11}%`,
+            top: `${20 + (i % 3) * 30}%`,
+            animation: `floatParticle ${3 + i * 0.4}s ease-in-out infinite`,
+            animationDelay: `${i * 0.3}s`,
+          }}
+        />
+      ))}
+    </div>
+  );
 }
 
-export default Login;
+function Header() {
+  const { user, isAuthenticated, isAdmin, logout } = useAuth();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const [underlineStyle, setUnderlineStyle] = useState({ left: 0, width: 0, opacity: 0 });
+  const [crownLeft, setCrownLeft] = useState(0);
+  const navRef = useRef(null);
+  const location = useLocation();
+
+  // בנה רשימת לינקי ניווט כולל אדמין
+  const navItems = useMemo(() => {
+    const items = [...NAVIGATION_ITEMS];
+    if (isAuthenticated && isAdmin()) items.push({ path: ROUTES.ADMIN, label: 'ניהול' });
+    return items;
+  }, [isAuthenticated, isAdmin]);
+
+  // סגור מובייל מנו בניווט
+  useEffect(() => {
+    setIsMenuOpen(false);
+  }, [location.pathname]);
+
+  // scroll listener
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // הזזת underline לכפתור הפעיל
+  const moveUnderline = useCallback((path) => {
+    const btn = navRef.current?.querySelector(`[data-path="${path}"]`);
+    if (btn) {
+      const centerLeft = btn.offsetLeft + btn.offsetWidth / 2 - 7;
+      setUnderlineStyle({ left: btn.offsetLeft, width: btn.offsetWidth, opacity: 1 });
+      setCrownLeft(centerLeft);
+    }
+  }, []);
+
+  // מיקום ראשוני
+  useEffect(() => {
+    moveUnderline(location.pathname);
+  }, [location.pathname, navItems]);
+
+  // resize
+  useEffect(() => {
+    const handleResize = () => moveUnderline(location.pathname);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [location.pathname, moveUnderline]);
+
+  const toggleMenu = useCallback(() => setIsMenuOpen((prev) => !prev), []);
+
+  const AuthButtons = useMemo(() => {
+    if (isAuthenticated) {
+      return (
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-[#cfa756]/30 bg-[#cfa756]/5">
+            <div className="w-2 h-2 rounded-full bg-[#cfa756] animate-pulse" />
+            <span className="text-[16px] font-semibold text-[#f7f4e9]/90">
+              {user?.name || 'משתמש'}
+            </span>
+          </div>
+          <button
+            onClick={logout}
+            className="px-4 py-1.5 rounded-full border border-[#a61b1b]/60 bg-[#a61b1b]/10 text-[#f7f4e9]/80 text-[16px] hover:bg-[#a61b1b] hover:text-white transition"
+          >
+            התנתק
+          </button>
+        </div>
+      );
+    }
+    return (
+      <div className="flex items-center gap-3">
+        <Link
+          to={ROUTES.LOGIN}
+          className="px-4 py-1.5 rounded-full border border-[#cfa756]/50 text-[#cfa756] text-[16px] font-semibold hover:bg-[#cfa756]/10 transition"
+        >
+          התחבר
+        </Link>
+        <Link
+          to={ROUTES.REGISTER}
+          className="px-5 py-1.5 rounded-full bg-gradient-to-r from-[#cfa756] to-[#b8860b] text-[#0d2340] text-[16px] font-bold hover:scale-105 transition"
+        >
+          הירשם
+        </Link>
+      </div>
+    );
+  }, [isAuthenticated, user?.name, logout]);
+
+  return (
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&display=swap');
+
+        .header-font {
+          font-family: 'Assistant', sans-serif;
+          font-weight: 600;
+        }
+
+        @keyframes floatParticle {
+          0%,100% { transform: translateY(0); }
+          50%      { transform: translateY(-8px); }
+        }
+
+        @keyframes crownGlow {
+          0%,100% { filter: drop-shadow(0 0 2px rgba(207,167,86,0.5)) drop-shadow(0 0 6px rgba(207,167,86,0.25)); }
+          50%      { filter: drop-shadow(0 0 5px rgba(247,217,138,0.95)) drop-shadow(0 0 12px rgba(207,167,86,0.5)); }
+        }
+
+        .crown-icon {
+          animation: crownGlow 2.2s ease-in-out infinite;
+          display: block;
+        }
+
+        @keyframes mobileMenuIn {
+          from { opacity: 0; transform: translateY(-8px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes mobileLinkIn {
+          from { opacity: 0; transform: translateX(12px); }
+          to   { opacity: 1; transform: translateX(0); }
+        }
+
+       .glass-dark {
+  background: rgba(22, 38, 65, 0.95);
+  backdrop-filter: blur(20px);
+  border-bottom: 3px solid #cfa756;
+}
+
+        .mobile-menu-enter {
+          animation: mobileMenuIn 0.22s cubic-bezier(.4,0,.2,1) both;
+        }
+
+        .mobile-link-enter {
+          animation: mobileLinkIn 0.2s cubic-bezier(.4,0,.2,1) both;
+        }
+      `}</style>
+
+      <header
+        className="header-font fixed top-0 left-0 right-0 z-50 glass-dark"
+        style={{ direction: 'rtl' }}
+      >
+        <GoldParticles />
+
+        <div className="container mx-auto px-6 py-3">
+          <div className="flex items-center justify-between">
+
+            {/* Logo */}
+            <Link to={ROUTES.HOME}>
+              <img src="/logo.png" className="h-16" alt="לוגו" />
+            </Link>
+
+            {/* Desktop Nav */}
+            <nav
+              ref={navRef}
+              className="hidden lg:flex items-center justify-center flex-1 gap-10 relative"
+            >
+              {navItems.map(({ path, label }, i) => (
+                <Link
+                  key={path}
+                  to={path}
+                  data-path={path}
+                  className={`relative text-[18px] tracking-widest uppercase font-bold transition-colors duration-200 pb-2 ${location.pathname === path
+                      ? 'text-[#cfa756]'
+                      : 'text-[#f7f4e9]/80 hover:text-[#cfa756]'
+                    }`}
+                  style={{ animationDelay: `${i * 80}ms` }}
+                >
+                  {label}
+                </Link>
+              ))}
+
+              {/* underline נע */}
+              <span
+                className="absolute bottom-0 h-px bg-gradient-to-r from-[#cfa756] to-[#f7d98a] pointer-events-none"
+                style={{
+                  left: underlineStyle.left,
+                  width: underlineStyle.width,
+                  opacity: underlineStyle.opacity,
+                  transition: 'left 0.28s cubic-bezier(.4,0,.2,1), width 0.28s cubic-bezier(.4,0,.2,1), opacity 0.2s',
+                }}
+              />
+
+              {/* כתר נע — אחד שנע מעל הלינק הפעיל */}
+              <span
+                className="absolute pointer-events-none"
+                style={{
+                  top: '-18px',
+                  left: crownLeft,
+                  opacity: underlineStyle.opacity,
+                  transition: 'left 0.28s cubic-bezier(.4,0,.2,1), opacity 0.2s',
+                }}
+              >
+                <svg className="crown-icon" width="14" height="11" viewBox="0 0 20 16" xmlns="http://www.w3.org/2000/svg">
+                  <defs>
+                    <linearGradient id="crownGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" stopColor="#ffe9a0">
+                        <animate attributeName="stop-color" values="#ffe9a0;#f7d98a;#cfa756;#f7d98a;#ffe9a0" dur="2.2s" repeatCount="indefinite" />
+                      </stop>
+                      <stop offset="100%" stopColor="#b8860b">
+                        <animate attributeName="stop-color" values="#b8860b;#cfa756;#f7d98a;#cfa756;#b8860b" dur="2.2s" repeatCount="indefinite" />
+                      </stop>
+                    </linearGradient>
+                  </defs>
+                  <polygon points="1,14 1,7 5,11 10,2 15,11 19,7 19,14" fill="url(#crownGrad)" stroke="#b8860b" strokeWidth="0.6" strokeLinejoin="round" />
+                  <rect x="1" y="13" width="18" height="2.5" rx="1" fill="url(#crownGrad)" stroke="#b8860b" strokeWidth="0.5" />
+                  <circle cx="10" cy="2.5" r="1.2" fill="#fff8e0" />
+                  <circle cx="1.2" cy="7.2" r="1" fill="#fff8e0" />
+                  <circle cx="18.8" cy="7.2" r="1" fill="#fff8e0" />
+                </svg>
+              </span>
+            </nav>
+
+            {/* Auth */}
+            <div className="hidden lg:flex items-center">
+              {AuthButtons}
+            </div>
+
+            {/* Mobile burger */}
+            <button
+              onClick={toggleMenu}
+              className="lg:hidden text-[#cfa756] text-2xl focus:outline-none"
+              aria-label={isMenuOpen ? 'סגור תפריט' : 'פתח תפריט'}
+            >
+              {isMenuOpen ? '✕' : '☰'}
+            </button>
+          </div>
+
+          {/* Mobile menu */}
+          {isMenuOpen && (
+            <div className="mobile-menu-enter lg:hidden mt-4 pb-4 flex flex-col border-t border-[#cfa756]/20">
+              {navItems.map(({ path, label }, i) => (
+                <Link
+                  key={path}
+                  to={path}
+                  onClick={() => setIsMenuOpen(false)}
+                  className={`mobile-link-enter px-2 py-3 text-[17px] font-bold tracking-wide border-b border-[#cfa756]/10 transition-colors ${location.pathname === path
+                      ? 'text-[#cfa756]'
+                      : 'text-[#f7f4e9]/80 hover:text-[#cfa756]'
+                    }`}
+                  style={{ animationDelay: `${i * 50}ms` }}
+                >
+                  {location.pathname === path && (
+                    <span className="inline-block ml-2 mb-0.5 align-middle">
+                      <svg className="crown-icon" width="12" height="9" viewBox="0 0 20 16" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                          <linearGradient id="crownGradMobile" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" stopColor="#ffe9a0">
+                              <animate attributeName="stop-color" values="#ffe9a0;#f7d98a;#cfa756;#f7d98a;#ffe9a0" dur="2.2s" repeatCount="indefinite" />
+                            </stop>
+                            <stop offset="100%" stopColor="#b8860b">
+                              <animate attributeName="stop-color" values="#b8860b;#cfa756;#f7d98a;#cfa756;#b8860b" dur="2.2s" repeatCount="indefinite" />
+                            </stop>
+                          </linearGradient>
+                        </defs>
+                        <polygon points="1,14 1,7 5,11 10,2 15,11 19,7 19,14" fill="url(#crownGradMobile)" stroke="#b8860b" strokeWidth="0.6" strokeLinejoin="round" />
+                        <rect x="1" y="13" width="18" height="2.5" rx="1" fill="url(#crownGradMobile)" stroke="#b8860b" strokeWidth="0.5" />
+                        <circle cx="10" cy="2.5" r="1.2" fill="#fff8e0" />
+                        <circle cx="1.2" cy="7.2" r="1" fill="#fff8e0" />
+                        <circle cx="18.8" cy="7.2" r="1" fill="#fff8e0" />
+                      </svg>
+                    </span>
+                  )}
+                  {label}
+                </Link>
+              ))}
+
+              {/* Auth במובייל */}
+              <div
+                className="mobile-link-enter mt-4 flex flex-col gap-2"
+                style={{ animationDelay: `${navItems.length * 50}ms` }}
+              >
+                {AuthButtons}
+              </div>
+            </div>
+          )}
+        </div>
+      </header>
+
+      <div className="h-[72px]" />
+    </>
+  );
+}
+
+export default Header;
 </file>
 
 <file path="server/server.js">
@@ -623,94 +1597,82 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 </file>
 
-<file path="client/src/services/api.js">
-// api.js
-import axios from 'axios';
-import { API_URL } from '../config';
+<file path="client/src/App.jsx">
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { useEffect, useRef } from 'react';
 
-const API = axios.create({
-  baseURL: `${API_URL}/api`,
-});
+import Header from './components/common/Header';
+import Home from './pages/Home';
+import Prayers from './pages/Prayers';
+import Announcements from './pages/Announcements';
+import Commemorations from './pages/Commemorations';
+import Contact from './pages/Contact';
+import Admin from './pages/Admin';
+import Login from './components/auth/Login';
+import Register from './components/auth/Register';
+import Footer from './components/common/Footer';
+import HalachicTimes from './components/HalachicTimes';
+import { ROUTES } from './constants/routes';
+import Payments from './pages/Payments';
+import PortalItem from './pages/PortalItem';
+import PortalCategory from './pages/PortalCategory';
+import Portal from './pages/Portal';
 
-API.interceptors.request.use((req) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    req.headers.Authorization = `Bearer ${token}`;
+const tabInStyle = `
+  @keyframes tabIn {
+    from { opacity: 0; transform: translateY(3px); }
+    to   { opacity: 1; transform: translateY(0); }
   }
-  return req;
-});
+`;
 
-// ── אימות ────────────────────────────────────────────────────────────────────
-export const login    = (credentials) => API.post('/auth/login', credentials);
-export const register = (userData)    => API.post('/auth/register', userData);
+function AnimatedRoutes() {
+  const location = useLocation();
+  const mainRef = useRef(null);
 
-// ── מודעות ────────────────────────────────────────────────────────────────────
-export const fetchAnnouncements = ()           => API.get('/announcements');
-export const createAnnouncement = (data)       => API.post('/announcements', data);
-export const updateAnnouncement = (id, data)   => API.put(`/announcements/${id}`, data);
-export const deleteAnnouncement = (id) => API.delete(`/announcements/${id}`);
-// ── תפילות ────────────────────────────────────────────────────────────────────
-export const fetchPrayers  = ()        => API.get('/prayers');
-export const createPrayer  = (data)    => API.post('/prayers', data);
-export const updatePrayers = (prayers) => API.put('/prayers', { prayers });
-
-// ── יצירת קשר ────────────────────────────────────────────────────────────────
-export const sendContactMessage           = (data)           => API.post('/contact', data);
-export const fetchContactMessages         = ()               => API.get('/contact');
-export const updateContactMessageHandled  = async (id, handled) => {
-  const payload = { handled };
-  try {
-    return await API.patch(`/contact/${id}/handled`, payload);
-  } catch (error) {
-    const status = error?.response?.status;
-    if (status === 404 || status === 405) {
-      try {
-        return await API.patch(`/contact/${id}`, payload);
-      } catch (secondError) {
-        const secondStatus = secondError?.response?.status;
-        if (secondStatus === 404 || secondStatus === 405) {
-          return API.put(`/contact/${id}/handled`, payload);
-        }
-        throw secondError;
-      }
+  useEffect(() => {
+    if (mainRef.current) {
+      mainRef.current.style.animation = 'none';
+      mainRef.current.offsetHeight; // reflow
+      mainRef.current.style.animation = 'tabIn 0.8s ease forwards';
     }
-    throw error;
-  }
-};
+  }, [location.pathname]);
 
-// ── תשלומים ───────────────────────────────────────────────────────────────────
+  return (
+    <main ref={mainRef} className="flex-1 p-4">
+      <Routes location={location}>
+        <Route path={ROUTES.HOME} element={<Home />} />
+        <Route path={ROUTES.PRAYERS} element={<Prayers />} />
+        <Route path={ROUTES.ANNOUNCEMENTS} element={<Announcements />} />
+        <Route path={ROUTES.COMMEMORATIONS} element={<Commemorations />} />
+        <Route path={ROUTES.CONTACT} element={<Contact />} />
+        <Route path={`${ROUTES.ADMIN}/*`} element={<Admin />} />
+        <Route path={ROUTES.LOGIN} element={<Login />} />
+        <Route path={ROUTES.REGISTER} element={<Register />} />
+        <Route path={ROUTES.HEBCAL} element={<HalachicTimes />} />
+        <Route path={ROUTES.PAYMENTS} element={<Payments />} />
+        <Route path="/portal/item/:itemId" element={<PortalItem />} />
+        <Route path="/portal/:categoryId" element={<PortalCategory />} />
+        <Route path={ROUTES.PORTAL} element={<Portal />} />
+        <Route path="*" element={<div className="text-center text-xl">hamud lo nimtsa ein lecha ma lechapes po</div>} />
+      </Routes>
+    </main>
+  );
+}
 
-/** משתמש רגיל */
-export const fetchMyPayments        = ()               => API.get('/payments/me');
-export const addMyDebt              = (data)           => API.post('/payments/me/debts', data);
-export const markMyDebtPaid         = (debtId, isPaid) => API.patch(`/payments/me/debts/${debtId}`, { isPaid });
-export const setMyStandingOrder     = (data)           => API.post('/payments/me/standing-order', data);
-export const cancelMyStandingOrder  = ()               => API.delete('/payments/me/standing-order');
-export const addMyDonation          = (data)           => API.post('/payments/me/donations', data);
+function App() {
+  return (
+    <Router>
+      <style>{tabInStyle}</style>
+      <div className="flex flex-col min-h-screen">
+        <Header />
+        <AnimatedRoutes />
+        <Footer />
+      </div>
+    </Router>
+  );
+}
 
-/** אדמין */
-export const fetchAllPayments        = ()                    => API.get('/payments');
-export const fetchUserPayments       = (userId)              => API.get(`/payments/${userId}`);
-export const addUserDebt             = (userId, data)        => API.post(`/payments/${userId}/debts`, data);
-export const markUserDebtPaid        = (userId, debtId, isPaid) => API.patch(`/payments/${userId}/debts/${debtId}`, { isPaid });
-export const deleteUserDebt          = (userId, debtId)      => API.delete(`/payments/${userId}/debts/${debtId}`);
-export const setUserStandingOrder    = (userId, data)        => API.post(`/payments/${userId}/standing-order`, data);
-export const cancelUserStandingOrder = (userId)              => API.delete(`/payments/${userId}/standing-order`);
-export const addUserDonation         = (userId, data)        => API.post(`/payments/${userId}/donations`, data);
-export const deleteUserDonation      = (userId, donationId)  => API.delete(`/payments/${userId}/donations/${donationId}`);
-export const updateUserNotes         = (userId, notes)       => API.patch(`/payments/${userId}/notes`, { notes });
-
-// ── משתמשים ───────────────────────────────────────────────────────────────────
-export const fetchAllUsers = () => API.get('/users');
-
-// ── הנצחות ────────────────────────────────────────────────────────────────────
-export const fetchCommemorations   = ()           => API.get('/commemorations');
-export const fetchCommemorationById = (id)        => API.get(`/commemorations/${id}`);
-export const createCommemoration   = (data)       => API.post('/commemorations', data);
-export const updateCommemoration   = (id, data)   => API.put(`/commemorations/${id}`, data);
-export const deleteCommemoration   = (id)         => API.delete(`/commemorations/${id}`);
-export const updateCommemorationStatus = (id, status) =>  // ← חדש
-  API.patch(`/commemorations/${id}/status`, { commemorationStatus: status });
+export default App;
 </file>
 
 </files>
