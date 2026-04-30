@@ -14,6 +14,7 @@
     "@hebcal/core": "^5.9.7",
     "@react-oauth/google": "^0.13.5",
     "axios": "^1.7.2",
+    "framer-motion": "^12.38.0",
     "kosher-zmanim": "^0.9.0",
     "lucide-react": "^1.11.0",
     "react": "^18.3.1",
