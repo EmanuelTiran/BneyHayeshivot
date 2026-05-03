@@ -8,8 +8,7 @@ const  protect  = require('../middleware/authMiddleware');
 
 // שליפת תפילות - פתוח לכולם
 router.get('/', ctrl.getPrayers);
-console.log("Checking protect middleware:", protect);
-console.log("Checking controller function:", ctrl.replacePrayers);
+
 // עדכון כל התפילות - דורש הגנה (Token/Admin)
 router.put('/', protect, ctrl.replacePrayers);
 

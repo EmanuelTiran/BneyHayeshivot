@@ -1,6 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { useEffect, useRef } from 'react';
-
+import { AuthProvider } from './components/context/authContext';
 import Header from './components/common/Header';
 import Home from './pages/Home';
 import Prayers from './pages/Prayers';
@@ -64,12 +64,14 @@ function AnimatedRoutes() {
 function App() {
   return (
     <Router>
-      <style>{tabInStyle}</style>
-      <div className="flex flex-col min-h-screen">
-        <Header />
-        <AnimatedRoutes />
-        <Footer />
-      </div>
+      <AuthProvider>
+        <style>{tabInStyle}</style>
+        <div className="flex flex-col min-h-screen">
+          <Header />
+          <AnimatedRoutes />
+          <Footer />
+        </div>
+      </AuthProvider>
     </Router>
   );
 }

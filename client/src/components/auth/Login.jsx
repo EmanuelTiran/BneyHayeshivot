@@ -1,19 +1,27 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../context/authContext';
 import { API_URL } from '../../config';
 
 function Login() {
   const [formData, setFormData] = useState({ email: '', password: '' });
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
-  const { login, googleLogin } = useAuth();
+  const [error,    setError]    = useState('');
+  const [loading,  setLoading]  = useState(false);
 
-  const handleChange = (e) => {
+  const navigate       = useNavigate();
+  const [searchParams] = useSearchParams();
+  const { login, googleLogin, sessionExpiredMsg } = useAuth();
+
+  // הודעה מה-URL או מה-context
+  const expiredMsg =
+    sessionExpiredMsg ||
+    (searchParams.get('reason') === 'session_expired'
+      ? 'פג תוקף החיבור שלך. אנא התחבר מחדש.'
+      : '');
+
+  const handleChange = (e) =>
     setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -21,9 +29,10 @@ function Login() {
     setLoading(true);
     try {
       const response = await fetch(`${API_URL}/api/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        method:      'POST',
+        headers:     { 'Content-Type': 'application/json' },
+        credentials: 'include', // ← קבל את ה-cookie
+        body:        JSON.stringify(formData),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || 'שגיאה בהתחברות');
@@ -36,7 +45,6 @@ function Login() {
     }
   };
 
-  // הצלחה מגוגל
   const handleGoogleSuccess = async (credentialResponse) => {
     setError('');
     try {
@@ -47,14 +55,10 @@ function Login() {
     }
   };
 
-  const handleGoogleError = () => {
-    setError('התחברות עם גוגל נכשלה, נסה שנית');
-  };
-
-  const inputClass = (hasError) => `
+  const inputClass = `
     w-full px-3 py-2.5 border rounded-lg focus:outline-none focus:ring-2 
     focus:ring-[#cfa756] text-right transition-all
-    ${hasError ? 'border-red-300 bg-red-50' : 'border-gray-200 focus:border-[#cfa756]'}
+    border-gray-200 focus:border-[#cfa756]
   `;
 
   return (
@@ -64,6 +68,15 @@ function Login() {
         התחברות
       </h2>
 
+      {/* הודעת פקיעת session */}
+      {expiredMsg && (
+        <div className="mb-5 rounded-lg px-4 py-3 text-sm font-medium bg-amber-50 border border-amber-300 text-amber-800 flex items-center gap-2">
+          <span>⏱</span>
+          <span>{expiredMsg}</span>
+        </div>
+      )}
+
+      {/* שגיאת טופס רגילה */}
       {error && (
         <div className="mb-5 rounded-lg px-4 py-3 text-sm font-medium bg-red-50 border border-red-200 text-red-700">
           {error}
@@ -71,12 +84,11 @@ function Login() {
       )}
 
       <div className="bg-white rounded-2xl shadow-md p-6 space-y-5 border border-gray-100">
-        
-        {/* ── כפתור גוגל ── */}
+
         <div className="flex justify-center">
           <GoogleLogin
             onSuccess={handleGoogleSuccess}
-            onError={handleGoogleError}
+            onError={() => setError('התחברות עם גוגל נכשלה, נסה שנית')}
             text="signin_with"
             shape="rectangular"
             locale="he"
@@ -84,33 +96,29 @@ function Login() {
           />
         </div>
 
-        {/* ── מפריד ── */}
         <div className="flex items-center gap-3 text-gray-400 text-sm">
           <div className="flex-1 h-px bg-gray-200" />
           <span>או התחבר עם מייל</span>
           <div className="flex-1 h-px bg-gray-200" />
         </div>
 
-        {/* ── טופס רגיל ── */}
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-1.5">
             <label htmlFor="email" className="block text-sm font-medium text-gray-700">דוא"ל</label>
             <input
               type="email" id="email" name="email"
               value={formData.email} onChange={handleChange} required
-              className={inputClass(error)}
+              className={inputClass}
             />
           </div>
-
           <div className="space-y-1.5">
             <label htmlFor="password" className="block text-sm font-medium text-gray-700">סיסמה</label>
             <input
               type="password" id="password" name="password"
               value={formData.password} onChange={handleChange} required
-              className={inputClass(error)}
+              className={inputClass}
             />
           </div>
-
           <button
             type="submit" disabled={loading}
             className="w-full bg-[#cfa756] hover:bg-[#b8860b] disabled:opacity-50 text-[#0d2340] font-bold px-6 py-2.5 rounded-lg transition-colors shadow-sm mt-2"

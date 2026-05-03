@@ -13,6 +13,10 @@ const userSchema = new mongoose.Schema({
     type: String, 
     default: null 
   },
+  refreshToken: {
+    type:    String,
+    default: null,
+  },
   role: { type: String, enum: ['admin', 'gabbai', 'member'], default: 'member' },
   phone: { type: String, trim: true, default: '' },
   createdAt: { type: Date, default: Date.now },

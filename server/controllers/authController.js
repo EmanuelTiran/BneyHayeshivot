@@ -1,33 +1,77 @@
 const authService = require('../services/authService');
 
-exports.register = async (req, res, next) => {
+exports.register = async (req, res) => {
   try {
-    const newUser = await authService.register(req.body);
-    res.status(201).json({ user: newUser });
+    const user = await authService.register(req.body);
+    res.status(201).json({ message: 'נרשמת בהצלחה', user });
   } catch (err) {
-    next(err);
+    res.status(400).json({ message: err.message });
   }
 };
 
-exports.login = async (req, res, next) => {
+exports.login = async (req, res) => {
   try {
-    const data = await authService.login(req.body);
-    res.json(data);
+    const { token, refreshToken, user } = await authService.login(req.body);
+
+    // Refresh token ב-httpOnly cookie (הכי בטוח)
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure:   process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge:   7 * 24 * 60 * 60 * 1000, // 7 ימים
+    });
+
+    res.json({ token, user });
   } catch (err) {
-    res.status(401).json({ error: 'אימייל או סיסמה שגויים' });
+    res.status(401).json({ message: err.message });
   }
 };
 
-exports.googleLogin = async (req, res, next) => {
+exports.googleLogin = async (req, res) => {
   try {
-    const { credential } = req.body; // ה-ID Token שגוגל שולח
-    if (!credential) {
-      return res.status(400).json({ error: 'לא התקבל token מגוגל' });
-    }
-    const data = await authService.googleLogin(credential);
-    res.json(data);
+    const { credential } = req.body;
+    const { token, refreshToken, user } = await authService.googleLogin(credential);
+
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure:   process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge:   7 * 24 * 60 * 60 * 1000,
+    });
+
+    res.json({ token, user });
   } catch (err) {
-    console.error('Google login error:', err.message);
-    res.status(401).json({ error: 'התחברות עם גוגל נכשלה' });
+    res.status(401).json({ error: err.message });
+  }
+};
+
+// ← חדש: רענון טוקן
+exports.refresh = async (req, res) => {
+  try {
+    const incomingToken = req.cookies?.refreshToken;
+    const { token, refreshToken } = await authService.refreshToken(incomingToken);
+
+    // החלף את ה-cookie (rotation)
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure:   process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge:   7 * 24 * 60 * 60 * 1000,
+    });
+
+    res.json({ token });
+  } catch (err) {
+    res.status(401).json({ message: 'SESSION_EXPIRED', detail: err.message });
+  }
+};
+
+// ← חדש: התנתקות
+exports.logout = async (req, res) => {
+  try {
+    await authService.logout(req.user.userId);
+    res.clearCookie('refreshToken');
+    res.json({ message: 'התנתקת בהצלחה' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 };
