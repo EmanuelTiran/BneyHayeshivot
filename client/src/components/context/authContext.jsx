@@ -50,7 +50,7 @@ export const AuthProvider = ({ children }) => {
     const response = await fetch(`${API_URL}/api/auth/google`, {
       method:      'POST',
       headers:     { 'Content-Type': 'application/json' },
-      credentials: 'include', // ← חובה לקבלת ה-cookie
+      credentials: 'include', // ← חובה!
       body:        JSON.stringify({ credential }),
     });
 

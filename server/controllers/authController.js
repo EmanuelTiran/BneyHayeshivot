@@ -16,9 +16,9 @@ exports.login = async (req, res) => {
     // Refresh token ב-httpOnly cookie (הכי בטוח)
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
-      secure:   process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge:   7 * 24 * 60 * 60 * 1000, // 7 ימים
+      secure:   true,           // ← תמיד true ב-Render (HTTPS)
+      sameSite: 'none',         // ← חובה לcross-origin! (במקום 'strict')
+      maxAge:   7 * 24 * 60 * 60 * 1000,
     });
 
     res.json({ token, user });

@@ -9,13 +9,24 @@ require('dotenv').config();
 const app = express();
 connectDB();
 
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'https://bneyhayeshivot-1.onrender.com',
+  process.env.CLIENT_URL,
+].filter(Boolean); // מסנן undefined/null
+
 app.use(cors({
-  origin: [
-    'http://localhost:3000',
-    'http://localhost:5173',
-    'https://bneyhayeshivot-1.onrender.com'
-  ],
-  credentials: true
+  origin: (origin, callback) => {
+    // מאפשר בקשות ללא origin (כמו Postman) ו-origins מהרשימה
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error(`CORS blocked: ${origin}`));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
 }));
 
 app.use(
