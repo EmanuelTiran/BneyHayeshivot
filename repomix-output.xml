@@ -32,7 +32,7 @@ The content is organized as follows:
 <notes>
 - Some files may have been excluded based on .gitignore rules and Repomix's configuration
 - Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
-- Only files matching these patterns are included: server/services/*.js, server/routes/auth.js, client/src/components/auth/Login.jsx, client/src/services/api.js, client/src/components/context/authContext.jsx, server/src/insertUsers.js
+- Only files matching these patterns are included: server/models/Prayer.js, server/controllers/prayerController.js, server/routes/prayers.js, server/services/prayerService.js, client/src/services/prayersService.js, client/src/components/ContactAndPrayerTimes/ContactAndPrayerTimes.jsx
 - Files matching patterns in .gitignore are excluded
 - Files matching default ignore patterns are excluded
 - Files are sorted by Git change count (files with more changes are at the bottom)
@@ -41,792 +41,101 @@ The content is organized as follows:
 </file_summary>
 
 <directory_structure>
-client/src/components/auth/Login.jsx
-client/src/components/context/authContext.jsx
-client/src/services/api.js
-server/routes/auth.js
-server/services/announcementService.js
-server/services/authService.js
-server/services/categoryService.js
-server/services/commemorationService.js
-server/services/contactService.js
-server/services/galleryService.js
-server/services/paymentService.js
-server/services/portalItemService.js
+client/src/components/ContactAndPrayerTimes/ContactAndPrayerTimes.jsx
+client/src/services/prayersService.js
+server/controllers/prayerController.js
+server/models/Prayer.js
+server/routes/prayers.js
 server/services/prayerService.js
-server/services/sponsorshipService.js
-server/services/userServices.js
-server/src/insertUsers.js
 </directory_structure>
 
 <files>
 This section contains the contents of the repository's files.
 
-<file path="server/services/categoryService.js">
-const Category = require('../models/Category');
+<file path="client/src/services/prayersService.js">
+import { fetchPrayers, updatePrayers } from './api';
 
-const getAll  = ()         => Category.find().sort({ order: 1, createdAt: 1 });
-const getById = (id)       => Category.findById(id);
-const create  = (data)     => Category.create(data);
-const update  = (id, data) => Category.findByIdAndUpdate(id, data, { new: true });
-const remove  = (id)       => Category.findByIdAndDelete(id);
-
-module.exports = { getAll, getById, create, update, remove };
-</file>
-
-<file path="server/services/commemorationService.js">
-const Commemoration = require('../models/Commemoration');
-
-/**
- * מחזיר את כל ההנצחות, מסודרות מהחדשה לישנה
- */
-exports.getAllCommemorations = async () => {
-  return Commemoration.find().sort({ date: -1 });
+export const getPrayers = async () => {
+  const res = await fetchPrayers();
+  return res.data; // [{_id, title, time}, ...]
 };
 
-/**
- * יוצר הנצחה חדשה
- * @param {Object} data - הנתונים של ההנצחה החדשה
- */
-exports.createCommemoration = async (data) => {
-  const commemoration = new Commemoration(data);
-  return commemoration.save();
-};
-
-/**
- * מעדכן הנצחה קיימת לפי מזהה
- * @param {string} id - מזהה ההנצחה
- * @param {Object} data - הנתונים המעודכנים
- */
-exports.updateCommemoration = async (id, data) => {
-  return Commemoration.findByIdAndUpdate(id, data, {
-    new: true,
-    runValidators: true,
-  });
-};
-
-/**
- * מוחק הנצחה לפי מזהה
- * @param {string} id - מזהה ההנצחה
- */
-exports.deleteCommemoration = async (id) => {
-  return Commemoration.findByIdAndDelete(id);
-};
-
-/**
- * מחזיר הנצחה בודדת לפי מזהה
- * @param {string} id - מזהה ההנצחה
- */
-exports.getCommemorationById = async (id) => {
-  return Commemoration.findById(id);
+// Send the full edited list back to the server
+export const savePrayers = async (prayers) => {
+  const res = await updatePrayers(prayers);
+  return res.data;
 };
 </file>
 
-<file path="server/services/galleryService.js">
-const GalleryImage = require('../models/GalleryImage');
+<file path="server/models/Prayer.js">
+const mongoose = require('mongoose');
 
-exports.getAllImages = async () =>
-  GalleryImage.find().sort({ order: 1, createdAt: 1 });
-
-exports.createImage = async (data) => {
-  const image = new GalleryImage(data);
-  return image.save();
-};
-
-exports.updateImage = async (id, data) =>
-  GalleryImage.findByIdAndUpdate(id, data, { new: true });
-
-exports.deleteImage = async (id) =>
-  GalleryImage.findByIdAndDelete(id);
-</file>
-
-<file path="server/services/paymentService.js">
-const Payment = require('../models/Payment');
-
-// ── קריאה ────────────────────────────────────────────────────────────────────
-
-/** מחזיר את רשומת התשלום של משתמש (יוצר אם לא קיימת) */
-const getOrCreateByUser = async (userId) => {
-  let record = await Payment.findOne({ user: userId }).populate('user', 'name email');
-  if (!record) {
-    record = await Payment.create({ user: userId });
-    record = await record.populate('user', 'name email');
-  }
-  return record;
-};
-
-/** מחזיר את כל רשומות התשלום – לאדמין בלבד */
-const getAllPayments = async () => {
-  return Payment.find().populate('user', 'name email phone').sort({ updatedAt: -1 });
-};
-
-// ── חובות ────────────────────────────────────────────────────────────────────
-
-const addDebt = async (userId, debtData) => {
-  const record = await getOrCreateByUser(userId);
-  record.debts.push(debtData);
-  return record.save();
-};
-
-const markDebtPaid = async (userId, debtId, isPaid) => {
-  const record = await getOrCreateByUser(userId);
-  const debt = record.debts.id(debtId);
-  if (!debt) throw new Error('חוב לא נמצא');
-  debt.isPaid = isPaid;
-  debt.paidAt = isPaid ? new Date() : null;
-  return record.save();
-};
-
-const deleteDebt = async (userId, debtId) => {
-  const record = await getOrCreateByUser(userId);
-  record.debts.pull(debtId);
-  return record.save();
-};
-
-// ── הוראת קבע ────────────────────────────────────────────────────────────────
-
-const setStandingOrder = async (userId, orderData) => {
-  const record = await getOrCreateByUser(userId);
-  record.standingOrder = orderData;
-  return record.save();
-};
-
-const cancelStandingOrder = async (userId) => {
-  const record = await getOrCreateByUser(userId);
-  if (record.standingOrder) {
-    record.standingOrder.isActive = false;
-  }
-  return record.save();
-};
-
-// ── תרומות ───────────────────────────────────────────────────────────────────
-
-const addDonation = async (userId, donationData) => {
-  const record = await getOrCreateByUser(userId);
-  record.donations.push(donationData);
-  return record.save();
-};
-
-const deleteDonation = async (userId, donationId) => {
-  const record = await getOrCreateByUser(userId);
-  record.donations.pull(donationId);
-  return record.save();
-};
-
-// ── הערות (אדמין) ─────────────────────────────────────────────────────────────
-
-const updateNotes = async (userId, notes) => {
-  const record = await getOrCreateByUser(userId);
-  record.notes = notes;
-  return record.save();
-};
-
-module.exports = {
-  getOrCreateByUser,
-  getAllPayments,
-  addDebt,
-  markDebtPaid,
-  deleteDebt,
-  setStandingOrder,
-  cancelStandingOrder,
-  addDonation,
-  deleteDonation,
-  updateNotes,
-};
-</file>
-
-<file path="server/services/portalItemService.js">
-const PortalItem = require('../models/PortalItem');
-
-const getAll        = ()       => PortalItem.find().sort({ order: 1, createdAt: 1 });
-const getByCategory = (catId)  => PortalItem.find({ categoryId: catId }).sort({ order: 1, createdAt: 1 });
-const getById       = (id)     => PortalItem.findById(id).populate('categoryId');
-const create        = (data)   => PortalItem.create(data);
-const update        = (id, data) => PortalItem.findByIdAndUpdate(id, data, { new: true });
-const remove        = (id)     => PortalItem.findByIdAndDelete(id);
-
-module.exports = { getAll, getByCategory, getById, create, update, remove };
-</file>
-
-<file path="server/services/sponsorshipService.js">
-const SponsorshipRequest = require('../models/SponsorshipRequest');
-const nodemailer         = require('nodemailer');
-
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
+const prayerSchema = new mongoose.Schema({
+  description: String,
+  time: String,
+  title: String, // שחרית, מנחה וכו'
 });
 
-const create = async (data, itemTitle, categoryName) => {
-  const request = await SponsorshipRequest.create(data);
-
-  const mailOptions = {
-    from:    process.env.EMAIL_USER,
-    to:      process.env.ADMIN_EMAIL,
-    subject: `🕍 בקשת הנצחה חדשה — ${categoryName} | ${itemTitle}`,
-    html: `
-      <div dir="rtl" style="font-family: Arial, sans-serif; max-width: 600px; margin: auto;
-           border: 2px solid #cfa756; border-radius: 8px; padding: 24px; background: #f7f4e9;">
-        <h2 style="color: #0d2340; border-bottom: 2px solid #cfa756; padding-bottom: 8px;">
-          בקשת הנצחה חדשה
-        </h2>
-        <table style="width:100%; border-collapse: collapse; margin-top: 16px;">
-          <tr><td style="padding:6px; font-weight:bold; color:#0d2340;">שם:</td><td>${data.name}</td></tr>
-          <tr><td style="padding:6px; font-weight:bold; color:#0d2340;">טלפון:</td><td>${data.phone}</td></tr>
-          <tr><td style="padding:6px; font-weight:bold; color:#0d2340;">אימייל:</td><td>${data.email}</td></tr>
-          <tr><td style="padding:6px; font-weight:bold; color:#0d2340;">קטגוריה:</td><td>${categoryName}</td></tr>
-          <tr><td style="padding:6px; font-weight:bold; color:#0d2340;">פריט:</td><td>${itemTitle}</td></tr>
-          <tr><td style="padding:6px; font-weight:bold; color:#0d2340;">סוג הנצחה:</td><td>${data.dedicationType}</td></tr>
-          <tr><td style="padding:6px; font-weight:bold; color:#0d2340;">שם להנצחה:</td><td>${data.dedicationName || '—'}</td></tr>
-          <tr><td style="padding:6px; font-weight:bold; color:#0d2340;">הערה לגבאי:</td><td>${data.adminNote || '—'}</td></tr>
-        </table>
-        <p style="margin-top:16px; color:#666; font-size:12px;">
-          נשלח מהאתר — ${new Date().toLocaleString('he-IL')}
-        </p>
-      </div>
-    `,
-  };
-
-  try {
-    await transporter.sendMail(mailOptions);
-  } catch (emailErr) {
-    console.error('שגיאה בשליחת אימייל:', emailErr.message);
-  }
-
-  return request;
-};
-
-const getAll       = ()           => SponsorshipRequest.find().populate('itemId categoryId').sort({ createdAt: -1 });
-const updateStatus = (id, status) => SponsorshipRequest.findByIdAndUpdate(id, { status }, { new: true });
-
-module.exports = { create, getAll, updateStatus };
+module.exports = mongoose.model('Prayer', prayerSchema);
 </file>
 
-<file path="server/services/userServices.js">
-const User = require('../models/userModel'); // Adjust the path as necessary
+<file path="server/controllers/prayerController.js">
+const prayerService = require('../services/prayerService');
 
-const userService = {
-  // Create a new user
-  createUser: async (userData) => {
+// שליפת כל התפילות
+exports.getPrayers = async (req, res) => {
     try {
-      const newUser = new User(userData);
-      return await newUser.save();
-    } catch (error) {
-      console.error('Error creating user:', error);
-      throw error;
+        const prayers = await prayerService.getAllPrayers();
+        res.json(prayers);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
     }
-  },
-
-  // Get all users
-  getAllUsers: async () => {
-    try {
-      return await User.find().populate('car');
-    } catch (error) {
-      console.error('Error fetching users:', error);
-      throw error;
-    }
-  },
-
-  // Get a single user by ID
-  getUserById: async (id) => {
-    try {
-      return await User.findById(id).populate('car');
-    } catch (error) {
-      console.error(`Error fetching user with id ${id}:`, error);
-      throw error;
-    }
-  },
-
-  // Update an existing user
-  updateUser: async (id, userData) => {
-    try {
-      return await User.findByIdAndUpdate(id, userData, { new: true }).populate('car');
-    } catch (error) {
-      console.error(`Error updating user with id ${id}:`, error);
-      throw error;
-    }
-  },
-
-  // Delete an user
-  deleteUser: async (id) => {
-    try {
-      return await User.findByIdAndDelete(id);
-    } catch (error) {
-      console.error(`Error deleting user with id ${id}:`, error);
-      throw error;
-    }
-  },
-
-  // Get users by status
-  getUsersByStatus: async (status) => {
-    try {
-      return await User.find({ status: status }).populate('car');
-    } catch (error) {
-      console.error(`Error fetching users with status ${status}:`, error);
-      throw error;
-    }
-  },
-
-  // Get users for a specific car
-  getUsersForCar: async (carId) => {
-    try {
-      return await User.find({ car: carId }).populate('car');
-    } catch (error) {
-      console.error(`Error fetching users for car ${carId}:`, error);
-      throw error;
-    }
-  },
-
-  // Get users for a specific customer (by email)
-  getUsersForCustomer: async (email) => {
-    try {
-      return await User.find({ email: email }).populate('car');
-    } catch (error) {
-      console.error(`Error fetching users for customer ${email}:`, error);
-      throw error;
-    }
-  },
-
-  // Check if a car is available for a given date range
-  checkCarAvailability: async (carId, startDate, endDate) => {
-    try {
-      const conflictingUsers = await User.find({
-        car: carId,
-        $or: [
-          { startDate: { $lte: endDate }, endDate: { $gte: startDate } },
-          { startDate: { $gte: startDate, $lte: endDate } },
-          { endDate: { $gte: startDate, $lte: endDate } }
-        ],
-        status: { $in: ['Pending', 'Confirmed'] }
-      });
-      return conflictingUsers.length === 0;
-    } catch (error) {
-      console.error(`Error checking availability for car ${carId}:`, error);
-      throw error;
-    }
-  },
-
-  // Get all users within a date range
-  getUsersInDateRange: async (startDate, endDate) => {
-    try {
-      return await User.find({
-        $or: [
-          { startDate: { $lte: endDate }, endDate: { $gte: startDate } },
-          { startDate: { $gte: startDate, $lte: endDate } },
-          { endDate: { $gte: startDate, $lte: endDate } }
-        ]
-      }).populate('car');
-    } catch (error) {
-      console.error('Error fetching users in date range:', error);
-      throw error;
-    }
-  },
-
-  // Update user status
-  updateUserStatus: async (id, status) => {
-    try {
-      return await User.findByIdAndUpdate(id, { status: status }, { new: true }).populate('car');
-    } catch (error) {
-      console.error(`Error updating status for user ${id}:`, error);
-      throw error;
-    }
-  },
-
-  // Get total revenue for a given period
-  getTotalRevenue: async (startDate, endDate) => {
-    try {
-      const users = await User.find({
-        startDate: { $gte: startDate },
-        endDate: { $lte: endDate },
-        status: 'Completed'
-      }).populate('car');
-
-      return users.reduce((total, user) => {
-        const rentalDays = (user.endDate - user.startDate) / (1000 * 60 * 60 * 24);
-        return total + (rentalDays * user.car.dailyRate);
-      }, 0);
-    } catch (error) {
-      console.error('Error calculating total revenue:', error);
-      throw error;
-    }
-  }
 };
 
-module.exports = userService;
+// עדכון כל רשימת התפילות (עבור האדמין)
+exports.replacePrayers = async (req, res) => {
+    try {
+        const { prayers } = req.body;
+        if (!Array.isArray(prayers)) {
+            return res.status(400).json({ message: 'prayers must be an array' });
+        }
+        const updated = await prayerService.replaceAllPrayers(prayers);
+        res.json(updated);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
+
+// יצירה (אם אתה עדיין צריך את זה בנפרד)
+exports.create = async (req, res) => {
+    try {
+        const saved = await prayerService.create(req.body);
+        res.status(201).json(saved);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
 </file>
 
-<file path="server/routes/auth.js">
+<file path="server/routes/prayers.js">
 const express = require('express');
 const router = express.Router();
-const authController = require('../controllers/authController');
+const ctrl = require('../controllers/prayerController');
 
-router.post('/register',      authController.register);
-router.post('/login',         authController.login);
-router.post('/google',        authController.googleLogin); // ← חדש
+// בדוק ב-middleware/authMiddleware.js איך ייצאת את protect. 
+// אם ייצאת אותו כ-module.exports = protect, אז תוריד את הסוגריים המסולסלים.
+const  protect  = require('../middleware/authMiddleware'); 
+
+// שליפת תפילות - פתוח לכולם
+router.get('/', ctrl.getPrayers);
+
+// עדכון כל התפילות - דורש הגנה (Token/Admin)
+router.put('/', protect, ctrl.replacePrayers);
+
+// יצירת תפילה בודדת (אופציונלי)
+router.post('/', protect, ctrl.create);
 
 module.exports = router;
-</file>
-
-<file path="server/services/announcementService.js">
-const Announcement = require('../models/Announcement');
-
-exports.getAll = () => Announcement.find();
-exports.create = (data) => new Announcement(data).save();
-
-
-const getAllAnnouncements = () => Announcement.find().sort({ date: -1 });
-
-const createAnnouncement = (data) => Announcement.create(data);
-
-// Update a single announcement by id
-const updateAnnouncement = (id, data) =>
-  Announcement.findByIdAndUpdate(id, data, { new: true });
-
-const deleteAnnouncement = (id) => Announcement.findByIdAndDelete(id);
-
-module.exports = {
-  getAllAnnouncements,
-  createAnnouncement,
-  updateAnnouncement,
-  deleteAnnouncement,
-};
-</file>
-
-<file path="server/services/contactService.js">
-const ContactMessage = require('../models/ContactMessage');
-
-/**
- * יוצר הודעת צור קשר חדשה במסד הנתונים
- * @param {Object} data - אובייקט שכולל name, email, message
- * @returns {Promise<Object>} - ההודעה החדשה שנשמרה
- */
-exports.createMessage = async (data) => {
-  const contactMessage = new ContactMessage(data);
-  return await contactMessage.save();
-};
-
-/**
- * מחזיר את כל הודעות צור קשר - לשימוש גבאים
- * @returns {Promise<Array>} - רשימת ההודעות בסדר כרונולוגי יורד
- */
-exports.getAllMessages = async (filters = {}) => {
-  return await ContactMessage.find(filters).sort({ date: -1 });
-};
-
-/**
- * מוחק הודעת צור קשר לפי מזהה
- * @param {string} id - מזהה ההודעה למחיקה
- * @returns {Promise<Object|null>} - ההודעה שנמחקה או null אם לא נמצאה
- */
-exports.deleteMessageById = async (id) => {
-  return await ContactMessage.findByIdAndDelete(id);
-};
-
-/**
- * מעדכן סטטוס טיפול בהודעה
- * @param {string} id - מזהה ההודעה
- * @param {boolean} handled - האם ההודעה טופלה
- * @returns {Promise<Object|null>} - ההודעה המעודכנת
- */
-exports.updateHandledStatus = async (id, handled) => {
-  const handledAt = handled ? new Date() : null;
-  return await ContactMessage.findByIdAndUpdate(
-    id,
-    { handled, handledAt },
-    { new: true }
-  );
-};
-</file>
-
-<file path="server/src/insertUsers.js">
-const mongoose = require('mongoose');
-const User = require('../models/userModel'); // Assuming your User model is in a file named userModel.js
-
-// Array of 20 user objects
-const users = [
-  {
-    username: "john_doe",
-    email: "john@example.com",
-    password: "password123",
-    firstName: "John",
-    lastName: "Doe",
-    age: 30
-  },
-  {
-    username: "jane_smith",
-    email: "jane@example.com",
-    password: "securepass456",
-    firstName: "Jane",
-    lastName: "Smith",
-    age: 28
-  },
-  {
-    username: "bob_johnson",
-    email: "bob@example.com",
-    password: "bobpass789",
-    firstName: "Bob",
-    lastName: "Johnson",
-    age: 35
-  },
-  {
-    username: "alice_wonder",
-    email: "alice@example.com",
-    password: "alicepass101",
-    firstName: "Alice",
-    lastName: "Wonder",
-    age: 27
-  },
-  {
-    username: "charlie_brown",
-    email: "charlie@example.com",
-    password: "snoopy202",
-    firstName: "Charlie",
-    lastName: "Brown",
-    age: 25
-  },
-  {
-    username: "emma_watson",
-    email: "emma@example.com",
-    password: "hermione303",
-    firstName: "Emma",
-    lastName: "Watson",
-    age: 31
-  },
-  {
-    username: "david_beckham",
-    email: "david@example.com",
-    password: "football404",
-    firstName: "David",
-    lastName: "Beckham",
-    age: 46
-  },
-  {
-    username: "sarah_connor",
-    email: "sarah@example.com",
-    password: "terminator505",
-    firstName: "Sarah",
-    lastName: "Connor",
-    age: 35
-  },
-  {
-    username: "tony_stark",
-    email: "tony@example.com",
-    password: "ironman606",
-    firstName: "Tony",
-    lastName: "Stark",
-    age: 45
-  },
-  {
-    username: "natasha_romanoff",
-    email: "natasha@example.com",
-    password: "blackwidow707",
-    firstName: "Natasha",
-    lastName: "Romanoff",
-    age: 36
-  },
-  {
-    username: "peter_parker",
-    email: "peter@example.com",
-    password: "spiderman808",
-    firstName: "Peter",
-    lastName: "Parker",
-    age: 23
-  },
-  {
-    username: "leia_organa",
-    email: "leia@example.com",
-    password: "alderaan909",
-    firstName: "Leia",
-    lastName: "Organa",
-    age: 40
-  },
-  {
-    username: "luke_skywalker",
-    email: "luke@example.com",
-    password: "jedi1010",
-    firstName: "Luke",
-    lastName: "Skywalker",
-    age: 40
-  },
-  {
-    username: "hermione_granger",
-    email: "hermione@example.com",
-    password: "hogwarts1111",
-    firstName: "Hermione",
-    lastName: "Granger",
-    age: 30
-  },
-  {
-    username: "bruce_wayne",
-    email: "bruce@example.com",
-    password: "batman1212",
-    firstName: "Bruce",
-    lastName: "Wayne",
-    age: 38
-  },
-  {
-    username: "diana_prince",
-    email: "diana@example.com",
-    password: "wonderwoman1313",
-    firstName: "Diana",
-    lastName: "Prince",
-    age: 800
-  },
-  {
-    username: "clark_kent",
-    email: "clark@example.com",
-    password: "superman1414",
-    firstName: "Clark",
-    lastName: "Kent",
-    age: 35
-  },
-  {
-    username: "thor_odinson",
-    email: "thor@example.com",
-    password: "mjolnir1515",
-    firstName: "Thor",
-    lastName: "Odinson",
-    age: 1500
-  },
-  {
-    username: "steve_rogers",
-    email: "steve@example.com",
-    password: "captain1616",
-    firstName: "Steve",
-    lastName: "Rogers",
-    age: 100
-  },
-  {
-    username: "carol_danvers",
-    email: "carol@example.com",
-    password: "marvel1717",
-    firstName: "Carol",
-    lastName: "Danvers",
-    age: 35
-  }
-];
-
-// Function to feed users into the database
-async function feedUsersToDatabase() {
-  try {
-      console.log('Connected to MongoDB');
-
-    // Insert users
-    const result = await User.insertMany(users);
-    console.log(`${result.length} users inserted successfully`);
-
-    // Disconnect from MongoDB
-    await mongoose.disconnect();
-    console.log('Disconnected from MongoDB');
-  } catch (error) {
-    console.error('Error:', error);
-  }
-}
-
-// Call the function to feed users
-
- 
-  module.exports = { feedUsersToDatabase };
-</file>
-
-<file path="client/src/components/context/authContext.jsx">
-import { createContext, useState, useEffect, useContext } from 'react';
-import { API_URL } from '../../config';
-
-const AuthContext = createContext();
-
-export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [token, setToken] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const storedToken = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
-    if (storedToken && storedUser) {
-      setToken(storedToken);
-      setUser(JSON.parse(storedUser));
-    }
-    setLoading(false);
-  }, []);
-
-  const login = (userData, userToken) => {
-    setUser(userData);
-    setToken(userToken);
-    localStorage.setItem('token', userToken);
-    localStorage.setItem('user', JSON.stringify(userData));
-  };
-
-  // ← חדש: התחברות דרך גוגל - שולח את ה-credential לשרת שלנו
-  const googleLogin = async (credential) => {
-    const response = await fetch(`${API_URL}/api/auth/google`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ credential }),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.error || 'התחברות עם גוגל נכשלה');
-    }
-
-    login(data.user, data.token);
-    return data;
-  };
-
-  const logout = () => {
-    setUser(null);
-    setToken(null);
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-  };
-
-  const isAuthenticated = !!user;
-  const isAdmin  = () => isAuthenticated && user?.role?.toLowerCase() === 'admin';
-  const isGabbai = () => isAuthenticated && user?.role?.toLowerCase() === 'gabbai';
-
-  return (
-    <AuthContext.Provider value={{ 
-      user, token, login, logout, googleLogin,
-      isAdmin, isGabbai, isAuthenticated, loading 
-    }}>
-      {children}
-    </AuthContext.Provider>
-  );
-};
-
-export const useAuth = () => useContext(AuthContext);
-export default AuthContext;
-</file>
-
-<file path="server/services/authService.js">
-const User = require('../models/User');
-const jwt = require('jsonwebtoken');
-
-exports.register = async (userData) => {
-  const user = new User(userData);
-  return await user.save();
-};
-
-exports.login = async ({ email, password }) => {
-  console.log('email', email);
-  const user = await User.findOne({ email });
-  if (!user || !(await user.comparePassword(password))) {
-    throw new Error('Invalid credentials');
-  }
-
-  const token = jwt.sign(
-    { userId: user._id, role: user.role },
-    process.env.JWT_SECRET,
-    { expiresIn: '2h' }
-  );
-
-  return { token, user };
-};
 </file>
 
 <file path="server/services/prayerService.js">
@@ -861,236 +170,333 @@ module.exports = { getAllPrayers, replaceAllPrayers };
 // exports.create = (data) => new ContactMessage(data).save();
 </file>
 
-<file path="client/src/components/auth/Login.jsx">
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { GoogleLogin } from '@react-oauth/google';
+<file path="client/src/components/ContactAndPrayerTimes/ContactAndPrayerTimes.jsx">
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/authContext';
-import { API_URL } from '../../config';
+import { getPrayers, savePrayers } from '../../services/prayersService';
+import { getAnnouncements, saveAnnouncement, removeAnnouncement } from '../../services/announcementsService';
 
-function Login() {
-  const [formData, setFormData] = useState({ email: '', password: '' });
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
-  const { login, googleLogin } = useAuth();
+const ContactAndPrayerTimes = ({ isButtonTransparent }) => {
+  const { isAdmin } = useAuth();
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+  const [announcements, setAnnouncements] = useState([]);
+  const [prayers, setPrayers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [tempPrayers, setTempPrayers] = useState([]);
+  const [tempAnnouncements, setTempAnnouncements] = useState([]);
+
+  // ── טעינת נתונים בעת עלייה ──────────────────────────────────────────────
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [fetchedPrayers, fetchedAnnouncements] = await Promise.all([
+          getPrayers(),
+          getAnnouncements(),
+        ]);
+        setPrayers(fetchedPrayers);
+        setAnnouncements(fetchedAnnouncements);
+      } catch (err) {
+        setError('שגיאה בטעינת הנתונים. אנא רענן את הדף.');
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, []);
+
+  // ── פתיחת מודאל — העתקת מצב נוכחי לסטייט זמני ──────────────────────────
+  const openModal = () => {
+    setTempPrayers(prayers.map((p) => ({ ...p })));
+    setTempAnnouncements(announcements.map((a) => ({ ...a })));
+    setIsModalOpen(true);
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
+  const closeModal = () => setIsModalOpen(false);
+
+  // ── שמירת שינויים ────────────────────────────────────────────────────────
+  const saveChanges = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message || 'שגיאה בהתחברות');
-      login(data.user, data.token);
-      navigate('/');
+      // 1. שמירת זמני תפילה
+      const updatedPrayers = await savePrayers(tempPrayers);
+      setPrayers(updatedPrayers);
+
+      // 2. מציאת הכרזות שנמחקו (קיימות ב-DB אבל לא ב-tempAnnouncements)
+      const deletedAnnouncements = announcements.filter(
+        (orig) => !tempAnnouncements.some((t) => t._id === orig._id)
+      );
+      await Promise.all(deletedAnnouncements.map((a) => removeAnnouncement(a._id)));
+
+      // 3. שמירה/עדכון של כל ההכרזות הנוכחיות
+      const savedAnnouncements = await Promise.all(
+        tempAnnouncements.map((a) => saveAnnouncement(a))
+      );
+
+      setAnnouncements(savedAnnouncements);
+      setIsModalOpen(false);
     } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
+      console.error('שגיאה בשמירת הנתונים:', err);
+      alert('שגיאה בשמירת הנתונים. אנא נסה שוב.');
     }
   };
 
-  // הצלחה מגוגל
-  const handleGoogleSuccess = async (credentialResponse) => {
-    setError('');
-    try {
-      await googleLogin(credentialResponse.credential);
-      navigate('/');
-    } catch (err) {
-      setError(err.message);
-    }
+  // ── פונקציות עזר לתפילות ─────────────────────────────────────────────────
+  const handlePrayerChange = (index, field, value) => {
+    const updated = [...tempPrayers];
+    updated[index] = { ...updated[index], [field]: value };
+    setTempPrayers(updated);
   };
 
-  const handleGoogleError = () => {
-    setError('התחברות עם גוגל נכשלה, נסה שנית');
+  const addPrayer = () =>
+    setTempPrayers([...tempPrayers, { title: '', time: '' }]);
+
+  const removePrayer = (index) =>
+    setTempPrayers(tempPrayers.filter((_, i) => i !== index));
+
+  // ── פונקציות עזר להכרזות ─────────────────────────────────────────────────
+  const handleAnnouncementChange = (index, field, value) => {
+    const updated = [...tempAnnouncements];
+    updated[index] = { ...updated[index], [field]: value };
+    setTempAnnouncements(updated);
   };
 
-  const inputClass = (hasError) => `
-    w-full px-3 py-2.5 border rounded-lg focus:outline-none focus:ring-2 
-    focus:ring-[#cfa756] text-right transition-all
-    ${hasError ? 'border-red-300 bg-red-50' : 'border-gray-200 focus:border-[#cfa756]'}
-  `;
+  const addAnnouncement = () =>
+    setTempAnnouncements([...tempAnnouncements, { title: 'הודעת גבאי', content: '' }]);
+
+  const removeAnnouncementFromTemp = (index) =>
+    setTempAnnouncements(tempAnnouncements.filter((_, i) => i !== index));
+
+  // ── תצוגה בזמן טעינה / שגיאה ────────────────────────────────────────────
+  if (loading) {
+    return (
+      <div className="text-center py-10 text-[#0d2340] font-medium" dir="rtl">
+        <div className="animate-pulse">טוען נתונים...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-10 text-[#a61b1b] font-medium" dir="rtl">
+        {error}
+      </div>
+    );
+  }
 
   return (
-    <div dir="rtl" className="max-w-md mx-auto mt-12">
-      <h2 className="text-2xl font-bold text-[#0d2340] mb-6 flex items-center gap-2">
-        <span className="text-[#cfa756]">✦</span>
-        התחברות
+    <div
+      className="bg-[#f7f4e9] shadow-2xl rounded-xl p-6 max-w-md mx-auto my-8 w-full border border-[#cfa756]/30 relative overflow-hidden"
+      dir="rtl"
+    >
+      {/* פס קישוט עליון */}
+      <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-[#0d2340] via-[#cfa756] to-[#0d2340]"></div>
+
+      <h2 className="text-3xl font-bold text-[#0d2340] mb-8 mt-2 text-center drop-shadow-sm">
+        זמני תפילה ומידע
       </h2>
 
-      {error && (
-        <div className="mb-5 rounded-lg px-4 py-3 text-sm font-medium bg-red-50 border border-red-200 text-red-700">
-          {error}
+      {/* ── רשימת הכרזות ── */}
+      {announcements.length > 0 && (
+        <div className="mb-8 space-y-3">
+          {announcements.map((announcement, index) => (
+            <div
+              key={announcement._id ?? index}
+              className="p-4 bg-white border-r-4 border-[#a61b1b] shadow-sm rounded-l-lg relative"
+            >
+              <div className="absolute -top-3 -right-2 bg-[#a61b1b] text-white text-xs font-bold px-2 py-1 rounded shadow">
+                {announcement.title || 'הודעת גבאי'}
+              </div>
+              <p className="text-[#0d2340] font-medium mt-2 leading-relaxed whitespace-pre-wrap">
+                {announcement.content}
+              </p>
+            </div>
+          ))}
         </div>
       )}
 
-      <div className="bg-white rounded-2xl shadow-md p-6 space-y-5 border border-gray-100">
-        
-        {/* ── כפתור גוגל ── */}
-        <div className="flex justify-center">
-          <GoogleLogin
-            onSuccess={handleGoogleSuccess}
-            onError={handleGoogleError}
-            text="signin_with"
-            shape="rectangular"
-            locale="he"
-            width="100%"
-          />
-        </div>
-
-        {/* ── מפריד ── */}
-        <div className="flex items-center gap-3 text-gray-400 text-sm">
-          <div className="flex-1 h-px bg-gray-200" />
-          <span>או התחבר עם מייל</span>
-          <div className="flex-1 h-px bg-gray-200" />
-        </div>
-
-        {/* ── טופס רגיל ── */}
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div className="space-y-1.5">
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700">דוא"ל</label>
-            <input
-              type="email" id="email" name="email"
-              value={formData.email} onChange={handleChange} required
-              className={inputClass(error)}
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700">סיסמה</label>
-            <input
-              type="password" id="password" name="password"
-              value={formData.password} onChange={handleChange} required
-              className={inputClass(error)}
-            />
-          </div>
-
-          <button
-            type="submit" disabled={loading}
-            className="w-full bg-[#cfa756] hover:bg-[#b8860b] disabled:opacity-50 text-[#0d2340] font-bold px-6 py-2.5 rounded-lg transition-colors shadow-sm mt-2"
-          >
-            {loading ? 'מתחבר...' : 'התחבר'}
-          </button>
-        </form>
-
-        <p className="text-sm text-center text-gray-500">
-          אין לך חשבון?{' '}
-          <span onClick={() => navigate('/register')} className="text-[#cfa756] cursor-pointer hover:underline font-medium">
-            הירשם כאן
-          </span>
-        </p>
+      {/* ── כתובת ── */}
+      <div className="mb-6 bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+        <h3 className="text-xl font-bold text-[#0d2340] mb-2 flex items-center gap-2">
+          <svg className="w-5 h-5 text-[#cfa756]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          כתובתנו:
+        </h3>
+        <p className="text-lg text-gray-700 font-medium pr-7">הרב רפאל ברוך טולדנו 20 | רמת שלמה</p>
       </div>
+
+      {/* ── זמני תפילה ── */}
+      <div className="mb-8">
+        <h3 className="text-xl font-bold text-[#0d2340] mb-4 border-b-2 border-[#cfa756] pb-2 inline-block">
+          זמני תפילות:
+        </h3>
+        <ul className="space-y-3">
+          {prayers.map((prayer, index) => (
+            <li
+              key={prayer._id ?? index}
+              className="flex justify-between items-center text-lg bg-white px-4 py-3 rounded-lg shadow-sm border border-gray-100 hover:border-[#cfa756]/50 transition-colors"
+            >
+              <span className="font-bold text-[#1a365d]">{prayer.title ?? prayer.name}</span>
+              <span className="bg-[#162641] text-[#cfa756] font-bold text-md px-4 py-1 rounded-full shadow-inner tracking-wide">
+                {prayer.time}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {/* ── כפתור עריכה (אדמין בלבד) ── */}
+      <div className="text-center">
+        {isAdmin() && (
+          <button
+            onClick={openModal}
+            className="bg-[#cfa756] text-[#0d2340] font-bold px-6 py-2.5 rounded-md hover:bg-[#b8860b] hover:text-white transition-all shadow-md focus:outline-none focus:ring-2 focus:ring-[#0d2340] ring-offset-2 ring-offset-[#f7f4e9]"
+            style={{ opacity: isButtonTransparent ? 0 : 1 }}
+          >
+            ערוך זמני תפילה והודעות
+          </button>
+        )}
+      </div>
+
+      {/* ══════════════════════ מודאל עריכה ══════════════════════ */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-[#0d2340]/70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div
+            className="bg-[#f7f4e9] p-6 rounded-xl shadow-2xl max-w-md w-full border-2 border-[#cfa756] max-h-[90vh] overflow-y-auto"
+            dir="rtl"
+          >
+            <h3 className="text-2xl font-bold mb-6 text-center text-[#0d2340] border-b border-[#cfa756]/30 pb-3">
+              עריכת תוכן
+            </h3>
+
+            {/* ── עריכת הכרזות ── */}
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-bold text-[#0d2340] text-lg">הודעות גבאי:</h4>
+              </div>
+
+              <div className="space-y-4 max-h-[30vh] overflow-y-auto pr-1">
+                {tempAnnouncements.map((announcement, index) => (
+                  <div
+                    key={announcement._id ?? index}
+                    className="flex flex-col gap-2 bg-white p-3 rounded-md shadow-sm border border-gray-200"
+                  >
+                    <input
+                      className="border border-gray-300 rounded px-3 py-2 w-full text-gray-800 focus:ring-1 focus:ring-[#cfa756] outline-none text-sm"
+                      value={announcement.title ?? ''}
+                      onChange={(e) => handleAnnouncementChange(index, 'title', e.target.value)}
+                      placeholder="כותרת ההודעה (לדוג': הודעת גבאי)"
+                    />
+                    <textarea
+                      className="border border-gray-300 rounded px-3 py-2 w-full text-gray-800 focus:ring-1 focus:ring-[#cfa756] outline-none text-sm"
+                      rows="3"
+                      value={announcement.content ?? ''}
+                      onChange={(e) => handleAnnouncementChange(index, 'content', e.target.value)}
+                      placeholder="תוכן ההודעה..."
+                    />
+                    <div className="text-right">
+                      <button
+                        onClick={() => removeAnnouncementFromTemp(index)}
+                        className="text-sm font-medium text-[#a61b1b] hover:text-red-800 hover:underline flex items-center gap-1"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                        מחק הודעה
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <button
+                onClick={addAnnouncement}
+                className="mt-3 text-[#1a365d] font-bold hover:text-[#cfa756] transition-colors flex items-center gap-1"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                </svg>
+                הוסף הודעה
+              </button>
+            </div>
+
+            {/* ── קו הפרדה ── */}
+            <div className="border-t border-[#cfa756]/30 my-4" />
+
+            {/* ── עריכת זמני תפילה ── */}
+            <div className="mb-4">
+              <h4 className="font-bold text-[#0d2340] text-lg mb-3">עריכת זמני תפילה:</h4>
+              <div className="space-y-4 max-h-[30vh] overflow-y-auto pr-1">
+                {tempPrayers.map((prayer, index) => (
+                  <div key={prayer._id ?? index} className="flex flex-col gap-2 bg-white p-3 rounded-md shadow-sm border border-gray-200">
+                    <div className="flex justify-between gap-3">
+                      <input
+                        className="border border-gray-300 rounded px-3 py-2 w-full text-gray-800 focus:ring-1 focus:ring-[#cfa756] outline-none"
+                        value={prayer.title ?? prayer.name ?? ''}
+                        onChange={(e) => handlePrayerChange(index, 'title', e.target.value)}
+                        placeholder="שם התפילה (לדוג': שחרית)"
+                      />
+                      <input
+                        className="border border-gray-300 rounded px-3 py-2 w-full text-gray-800 focus:ring-1 focus:ring-[#cfa756] outline-none text-center"
+                        value={prayer.time}
+                        onChange={(e) => handlePrayerChange(index, 'time', e.target.value)}
+                        placeholder="זמן (לדוג': 06:15)"
+                        dir="ltr"
+                      />
+                    </div>
+                    <div className="text-right mt-1">
+                      <button
+                        onClick={() => removePrayer(index)}
+                        className="text-sm font-medium text-[#a61b1b] hover:text-red-800 hover:underline flex items-center gap-1"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                        מחק תפילה
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <button
+                onClick={addPrayer}
+                className="mt-3 text-[#1a365d] font-bold hover:text-[#cfa756] transition-colors flex items-center gap-1"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                </svg>
+                הוסף תפילה
+              </button>
+            </div>
+
+            {/* ── כפתורי שמירה/ביטול ── */}
+            <div className="flex justify-end gap-3 mt-8 border-t border-[#cfa756]/30 pt-4">
+              <button
+                onClick={closeModal}
+                className="px-5 py-2 rounded-md border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 font-medium transition-colors"
+              >
+                ביטול
+              </button>
+              <button
+                onClick={saveChanges}
+                className="px-5 py-2 rounded-md bg-[#0d2340] hover:bg-[#1a365d] text-[#cfa756] font-bold transition-colors shadow-md"
+              >
+                שמור שינויים
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
-}
-
-export default Login;
-</file>
-
-<file path="client/src/services/api.js">
-// api.js
-import axios from 'axios';
-import { API_URL } from '../config';
-
-const API = axios.create({
-  baseURL: `${API_URL}/api`,
-});
-
-API.interceptors.request.use((req) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    req.headers.Authorization = `Bearer ${token}`;
-  }
-  return req;
-});
-
-// ── אימות ────────────────────────────────────────────────────────────────────
-export const login    = (credentials) => API.post('/auth/login', credentials);
-export const register = (userData)    => API.post('/auth/register', userData);
-
-// ── מודעות ────────────────────────────────────────────────────────────────────
-export const fetchAnnouncements = ()           => API.get('/announcements');
-export const createAnnouncement = (data)       => API.post('/announcements', data);
-export const updateAnnouncement = (id, data)   => API.put(`/announcements/${id}`, data);
-export const deleteAnnouncement = (id) => API.delete(`/announcements/${id}`);
-// ── תפילות ────────────────────────────────────────────────────────────────────
-export const fetchPrayers  = ()        => API.get('/prayers');
-export const createPrayer  = (data)    => API.post('/prayers', data);
-export const updatePrayers = (prayers) => API.put('/prayers', { prayers });
-
-// ── יצירת קשר ────────────────────────────────────────────────────────────────
-export const sendContactMessage           = (data)           => API.post('/contact', data);
-export const fetchContactMessages         = ()               => API.get('/contact');
-export const updateContactMessageHandled  = async (id, handled) => {
-  const payload = { handled };
-  try {
-    return await API.patch(`/contact/${id}/handled`, payload);
-  } catch (error) {
-    const status = error?.response?.status;
-    if (status === 404 || status === 405) {
-      try {
-        return await API.patch(`/contact/${id}`, payload);
-      } catch (secondError) {
-        const secondStatus = secondError?.response?.status;
-        if (secondStatus === 404 || secondStatus === 405) {
-          return API.put(`/contact/${id}/handled`, payload);
-        }
-        throw secondError;
-      }
-    }
-    throw error;
-  }
 };
 
-// ── תשלומים ───────────────────────────────────────────────────────────────────
-
-/** משתמש רגיל */
-export const fetchMyPayments        = ()               => API.get('/payments/me');
-export const addMyDebt              = (data)           => API.post('/payments/me/debts', data);
-export const markMyDebtPaid         = (debtId, isPaid) => API.patch(`/payments/me/debts/${debtId}`, { isPaid });
-export const setMyStandingOrder     = (data)           => API.post('/payments/me/standing-order', data);
-export const cancelMyStandingOrder  = ()               => API.delete('/payments/me/standing-order');
-export const addMyDonation          = (data)           => API.post('/payments/me/donations', data);
-
-/** אדמין */
-export const fetchAllPayments        = ()                    => API.get('/payments');
-export const fetchUserPayments       = (userId)              => API.get(`/payments/${userId}`);
-export const addUserDebt             = (userId, data)        => API.post(`/payments/${userId}/debts`, data);
-export const markUserDebtPaid        = (userId, debtId, isPaid) => API.patch(`/payments/${userId}/debts/${debtId}`, { isPaid });
-export const deleteUserDebt          = (userId, debtId)      => API.delete(`/payments/${userId}/debts/${debtId}`);
-export const setUserStandingOrder    = (userId, data)        => API.post(`/payments/${userId}/standing-order`, data);
-export const cancelUserStandingOrder = (userId)              => API.delete(`/payments/${userId}/standing-order`);
-export const addUserDonation         = (userId, data)        => API.post(`/payments/${userId}/donations`, data);
-export const deleteUserDonation      = (userId, donationId)  => API.delete(`/payments/${userId}/donations/${donationId}`);
-export const updateUserNotes         = (userId, notes)       => API.patch(`/payments/${userId}/notes`, { notes });
-
-// ── משתמשים ───────────────────────────────────────────────────────────────────
-export const fetchAllUsers = () => API.get('/users');
-
-// ── הנצחות ────────────────────────────────────────────────────────────────────
-export const fetchCommemorations   = ()           => API.get('/commemorations');
-export const fetchCommemorationById = (id)        => API.get(`/commemorations/${id}`);
-export const createCommemoration   = (data)       => API.post('/commemorations', data);
-export const updateCommemoration   = (id, data)   => API.put(`/commemorations/${id}`, data);
-export const deleteCommemoration   = (id)         => API.delete(`/commemorations/${id}`);
-export const updateCommemorationStatus = (id, status) =>  // ← חדש
-  API.patch(`/commemorations/${id}/status`, { commemorationStatus: status });
-
-  // ── גלריה ─────────────────────────────────────────────────────────────────────
-export const fetchGalleryImages = ()         => API.get('/gallery');
-export const createGalleryImage = (data)     => API.post('/gallery', data);
-export const updateGalleryImage = (id, data) => API.put(`/gallery/${id}`, data);
-export const deleteGalleryImage = (id)       => API.delete(`/gallery/${id}`);
+export default ContactAndPrayerTimes;
 </file>
 
 </files>

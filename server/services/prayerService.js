@@ -1,30 +1,31 @@
 const Prayer = require('../models/Prayer');
+const SiteSettings = require('../models/SiteSettings');
 
-exports.getAll = () => Prayer.find();
-exports.create = (data) => {
-    console.log({data})
-    new Prayer(data).save()
-};
+const DEFAULT_PRAYER_TITLE = 'זמני תפילות:';
 
 const getAllPrayers = () => Prayer.find();
 
-// Replaces the entire collection with a new array in one transaction
 const replaceAllPrayers = async (prayersArray) => {
   await Prayer.deleteMany({});
   return Prayer.insertMany(prayersArray);
 };
 
-module.exports = { getAllPrayers, replaceAllPrayers };
+const getPrayerSectionTitle = async () => {
+  const setting = await SiteSettings.findOne({ key: 'prayerSectionTitle' });
+  return setting ? setting.value : DEFAULT_PRAYER_TITLE;
+};
 
-// server/services/announcementService.js
-// const Announcement = require('../models/Announcement');
+const setPrayerSectionTitle = async (title) => {
+  return SiteSettings.findOneAndUpdate(
+    { key: 'prayerSectionTitle' },
+    { key: 'prayerSectionTitle', value: title },
+    { upsert: true, new: true }
+  );
+};
 
-// exports.getAll = () => Announcement.find();
-// exports.create = (data) => new Announcement(data).save();
-
-// server/services/contactService.js
-// const ContactMessage = require('../models/ContactMessage');
-
-// exports.getAll = () => ContactMessage.find();
-// exports.create = (data) => new ContactMessage(data).save();
-
+module.exports = {
+  getAllPrayers,
+  replaceAllPrayers,
+  getPrayerSectionTitle,
+  setPrayerSectionTitle,
+};

@@ -2,11 +2,11 @@ import { fetchPrayers, updatePrayers } from './api';
 
 export const getPrayers = async () => {
   const res = await fetchPrayers();
-  return res.data; // [{_id, title, time}, ...]
+  return res.data;
 };
 
-// Send the full edited list back to the server
-export const savePrayers = async (prayers) => {
-  const res = await updatePrayers(prayers);
+export const savePrayers = async (prayers, prayerSectionTitle) => {
+  // api.js כבר עוטף נכון — שלח את המערך והכותרת בנפרד
+  const res = await updatePrayers(prayers, prayerSectionTitle);
   return res.data;
 };

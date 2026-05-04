@@ -113,7 +113,8 @@ export const deleteAnnouncement = (id)         => API.delete(`/announcements/${i
 
 export const fetchPrayers  = ()        => API.get('/prayers');
 export const createPrayer  = (data)    => API.post('/prayers', data);
-export const updatePrayers = (prayers) => API.put('/prayers', { prayers });
+export const updatePrayers = (prayers, prayerSectionTitle) =>
+  API.put('/prayers', { prayers, prayerSectionTitle });
 
 export const sendContactMessage          = (data)            => API.post('/contact', data);
 export const fetchContactMessages        = ()                => API.get('/contact');
