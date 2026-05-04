@@ -1,9 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-    ChevronLeft, ChevronRight, Edit3, X, Plus,
-    Save, Image as ImageIcon,
-} from 'lucide-react';
+import {    ChevronLeft, ChevronRight, Edit3, X, Plus, Save, Image as ImageIcon} from 'lucide-react';
 import { useAuth } from './context/authContext';
 import {
     fetchGalleryImages,
@@ -420,7 +417,8 @@ export default function ImageGallery() {
                     <div className="text-center mb-4">
                         <h1 className="text-2xl font-bold text-[#0d2340] flex items-center justify-center gap-2">
                             <span className="text-[#cfa756]">✦</span>
-                            גלריית תמונות
+                           הודעות מערכת
+                            <span className="text-[#cfa756]">✦</span>
                         </h1>
                         <div className="w-16 h-0.5 bg-gradient-to-r from-[#cfa756] to-[#b8860b] mx-auto mt-2 rounded-full" />
                     </div>
