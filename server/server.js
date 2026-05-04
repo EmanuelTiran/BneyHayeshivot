@@ -35,6 +35,7 @@ app.use(
   })
 );
 
+app.use(cookieParser());
 app.use(express.json());
 
 app.use('/api/prayers', require('./routes/prayers'));
@@ -51,7 +52,6 @@ app.use('/api/portal-items', require('./routes/portalItems'));
 app.use('/api/sponsorships', require('./routes/sponsorships'));
 app.get('/api/health', (_req, res) => res.status(200).json({ status: 'ok' }));
 app.use(errorHandler);
-app.use(cookieParser());
 
 
 const PORT = process.env.PORT || 5000;

@@ -1,4 +1,4 @@
-// middleware/auth.js
+// middleware/authMiddleware.js
 const jwt = require('jsonwebtoken');
 
 module.exports = (req, res, next) => {
@@ -7,7 +7,7 @@ module.exports = (req, res, next) => {
 
   // Check if no token
   if (!token) {
-    return res.status(401).json({ message: 'אין טוקן אימות, הגישה נדחתה' });
+    return res.status(401).json({ message: 'גישה נדחתה, אין טוקן' });
   }
 
   // Verify token
