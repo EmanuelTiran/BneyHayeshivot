@@ -1,6 +1,9 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import {    ChevronLeft, ChevronRight, Edit3, X, Plus, Save, Image as ImageIcon} from 'lucide-react';
+import {
+    Edit3, X, Plus,
+    Save, Image as ImageIcon,
+} from 'lucide-react';
 import { useAuth } from './context/authContext';
 import {
     fetchGalleryImages,
@@ -9,7 +12,7 @@ import {
     deleteGalleryImage,
 } from '../services/api';
 
-// ─── נירמול כתובת Google Drive – ללא שינוי ───────────────────────────────────
+// ─── נירמול כתובת Google Drive ────────────────────────────────────────────────
 const normalizeImageUrl = (url) => {
     if (!url) return url;
     if (url.includes('drive.google.com')) {
@@ -18,19 +21,71 @@ const normalizeImageUrl = (url) => {
             url.match(/id=(.*?)(?:&|$)/)?.[1];
         if (fileId) return `https://lh3.googleusercontent.com/d/${fileId}`;
     }
-
     return url;
-
 };
 
-// ─── וריאנטים לאנימציית המעבר בין תמונות ─────────────────────────────────────
-const slideVariants = {
-    enter: (dir) => ({ x: dir > 0 ? '60%' : '-60%', opacity: 0, scale: 0.96 }),
-    center: { x: 0, opacity: 1, scale: 1, transition: { duration: 0.55, ease: [0.32, 0.72, 0, 1] } },
-    exit: (dir) => ({ x: dir > 0 ? '-60%' : '60%', opacity: 0, scale: 0.96, transition: { duration: 0.45, ease: [0.32, 0.72, 0, 1] } }),
-};
+// ─── 3D Carousel constants ────────────────────────────────────────────────────
+const CARD_W = 220;   // px – wide side for A4 landscape feel in carousel
+const CARD_H = 311;   // px ≈ 220 * (297/210) keeps A4 ratio
+const OFFSET_X_1 = 190;
+const OFFSET_X_2 = 355;
+const OFFSET_Z_1 = -260;
+const OFFSET_Z_2 = -400;
+const ROTATE_Y = 22;
 
-// ─── וריאנטים לאנימציית הכיתוב ───────────────────────────────────────────────
+/** Maps relative position (diff) → CSS transform style object */
+function getSlideStyle(diff) {
+    const base = {
+        position: 'absolute',
+        width: CARD_W,
+        height: CARD_H,
+        borderRadius: 16,
+        overflow: 'hidden',
+        cursor: 'pointer',
+        transition: 'transform 0.55s cubic-bezier(.4,0,.2,1), opacity 0.55s ease, box-shadow 0.55s ease, width 0.55s ease, height 0.55s ease',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        willChange: 'transform, opacity',
+    };
+
+    if (diff === 0) return {
+        ...base,
+        transform: 'translateX(0) translateZ(0) rotateY(0deg)',
+        opacity: 1,
+        zIndex: 10,
+        width: 240,
+        height: 339,   // 240 * (297/210)
+        boxShadow: '0 24px 64px rgba(0,0,0,0.75)',
+        border: '1.5px solid rgba(207,167,86,0.55)',
+    };
+    if (diff === -1) return {
+        ...base,
+        transform: `translateX(-${OFFSET_X_1}px) translateZ(${OFFSET_Z_1}px) rotateY(${ROTATE_Y}deg)`,
+        opacity: 0.88, zIndex: 8,
+        border: '1px solid rgba(255,255,255,0.18)',
+    };
+    if (diff === -2) return {
+        ...base,
+        transform: `translateX(-${OFFSET_X_2}px) translateZ(${OFFSET_Z_2}px) rotateY(${ROTATE_Y}deg)`,
+        opacity: 0.55, zIndex: 6,
+        border: '1px solid rgba(255,255,255,0.10)',
+    };
+    if (diff === 1) return {
+        ...base,
+        transform: `translateX(${OFFSET_X_1}px) translateZ(${OFFSET_Z_1}px) rotateY(-${ROTATE_Y}deg)`,
+        opacity: 0.88, zIndex: 8,
+        border: '1px solid rgba(255,255,255,0.18)',
+    };
+    if (diff === 2) return {
+        ...base,
+        transform: `translateX(${OFFSET_X_2}px) translateZ(${OFFSET_Z_2}px) rotateY(-${ROTATE_Y}deg)`,
+        opacity: 0.55, zIndex: 6,
+        border: '1px solid rgba(255,255,255,0.10)',
+    };
+    return { ...base, opacity: 0, pointerEvents: 'none', zIndex: 0 };
+}
+
+// ─── וריאנטים לאנימציית כיתוב ─────────────────────────────────────────────────
 const captionVariants = {
     hidden: { opacity: 0, y: 18 },
     visible: { opacity: 1, y: 0, transition: { duration: 0.5, delay: 0.25, ease: 'easeOut' } },
@@ -59,7 +114,6 @@ function Field({ label, id, error, children }) {
 
 // ─── Lightbox – תצוגת תמונה מלאה ─────────────────────────────────────────────
 function Lightbox({ image, onClose }) {
-    // סגירה בלחיצה על Escape
     useEffect(() => {
         const handleKey = (e) => { if (e.key === 'Escape') onClose(); };
         window.addEventListener('keydown', handleKey);
@@ -69,7 +123,6 @@ function Lightbox({ image, onClose }) {
     return (
         <AnimatePresence>
             {image && (
-                // רקע כהה – לחיצה מחוץ לתמונה סוגרת
                 <motion.div
                     className="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-4"
                     initial={{ opacity: 0 }}
@@ -78,7 +131,6 @@ function Lightbox({ image, onClose }) {
                     transition={{ duration: 0.3 }}
                     onClick={onClose}
                 >
-                    {/* כפתור סגירה */}
                     <button
                         onClick={onClose}
                         className="absolute top-5 right-5 z-10 p-2 rounded-full bg-white/10 hover:bg-white/25 text-white transition-all border border-white/20"
@@ -86,8 +138,6 @@ function Lightbox({ image, onClose }) {
                     >
                         <X size={22} />
                     </button>
-
-                    {/* תמונה – עצירת propagation מונעת סגירה בלחיצה על התמונה עצמה */}
                     <motion.img
                         src={image.imageUrl}
                         alt={image.title}
@@ -107,7 +157,7 @@ function Lightbox({ image, onClose }) {
 
 // ─── מנהל גלריה (מודאל) ───────────────────────────────────────────────────────
 function GalleryManagerModal({ isOpen, onClose, images, onRefresh }) {
-    const [mode, setMode] = useState('list'); // 'list' | 'edit' | 'add'
+    const [mode, setMode] = useState('list');
     const [editingId, setEditingId] = useState(null);
     const [form, setForm] = useState({ imageUrl: '', title: '', description: '' });
     const [errors, setErrors] = useState({});
@@ -115,8 +165,7 @@ function GalleryManagerModal({ isOpen, onClose, images, onRefresh }) {
     const [feedback, setFeedback] = useState(null);
 
     const inputClass = (field) =>
-        `w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#cfa756] transition ${errors[field] ? 'border-red-400 bg-red-50' : 'border-gray-300'
-        }`;
+        `w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#cfa756] transition ${errors[field] ? 'border-red-400 bg-red-50' : 'border-gray-300'}`;
 
     const validate = () => {
         const e = {};
@@ -127,18 +176,12 @@ function GalleryManagerModal({ isOpen, onClose, images, onRefresh }) {
 
     const openAdd = () => {
         setForm({ imageUrl: '', title: '', description: '' });
-        setEditingId(null);
-        setErrors({});
-        setFeedback(null);
-        setMode('add');
+        setEditingId(null); setErrors({}); setFeedback(null); setMode('add');
     };
 
     const openEdit = (img) => {
         setForm({ imageUrl: img.imageUrl, title: img.title, description: img.description || '' });
-        setEditingId(img._id);
-        setErrors({});
-        setFeedback(null);
-        setMode('edit');
+        setEditingId(img._id); setErrors({}); setFeedback(null); setMode('edit');
     };
 
     const handleDelete = async (id) => {
@@ -155,8 +198,7 @@ function GalleryManagerModal({ isOpen, onClose, images, onRefresh }) {
     const handleSave = async () => {
         const validationErrors = validate();
         if (Object.keys(validationErrors).length > 0) { setErrors(validationErrors); return; }
-        setSaving(true);
-        setFeedback(null);
+        setSaving(true); setFeedback(null);
         const payload = { ...form, imageUrl: normalizeImageUrl(form.imageUrl) };
         try {
             if (mode === 'add') {
@@ -166,13 +208,10 @@ function GalleryManagerModal({ isOpen, onClose, images, onRefresh }) {
                 await updateGalleryImage(editingId, payload);
                 setFeedback({ type: 'success', message: 'התמונה עודכנה בהצלחה!' });
             }
-            onRefresh();
-            setMode('list');
+            onRefresh(); setMode('list');
         } catch {
             setFeedback({ type: 'error', message: 'אירעה שגיאה. אנא נסה שוב.' });
-        } finally {
-            setSaving(false);
-        }
+        } finally { setSaving(false); }
     };
 
     const handleClose = () => { setMode('list'); setFeedback(null); onClose(); };
@@ -185,8 +224,6 @@ function GalleryManagerModal({ isOpen, onClose, images, onRefresh }) {
             onClick={(e) => e.target === e.currentTarget && handleClose()}
         >
             <div dir="rtl" className="bg-white rounded-2xl border-2 border-[#cfa756]/40 shadow-xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden">
-
-                {/* כותרת המודאל */}
                 <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
                     <div>
                         <h3 className="text-lg font-bold text-[#0d2340] flex items-center gap-2">
@@ -202,20 +239,15 @@ function GalleryManagerModal({ isOpen, onClose, images, onRefresh }) {
                     </button>
                 </div>
 
-                {/* הודעת פידבק */}
                 {feedback && (
                     <div className={`mx-6 mt-4 rounded-lg px-4 py-2 text-sm font-medium ${feedback.type === 'success'
-                            ? 'bg-green-50 border border-green-200 text-green-700'
-                            : 'bg-red-50 border border-red-200 text-red-700'
-                        }`}>
+                        ? 'bg-green-50 border border-green-200 text-green-700'
+                        : 'bg-red-50 border border-red-200 text-red-700'}`}>
                         {feedback.message}
                     </div>
                 )}
 
-                {/* גוף המודאל */}
                 <div className="flex-1 overflow-y-auto p-6">
-
-                    {/* מצב רשימה */}
                     {mode === 'list' && (
                         <div className="space-y-3">
                             {images.length === 0 && (
@@ -228,11 +260,9 @@ function GalleryManagerModal({ isOpen, onClose, images, onRefresh }) {
                                 <div key={img._id}
                                     className="flex items-center gap-4 p-3 rounded-xl border border-gray-100 bg-gray-50 hover:border-[#cfa756]/40 transition-all group">
                                     <div className="w-14 h-14 rounded-lg overflow-hidden flex-shrink-0 bg-gray-200 border border-gray-200">
-                                        <img
-                                            src={img.imageUrl} alt={img.title}
+                                        <img src={img.imageUrl} alt={img.title}
                                             className="w-full h-full object-cover"
-                                            onError={(e) => { e.target.style.display = 'none'; }}
-                                        />
+                                            onError={(e) => { e.target.style.display = 'none'; }} />
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="text-sm font-semibold text-[#0d2340] truncate">{img.title}</p>
@@ -258,7 +288,6 @@ function GalleryManagerModal({ isOpen, onClose, images, onRefresh }) {
                         </div>
                     )}
 
-                    {/* מצב הוספה / עריכה */}
                     {(mode === 'add' || mode === 'edit') && (
                         <div className="space-y-5">
                             <Field label="קישור לתמונה *" id="imageUrl" error={errors.imageUrl}>
@@ -270,11 +299,9 @@ function GalleryManagerModal({ isOpen, onClose, images, onRefresh }) {
                                 />
                                 {form.imageUrl && (
                                     <div className="mt-2 h-28 rounded-lg overflow-hidden bg-gray-100 border border-gray-200">
-                                        <img
-                                            src={normalizeImageUrl(form.imageUrl)} alt="תצוגה מקדימה"
+                                        <img src={normalizeImageUrl(form.imageUrl)} alt="תצוגה מקדימה"
                                             className="w-full h-full object-cover"
-                                            onError={(e) => { e.target.style.display = 'none'; }}
-                                        />
+                                            onError={(e) => { e.target.style.display = 'none'; }} />
                                     </div>
                                 )}
                             </Field>
@@ -324,35 +351,43 @@ export default function ImageGallery() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [index, setIndex] = useState(0);
-    const [direction, setDirection] = useState(1);
     const [isHovered, setIsHovered] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    // ── מצב Lightbox: null = סגור, אחרת אובייקט התמונה הנוכחית ──
     const [lightboxImage, setLightboxImage] = useState(null);
 
     const loadImages = useCallback(async () => {
-        setLoading(true);
-        setError(null);
+        setLoading(true); setError(null);
         try {
             const res = await fetchGalleryImages();
-            setImages(res.data);
+            const normalized = res.data.map((img) => ({
+                ...img,
+                imageUrl: normalizeImageUrl(img.imageUrl),
+            }));
+            setImages(normalized);
             setIndex(0);
         } catch {
             setError('שגיאה בטעינת הגלריה');
-        } finally {
-            setLoading(false);
-        }
+        } finally { setLoading(false); }
     }, []);
 
     useEffect(() => { loadImages(); }, [loadImages]);
 
-    const current = images[Math.min(index, images.length - 1)];
+    const n = images.length;
+
+    /** Returns relative position of slide i to current index, clamped to [-2..2] */
+    const getDiff = useCallback((i) => {
+        if (n === 0) return 99;
+        let d = ((i - index) % n + n) % n;
+        if (d > n / 2) d -= n;
+        return d;
+    }, [index, n]);
 
     const go = useCallback((dir) => {
-        if (images.length <= 1) return;
-        setDirection(dir);
-        setIndex((i) => (i + dir + images.length) % images.length);
-    }, [images.length]);
+        if (n <= 1) return;
+        setIndex((i) => (i + dir + n) % n);
+    }, [n]);
+
+    const current = images[Math.min(index, n - 1)];
 
     // ── מצב טעינה ──
     if (loading) {
@@ -396,24 +431,17 @@ export default function ImageGallery() {
 
     return (
         <>
-            {/* ─── Lightbox – תצוגת תמונה מלאה ──────────────────────────────────── */}
+            {/* ─── Lightbox ─────────────────────────────────────────────────────── */}
             <Lightbox image={lightboxImage} onClose={() => setLightboxImage(null)} />
 
             <div
                 className="flex justify-center items-start py-8 px-4 min-h-screen bg-[#f7f4e9]"
                 dir="rtl"
             >
-                {/*
-          המיכל הראשי מוגדר עם padding אופקי נוסף (px-10) כדי לפנות מקום
-          לחיצי הניווט החיצוניים משני הצדדים.
-        */}
                 <div
                     className="relative w-full select-none"
-                    style={{ paddingInline: '0rem' }}
-                    onMouseEnter={() => setIsHovered(true)}
-                    onMouseLeave={() => setIsHovered(false)}
                 >
-                    {/* ── כותרת הדף ── */}
+                    {/* ── כותרת ── */}
                     <div className="text-center mb-4">
                         <h1 className="text-2xl font-bold text-[#0d2340] flex items-center justify-center gap-2">
                             <span className="text-[#cfa756]">✦</span>
@@ -423,10 +451,7 @@ export default function ImageGallery() {
                         <div className="w-16 h-0.5 bg-gradient-to-r from-[#cfa756] to-[#b8860b] mx-auto mt-2 rounded-full" />
                     </div>
 
-                    {/*
-            ── מונה תמונות – מחוץ לכרטיס, מעליו ──
-            הועבר ממיקומו המקורי (בתחתית הכרטיס) לכאן.
-          */}
+                    {/* ── מונה תמונות ── */}
                     <AnimatePresence mode="wait">
                         <motion.p
                             key={`counter-${index}`}
@@ -435,120 +460,160 @@ export default function ImageGallery() {
                             exit={{ opacity: 0, transition: { duration: 0.2 } }}
                             className="text-center text-xs font-semibold tracking-[0.25em] uppercase mb-3 text-[#cfa756]"
                         >
-                            {String(index + 1).padStart(2, '0')} / {String(images.length).padStart(2, '0')}
+                            {String(index + 1).padStart(2, '0')} / {String(n).padStart(2, '0')}
                         </motion.p>
                     </AnimatePresence>
 
-                    {/* ── שורת ניווט + כרטיס – חצים חיצוניים ── */}
-                    <div className="flex items-center gap-0">
-
-                        {/* ── חץ שמאל (תמונה קודמת) – מחוץ למסגרת הכרטיס ── */}
-                        {images.length > 1 && (
+                    {/* ─── 3D CAROUSEL SCENE ────────────────────────────────────────── */}
+                    {/*
+                        perspective מוגדר inline כי Tailwind לא תומך בו ישירות.
+                        גובה ה-scene = CARD_H של הכרטיס הפעיל (339px) + מרווח מה.
+                    */}
+                    <div
+                        style={{ perspective: 1000 }}
+                        className="relative flex items-center justify-center"
+                    >
+                        {/* ── כפתור ניווט שמאל ── */}
+                        {n > 1 && (
                             <motion.button
                                 onClick={() => go(-1)}
                                 whileTap={{ scale: 0.88 }}
-                                className="flex-shrink-0 p-2 rounded-full bg-[#0d2340]/10 hover:bg-[#cfa756]/20 border border-[#cfa756]/30 text-[#cfa756] transition-all"
+                                style={{ zIndex: 20 }}
+                                className="absolute left-0 top-1/2 -translate-y-1/2 p-2 rounded-full bg-[#0d2340]/10 hover:bg-[#cfa756]/20 border border-[#cfa756]/30 text-[#cfa756] transition-all"
                                 aria-label="תמונה קודמת"
                             >
-                                <ChevronLeft size={22} strokeWidth={2.5} />
+                                {/* RTL: שמאל = קדימה */}
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="15 18 9 12 15 6" />
+                                </svg>
                             </motion.button>
                         )}
 
-                        {/* ── כרטיס A4 ── */}
-                        <div className="flex-1 relative aspect-[210/297] rounded-2xl overflow-hidden shadow-xl border border-[#cfa756]/20 mx-2">
+                        {/* ── Stage – כל הכרטיסים ── */}
+                        <div
+                            style={{
+                                position: 'relative',
+                                height: 360,
+                                width: '100%',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                transformStyle: 'preserve-3d',
+                            }}
+                            onMouseEnter={() => setIsHovered(true)}
+                            onMouseLeave={() => setIsHovered(false)}
+                        >
+                            {images.map((img, i) => {
+                                const diff = getDiff(i);
+                                const slideStyle = getSlideStyle(diff);
+                                const isActive = diff === 0;
+                                const isVisible = Math.abs(diff) <= 2;
 
-                            {/* שקופית מונפשת */}
-                            <AnimatePresence custom={direction} mode="popLayout">
-                                <motion.div
-                                    key={current?._id ?? index}
-                                    custom={direction}
-                                    variants={slideVariants}
-                                    initial="enter"
-                                    animate="center"
-                                    exit="exit"
-                                    className="absolute inset-0"
-                                >
-                                    {/*
-                    לחיצה על התמונה פותחת את ה-Lightbox.
-                    cursor-zoom-in מרמז על המשתמש שניתן להגדיל.
-                  */}
-                                    <img
-                                        src={current?.imageUrl}
-                                        alt={current?.title}
-                                        className="w-full h-full object-cover cursor-zoom-in"
-                                        draggable={false}
-                                        onClick={() => setLightboxImage(current)}
-                                        onError={(e) => { e.target.style.display = 'none'; }}
-                                    />
-                                    {/* שכבת gradient לכיתוב */}
-                                    <div className="absolute inset-0 bg-gradient-to-t from-[#0d2340]/85 via-[#0d2340]/10 to-transparent pointer-events-none" />
-                                </motion.div>
-                            </AnimatePresence>
+                                if (!isVisible) return null;
 
-                            {/* כיתוב תמונה (כותרת + תיאור) – בתחתית הכרטיס */}
-                            <AnimatePresence mode="wait">
-                                <motion.div
-                                    key={`caption-${current?._id ?? index}`}
-                                    variants={captionVariants}
-                                    initial="hidden"
-                                    animate="visible"
-                                    exit="exit"
-                                    className="absolute bottom-0 left-0 right-0 p-5 z-10 pointer-events-none"
-                                >
-                                    <h2 className="text-xl font-bold text-white leading-tight tracking-tight drop-shadow-lg">
-                                        {current?.title}
-                                    </h2>
-                                    {current?.description && (
-                                        <p className="text-sm text-white/65 mt-1 leading-relaxed line-clamp-2">
-                                            {current.description}
-                                        </p>
-                                    )}
-                                </motion.div>
-                            </AnimatePresence>
+                                return (
+                                    <div
+                                        key={img._id}
+                                        style={{
+                                            ...slideStyle,
+                                            backgroundImage: `url(${img.imageUrl})`,
+                                        }}
+                                        onClick={() => {
+                                            if (isActive) {
+                                                setLightboxImage(img);
+                                            } else {
+                                                setIndex(i);
+                                            }
+                                        }}
+                                    >
+                                        {/* gradient overlay on active card */}
+                                        {isActive && (
+                                            <div
+                                                style={{
+                                                    position: 'absolute',
+                                                    inset: 0,
+                                                    background: 'linear-gradient(to top, rgba(13,35,64,0.85) 0%, rgba(13,35,64,0.08) 50%, transparent 100%)',
+                                                    pointerEvents: 'none',
+                                                }}
+                                            />
+                                        )}
 
-                            {/* כפתור ניהול גלריה (מנהל בלבד) */}
-                            {isAdmin && isAdmin() && (
-                                <AnimatePresence>
-                                    {isHovered && (
-                                        <motion.button
-                                            key="edit-btn"
-                                            initial={{ opacity: 0, y: -8, scale: 0.9 }}
-                                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                                            exit={{ opacity: 0, y: -8, scale: 0.9 }}
-                                            transition={{ duration: 0.2 }}
-                                            onClick={() => setIsModalOpen(true)}
-                                            className="absolute top-4 right-4 z-30 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-[#0d2340] bg-[#cfa756] hover:bg-[#b8860b] shadow-lg transition-all"
-                                            whileHover={{ scale: 1.05 }}
-                                            whileTap={{ scale: 0.95 }}
-                                        >
-                                            <Edit3 size={12} strokeWidth={2.5} />
-                                            ניהול גלריה
-                                        </motion.button>
-                                    )}
-                                </AnimatePresence>
-                            )}
+                                        {/* cursor-zoom-in hint on active */}
+                                        {isActive && (
+                                            <div style={{ position: 'absolute', inset: 0, cursor: 'zoom-in' }} />
+                                        )}
+
+                                        {/* ── כפתור ניהול גלריה – מופיע על הכרטיס הפעיל בריחוף ── */}
+                                        {isActive && isAdmin && isAdmin() && (
+                                            <AnimatePresence>
+                                                {isHovered && (
+                                                    <motion.button
+                                                        key="edit-btn"
+                                                        initial={{ opacity: 0, y: -8, scale: 0.9 }}
+                                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                        exit={{ opacity: 0, y: -8, scale: 0.9 }}
+                                                        transition={{ duration: 0.2 }}
+                                                        onClick={(e) => { e.stopPropagation(); setIsModalOpen(true); }}
+                                                        style={{ position: 'absolute', top: 16, right: 16, zIndex: 30 }}
+                                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-[#0d2340] bg-[#cfa756] hover:bg-[#b8860b] shadow-lg transition-all"
+                                                        whileHover={{ scale: 1.05 }}
+                                                        whileTap={{ scale: 0.95 }}
+                                                    >
+                                                        <Edit3 size={12} strokeWidth={2.5} />
+                                                        ניהול גלריה
+                                                    </motion.button>
+                                                )}
+                                            </AnimatePresence>
+                                        )}
+                                    </div>
+                                );
+                            })}
                         </div>
 
-                        {/* ── חץ ימין (תמונה הבאה) – מחוץ למסגרת הכרטיס ── */}
-                        {images.length > 1 && (
+                        {/* ── כפתור ניווט ימין ── */}
+                        {n > 1 && (
                             <motion.button
                                 onClick={() => go(1)}
                                 whileTap={{ scale: 0.88 }}
-                                className="flex-shrink-0 p-2 rounded-full bg-[#0d2340]/10 hover:bg-[#cfa756]/20 border border-[#cfa756]/30 text-[#cfa756] transition-all"
+                                style={{ zIndex: 20 }}
+                                className="absolute right-0 top-1/2 -translate-y-1/2 p-2 rounded-full bg-[#0d2340]/10 hover:bg-[#cfa756]/20 border border-[#cfa756]/30 text-[#cfa756] transition-all"
                                 aria-label="תמונה הבאה"
                             >
-                                <ChevronRight size={22} strokeWidth={2.5} />
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="9 18 15 12 9 6" />
+                                </svg>
                             </motion.button>
                         )}
                     </div>
 
+                    {/* ─── כיתוב תמונה פעילה (מחוץ ל-stage כדי לא להיחסם) ───────── */}
+                    <AnimatePresence mode="wait">
+                        <motion.div
+                            key={`caption-${current?._id ?? index}`}
+                            variants={captionVariants}
+                            initial="hidden"
+                            animate="visible"
+                            exit="exit"
+                            className="text-center mt-5 px-4"
+                        >
+                            <h2 className="text-xl font-bold text-[#0d2340] leading-tight tracking-tight drop-shadow">
+                                {current?.title}
+                            </h2>
+                            {current?.description && (
+                                <p className="text-sm text-[#0d2340]/60 mt-1 leading-relaxed line-clamp-2 max-w-sm mx-auto">
+                                    {current.description}
+                                </p>
+                            )}
+                        </motion.div>
+                    </AnimatePresence>
+
                     {/* ── נקודות ניווט ── */}
-                    {images.length > 1 && (
+                    {n > 1 && (
                         <div className="flex justify-center gap-1.5 mt-5">
                             {images.map((_, i) => (
                                 <motion.button
                                     key={i}
-                                    onClick={() => { setDirection(i > index ? 1 : -1); setIndex(i); }}
+                                    onClick={() => setIndex(i)}
                                     animate={{ width: i === index ? 24 : 8, opacity: i === index ? 1 : 0.35 }}
                                     transition={{ duration: 0.3 }}
                                     className="h-1.5 rounded-full bg-[#cfa756]"
