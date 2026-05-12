@@ -1,29 +1,43 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/authContext';
 import { getPrayers, savePrayers } from '../../services/prayersService';
-import { getAnnouncements, saveAnnouncement, removeAnnouncement } from '../../services/announcementsService';
+import {
+  getAnnouncements,
+  saveAnnouncement,
+  removeAnnouncement,
+} from '../../services/announcementsService';
+
+const DEFAULT_TITLE = 'זמני תפילות:';
 
 const ContactAndPrayerTimes = ({ isButtonTransparent }) => {
   const { isAdmin } = useAuth();
 
   const [announcements, setAnnouncements] = useState([]);
   const [prayers, setPrayers] = useState([]);
+  const [prayerSectionTitle, setPrayerSectionTitle] = useState(DEFAULT_TITLE);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [tempPrayers, setTempPrayers] = useState([]);
   const [tempAnnouncements, setTempAnnouncements] = useState([]);
+  const [tempTitle, setTempTitle] = useState(DEFAULT_TITLE);
 
-  // ── טעינת נתונים בעת עלייה ──────────────────────────────────────────────
+  // ── טעינת נתונים ─────────────────────────────────────────────────────────
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [fetchedPrayers, fetchedAnnouncements] = await Promise.all([
+        const [prayerData, fetchedAnnouncements] = await Promise.all([
           getPrayers(),
           getAnnouncements(),
         ]);
-        setPrayers(fetchedPrayers);
+        // תמיכה בפורמט החדש { prayers, prayerSectionTitle } וגם בישן [...]
+        if (Array.isArray(prayerData)) {
+          setPrayers(prayerData);
+        } else {
+          setPrayers(prayerData.prayers ?? []);
+          setPrayerSectionTitle(prayerData.prayerSectionTitle ?? DEFAULT_TITLE);
+        }
         setAnnouncements(fetchedAnnouncements);
       } catch (err) {
         setError('שגיאה בטעינת הנתונים. אנא רענן את הדף.');
@@ -35,10 +49,11 @@ const ContactAndPrayerTimes = ({ isButtonTransparent }) => {
     loadData();
   }, []);
 
-  // ── פתיחת מודאל — העתקת מצב נוכחי לסטייט זמני ──────────────────────────
+  // ── פתיחת מודאל ──────────────────────────────────────────────────────────
   const openModal = () => {
     setTempPrayers(prayers.map((p) => ({ ...p })));
     setTempAnnouncements(announcements.map((a) => ({ ...a })));
+    setTempTitle(prayerSectionTitle);
     setIsModalOpen(true);
   };
 
@@ -47,21 +62,25 @@ const ContactAndPrayerTimes = ({ isButtonTransparent }) => {
   // ── שמירת שינויים ────────────────────────────────────────────────────────
   const saveChanges = async () => {
     try {
-      // 1. שמירת זמני תפילה
-      const updatedPrayers = await savePrayers(tempPrayers);
-      setPrayers(updatedPrayers);
+      // 1. שמירת תפילות + כותרת
+      const result = await savePrayers(tempPrayers, tempTitle);
+      if (Array.isArray(result)) {
+        setPrayers(result);
+      } else {
+        setPrayers(result.prayers ?? tempPrayers);
+        setPrayerSectionTitle(result.prayerSectionTitle ?? tempTitle);
+      }
 
-      // 2. מציאת הכרזות שנמחקו (קיימות ב-DB אבל לא ב-tempAnnouncements)
+      // 2. מחיקת הכרזות שהוסרו
       const deletedAnnouncements = announcements.filter(
         (orig) => !tempAnnouncements.some((t) => t._id === orig._id)
       );
       await Promise.all(deletedAnnouncements.map((a) => removeAnnouncement(a._id)));
 
-      // 3. שמירה/עדכון של כל ההכרזות הנוכחיות
+      // 3. שמירת הכרזות
       const savedAnnouncements = await Promise.all(
         tempAnnouncements.map((a) => saveAnnouncement(a))
       );
-
       setAnnouncements(savedAnnouncements);
       setIsModalOpen(false);
     } catch (err) {
@@ -91,12 +110,15 @@ const ContactAndPrayerTimes = ({ isButtonTransparent }) => {
   };
 
   const addAnnouncement = () =>
-    setTempAnnouncements([...tempAnnouncements, { title: 'הודעת גבאי', content: '' }]);
+    setTempAnnouncements([
+      ...tempAnnouncements,
+      { title: 'הודעת גבאי', content: '' },
+    ]);
 
   const removeAnnouncementFromTemp = (index) =>
     setTempAnnouncements(tempAnnouncements.filter((_, i) => i !== index));
 
-  // ── תצוגה בזמן טעינה / שגיאה ────────────────────────────────────────────
+  // ── תצוגה ────────────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="text-center py-10 text-[#0d2340] font-medium" dir="rtl">
@@ -118,14 +140,13 @@ const ContactAndPrayerTimes = ({ isButtonTransparent }) => {
       className="bg-[#f7f4e9] shadow-2xl rounded-xl p-6 max-w-md mx-auto my-8 w-full border border-[#cfa756]/30 relative overflow-hidden"
       dir="rtl"
     >
-      {/* פס קישוט עליון */}
-      <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-[#0d2340] via-[#cfa756] to-[#0d2340]"></div>
+      <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-[#0d2340] via-[#cfa756] to-[#0d2340]" />
 
       <h2 className="text-3xl font-bold text-[#0d2340] mb-8 mt-2 text-center drop-shadow-sm">
         זמני תפילה ומידע
       </h2>
 
-      {/* ── רשימת הכרזות ── */}
+      {/* הכרזות */}
       {announcements.length > 0 && (
         <div className="mb-8 space-y-3">
           {announcements.map((announcement, index) => (
@@ -144,7 +165,7 @@ const ContactAndPrayerTimes = ({ isButtonTransparent }) => {
         </div>
       )}
 
-      {/* ── כתובת ── */}
+      {/* כתובת */}
       <div className="mb-6 bg-white p-4 rounded-lg shadow-sm border border-gray-100">
         <h3 className="text-xl font-bold text-[#0d2340] mb-2 flex items-center gap-2">
           <svg className="w-5 h-5 text-[#cfa756]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -153,13 +174,15 @@ const ContactAndPrayerTimes = ({ isButtonTransparent }) => {
           </svg>
           כתובתנו:
         </h3>
-        <p className="text-lg text-gray-700 font-medium pr-7">הרב רפאל ברוך טולדנו 20 | רמת שלמה</p>
+        <p className="text-lg text-gray-700 font-medium pr-7">
+          הרב רפאל ברוך טולדנו 20 | רמת שלמה
+        </p>
       </div>
 
-      {/* ── זמני תפילה ── */}
+      {/* זמני תפילה — כותרת דינמית */}
       <div className="mb-8">
         <h3 className="text-xl font-bold text-[#0d2340] mb-4 border-b-2 border-[#cfa756] pb-2 inline-block">
-          זמני תפילות:
+          {prayerSectionTitle}
         </h3>
         <ul className="space-y-3">
           {prayers.map((prayer, index) => (
@@ -167,7 +190,9 @@ const ContactAndPrayerTimes = ({ isButtonTransparent }) => {
               key={prayer._id ?? index}
               className="flex justify-between items-center text-lg bg-white px-4 py-3 rounded-lg shadow-sm border border-gray-100 hover:border-[#cfa756]/50 transition-colors"
             >
-              <span className="font-bold text-[#1a365d]">{prayer.title ?? prayer.name}</span>
+              <span className="font-bold text-[#1a365d]">
+                {prayer.title ?? prayer.name}
+              </span>
               <span className="bg-[#162641] text-[#cfa756] font-bold text-md px-4 py-1 rounded-full shadow-inner tracking-wide">
                 {prayer.time}
               </span>
@@ -176,7 +201,7 @@ const ContactAndPrayerTimes = ({ isButtonTransparent }) => {
         </ul>
       </div>
 
-      {/* ── כפתור עריכה (אדמין בלבד) ── */}
+      {/* כפתור עריכה */}
       <div className="text-center">
         {isAdmin() && (
           <button
@@ -189,7 +214,7 @@ const ContactAndPrayerTimes = ({ isButtonTransparent }) => {
         )}
       </div>
 
-      {/* ══════════════════════ מודאל עריכה ══════════════════════ */}
+      {/* ══════════════ מודאל עריכה ══════════════ */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-[#0d2340]/70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
           <div
@@ -200,13 +225,10 @@ const ContactAndPrayerTimes = ({ isButtonTransparent }) => {
               עריכת תוכן
             </h3>
 
-            {/* ── עריכת הכרזות ── */}
+            {/* עריכת הכרזות */}
             <div className="mb-6">
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="font-bold text-[#0d2340] text-lg">הודעות גבאי:</h4>
-              </div>
-
-              <div className="space-y-4 max-h-[30vh] overflow-y-auto pr-1">
+              <h4 className="font-bold text-[#0d2340] text-lg mb-3">הודעות גבאי:</h4>
+              <div className="space-y-4 max-h-[25vh] overflow-y-auto pr-1">
                 {tempAnnouncements.map((announcement, index) => (
                   <div
                     key={announcement._id ?? index}
@@ -216,7 +238,7 @@ const ContactAndPrayerTimes = ({ isButtonTransparent }) => {
                       className="border border-gray-300 rounded px-3 py-2 w-full text-gray-800 focus:ring-1 focus:ring-[#cfa756] outline-none text-sm"
                       value={announcement.title ?? ''}
                       onChange={(e) => handleAnnouncementChange(index, 'title', e.target.value)}
-                      placeholder="כותרת ההודעה (לדוג': הודעת גבאי)"
+                      placeholder="כותרת ההודעה"
                     />
                     <textarea
                       className="border border-gray-300 rounded px-3 py-2 w-full text-gray-800 focus:ring-1 focus:ring-[#cfa756] outline-none text-sm"
@@ -225,21 +247,18 @@ const ContactAndPrayerTimes = ({ isButtonTransparent }) => {
                       onChange={(e) => handleAnnouncementChange(index, 'content', e.target.value)}
                       placeholder="תוכן ההודעה..."
                     />
-                    <div className="text-right">
-                      <button
-                        onClick={() => removeAnnouncementFromTemp(index)}
-                        className="text-sm font-medium text-[#a61b1b] hover:text-red-800 hover:underline flex items-center gap-1"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                        מחק הודעה
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => removeAnnouncementFromTemp(index)}
+                      className="text-sm font-medium text-[#a61b1b] hover:underline flex items-center gap-1 self-end"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      מחק הודעה
+                    </button>
                   </div>
                 ))}
               </div>
-
               <button
                 onClick={addAnnouncement}
                 className="mt-3 text-[#1a365d] font-bold hover:text-[#cfa756] transition-colors flex items-center gap-1"
@@ -251,15 +270,31 @@ const ContactAndPrayerTimes = ({ isButtonTransparent }) => {
               </button>
             </div>
 
-            {/* ── קו הפרדה ── */}
             <div className="border-t border-[#cfa756]/30 my-4" />
 
-            {/* ── עריכת זמני תפילה ── */}
+            {/* ── עריכת כותרת הסקשן — חדש! ── */}
             <div className="mb-4">
-              <h4 className="font-bold text-[#0d2340] text-lg mb-3">עריכת זמני תפילה:</h4>
-              <div className="space-y-4 max-h-[30vh] overflow-y-auto pr-1">
+              <h4 className="font-bold text-[#0d2340] text-lg mb-2">כותרת סקשן תפילות:</h4>
+              <input
+                className="border border-gray-300 rounded px-3 py-2 w-full text-gray-800 focus:ring-1 focus:ring-[#cfa756] outline-none text-sm bg-white"
+                value={tempTitle}
+                onChange={(e) => setTempTitle(e.target.value)}
+                placeholder="כותרת הסקשן (לדוג': זמני תפילות:)"
+              />
+              <p className="text-xs text-gray-400 mt-1">
+                זהו הטקסט שמופיע מעל רשימת התפילות
+              </p>
+            </div>
+
+            {/* עריכת זמני תפילה */}
+            <div className="mb-4">
+              <h4 className="font-bold text-[#0d2340] text-lg mb-3">זמני תפילה:</h4>
+              <div className="space-y-4 max-h-[25vh] overflow-y-auto pr-1">
                 {tempPrayers.map((prayer, index) => (
-                  <div key={prayer._id ?? index} className="flex flex-col gap-2 bg-white p-3 rounded-md shadow-sm border border-gray-200">
+                  <div
+                    key={prayer._id ?? index}
+                    className="flex flex-col gap-2 bg-white p-3 rounded-md shadow-sm border border-gray-200"
+                  >
                     <div className="flex justify-between gap-3">
                       <input
                         className="border border-gray-300 rounded px-3 py-2 w-full text-gray-800 focus:ring-1 focus:ring-[#cfa756] outline-none"
@@ -271,25 +306,22 @@ const ContactAndPrayerTimes = ({ isButtonTransparent }) => {
                         className="border border-gray-300 rounded px-3 py-2 w-full text-gray-800 focus:ring-1 focus:ring-[#cfa756] outline-none text-center"
                         value={prayer.time}
                         onChange={(e) => handlePrayerChange(index, 'time', e.target.value)}
-                        placeholder="זמן (לדוג': 06:15)"
+                        placeholder="06:15"
                         dir="ltr"
                       />
                     </div>
-                    <div className="text-right mt-1">
-                      <button
-                        onClick={() => removePrayer(index)}
-                        className="text-sm font-medium text-[#a61b1b] hover:text-red-800 hover:underline flex items-center gap-1"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                        מחק תפילה
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => removePrayer(index)}
+                      className="text-sm font-medium text-[#a61b1b] hover:underline flex items-center gap-1 self-end"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      מחק תפילה
+                    </button>
                   </div>
                 ))}
               </div>
-
               <button
                 onClick={addPrayer}
                 className="mt-3 text-[#1a365d] font-bold hover:text-[#cfa756] transition-colors flex items-center gap-1"
@@ -301,7 +333,7 @@ const ContactAndPrayerTimes = ({ isButtonTransparent }) => {
               </button>
             </div>
 
-            {/* ── כפתורי שמירה/ביטול ── */}
+            {/* כפתורי שמירה/ביטול */}
             <div className="flex justify-end gap-3 mt-8 border-t border-[#cfa756]/30 pt-4">
               <button
                 onClick={closeModal}
