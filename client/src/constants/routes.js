@@ -22,8 +22,8 @@ export const NAVIGATION_ITEMS = [
 
   // { path: ROUTES.PRAYERS,       label: 'תפילות' },
   // { path: ROUTES.ANNOUNCEMENTS, label: 'הודעות' },
-  { path: ROUTES.CONTACT,       label: 'צור קשר' },
-  { path: ROUTES.PAYMENTS,      label: 'תשלומים' },
   { path: ROUTES.PORTAL,        label: ' הקדשות' }, // ← זה הלינק למערכת החדשה
   { path: ROUTES.COMMEMORATIONS, label: 'הנצחות' }, // ← חדש
+  { path: ROUTES.PAYMENTS,      label: 'תשלומים' },
+  { path: ROUTES.CONTACT,       label: 'צור קשר' },
 ];
