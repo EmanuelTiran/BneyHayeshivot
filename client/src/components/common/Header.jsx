@@ -181,7 +181,7 @@ function Header() {
             {/* Desktop Nav */}
             <nav
               ref={navRef}
-              className="hidden lg:flex items-center justify-center flex-1 gap-10 relative"
+              className="notranslate hidden lg:flex items-center justify-center flex-1 gap-10 relative"
             >
               {navItems.map(({ path, label }, i) => (
                 <Link
@@ -189,12 +189,12 @@ function Header() {
                   to={path}
                   data-path={path}
                   className={`relative text-[18px] tracking-widest uppercase font-bold transition-colors duration-200 pb-2 ${location.pathname === path
-                      ? 'text-[#cfa756]'
-                      : 'text-[#f7f4e9]/80 hover:text-[#cfa756]'
+                    ? 'text-[#cfa756]'
+                    : 'text-[#f7f4e9]/80 hover:text-[#cfa756]'
                     }`}
                   style={{ animationDelay: `${i * 80}ms` }}
                 >
-                  {label}
+                  <span>{label}</span>
                 </Link>
               ))}
 
@@ -263,8 +263,8 @@ function Header() {
                   to={path}
                   onClick={() => setIsMenuOpen(false)}
                   className={`mobile-link-enter px-2 py-3 text-[17px] font-bold tracking-wide border-b border-[#cfa756]/10 transition-colors ${location.pathname === path
-                      ? 'text-[#cfa756]'
-                      : 'text-[#f7f4e9]/80 hover:text-[#cfa756]'
+                    ? 'text-[#cfa756]'
+                    : 'text-[#f7f4e9]/80 hover:text-[#cfa756]'
                     }`}
                   style={{ animationDelay: `${i * 50}ms` }}
                 >
@@ -289,7 +289,7 @@ function Header() {
                       </svg>
                     </span>
                   )}
-                  {label}
+                  <span>{label}</span>
                 </Link>
               ))}
 
