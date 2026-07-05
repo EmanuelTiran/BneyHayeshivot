@@ -1,6 +1,7 @@
-const prayerService = require('../services/prayerService');
+const prayerService  = require('../services/prayerService');
+const { sendUpdateNewsletter } = require('../services/emailService');
+const Announcement   = require('../models/Announcement'); // לשליפת ההכרזות
 
-// שליפת כל התפילות + כותרת הסקשן
 exports.getPrayers = async (req, res) => {
   try {
     const [prayers, prayerSectionTitle] = await Promise.all([
@@ -13,7 +14,6 @@ exports.getPrayers = async (req, res) => {
   }
 };
 
-// עדכון כל רשימת התפילות + כותרת (אדמין בלבד)
 exports.replacePrayers = async (req, res) => {
   try {
     const { prayers, prayerSectionTitle } = req.body;
@@ -34,12 +34,22 @@ exports.replacePrayers = async (req, res) => {
       : await prayerService.getPrayerSectionTitle();
 
     res.json({ prayers: updated, prayerSectionTitle: finalTitle });
+
+    // ── לוגים לאבחון ──
+    console.log('[Newsletter] מתחיל תהליך שליחה...');
+
+    Announcement.find().lean()
+      .then(announcements => {
+        console.log('[Newsletter] נמצאו', announcements.length, 'הכרזות');
+        return sendUpdateNewsletter(updated, announcements, finalTitle);
+      })
+      .catch(err => console.error('[Newsletter] שגיאה בשליפת הכרזות:', err.message));
+
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
 
-// יצירת תפילה בודדת
 exports.create = async (req, res) => {
   try {
     const saved = await new (require('../models/Prayer'))(req.body).save();
