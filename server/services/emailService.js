@@ -1,18 +1,7 @@
-const nodemailer = require('nodemailer');
-const User       = require('../models/User');
+const { Resend } = require('resend');
+const User        = require('../models/User');
 
-const SITE_URL = 'https://bneyhayeshivot-1.onrender.com/';
-
-const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
-    },
-    connectionTimeout: 10000,  // 10 שניות לחיבור
-    greetingTimeout: 10000,
-    socketTimeout: 10000,
-  });
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 /**
  * בונה את תוכן ה-HTML למייל
@@ -223,17 +212,9 @@ const buildNewsletterHTML = (prayers, announcements, prayerSectionTitle) => {
   `;
 };
 
-/**
- * שולח ניוזלטר לכל חברי הקהילה — אסינכרוני לחלוטין (fire & forget)
- * @param {Array} prayers         — רשימת התפילות המעודכנת
- * @param {Array} announcements   — רשימת ההכרזות המעודכנת
- * @param {string} prayerSectionTitle — כותרת סקשן התפילות
- */
 const sendUpdateNewsletter = async (prayers, announcements, prayerSectionTitle) => {
     try {
-      console.log('[Newsletter] בודק חיבור ל-SMTP...');
-      await transporter.verify();
-      console.log('[Newsletter] ✓ חיבור תקין, ממשיך...');
+      console.log('[Newsletter] מתחיל תהליך שליחה...');
   
       const users = await User.find(
         { isActive: true, email: { $exists: true, $ne: '' } },
@@ -242,26 +223,34 @@ const sendUpdateNewsletter = async (prayers, announcements, prayerSectionTitle) 
   
       console.log(`[Newsletter] נמצאו ${users.length} משתמשים`);
   
-      if (!users.length) return;
+      if (!users.length) {
+        console.log('[Newsletter] אין משתמשים לשליחה');
+        return;
+      }
   
       const emails = users.map(u => u.email);
       const html   = buildNewsletterHTML(prayers, announcements, prayerSectionTitle);
   
-      console.log('[Newsletter] שולח מייל עכשיו...');
+      console.log('[Newsletter] שולח מייל דרך Resend...');
   
-      const info = await transporter.sendMail({
-        from: `"בית הכנסת" <${process.env.EMAIL_USER}>`,
-        to:   process.env.EMAIL_USER,
-        bcc:  emails.join(','),
-        subject: `📋 עדכון — ${new Date().toLocaleDateString('he-IL')}`,
+      const { data, error } = await resend.emails.send({
+        from:    'בית הכנסת <onboarding@resend.dev>', // ← להחליף לדומיין שלך אחרי אימות
+        to:      process.env.EMAIL_USER,               // נמען ראשי
+        bcc:     emails,                                // Resend מקבל מערך ישירות
+        subject: `📋 עדכון זמני תפילה והודעות — ${new Date().toLocaleDateString('he-IL')}`,
         html,
       });
   
-      console.log(`[Newsletter] ✓✓✓ נשלח בהצלחה! messageId: ${info.messageId}`);
+      if (error) {
+        console.error('[Newsletter] ✗✗✗ שגיאה מ-Resend:', error);
+        return;
+      }
+  
+      console.log(`[Newsletter] ✓✓✓ נשלח בהצלחה! id: ${data.id}`);
   
     } catch (err) {
-      console.error('[Newsletter] ✗✗✗ שגיאה מפורטת:', err);
+      console.error('[Newsletter] ✗✗✗ שגיאה כללית:', err);
     }
   };
   
-module.exports = { sendUpdateNewsletter };
+  module.exports = { sendUpdateNewsletter };
