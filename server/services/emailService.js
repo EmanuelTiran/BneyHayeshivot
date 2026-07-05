@@ -4,12 +4,15 @@ const User       = require('../models/User');
 const SITE_URL = 'https://bneyhayeshivot-1.onrender.com/';
 
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+    service: 'gmail',
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+    connectionTimeout: 10000,  // 10 שניות לחיבור
+    greetingTimeout: 10000,
+    socketTimeout: 10000,
+  });
 
 /**
  * בונה את תוכן ה-HTML למייל
@@ -227,39 +230,38 @@ const buildNewsletterHTML = (prayers, announcements, prayerSectionTitle) => {
  * @param {string} prayerSectionTitle — כותרת סקשן התפילות
  */
 const sendUpdateNewsletter = async (prayers, announcements, prayerSectionTitle) => {
-    console.log('[Newsletter] === התחלה ===');
     try {
+      console.log('[Newsletter] בודק חיבור ל-SMTP...');
+      await transporter.verify();
+      console.log('[Newsletter] ✓ חיבור תקין, ממשיך...');
+  
       const users = await User.find(
         { isActive: true, email: { $exists: true, $ne: '' } },
         'email name'
       ).lean();
-
-      console.log('[Newsletter] נמצאו', users.length, 'משתמשים:', users.map(u => u.email));
-
-      if (!users.length) {
-        console.log('[Newsletter] ⚠️ אין משתמשים לשליחה — כאן הבעיה!');
-        return;
-      }
-
-    const emails = users.map(u => u.email);
-    const html   = buildNewsletterHTML(prayers, announcements, prayerSectionTitle);
-
-    // BCC — כל הנמענים מקבלים מייל אחד, ללא חשיפת כתובות אחד לשני
-    const mailOptions = {
-      from:    `"בני הישיבות" <${process.env.EMAIL_USER}>`,
-      to:      process.env.EMAIL_USER,   // שולח לעצמו (נדרש שדה to תקין)
-      bcc:     emails.join(','),
-      subject: `📋 עדכון זמני תפילה והודעות — ${new Date().toLocaleDateString('he-IL')}`,
-      html,
-    };
-
-    const info = await transporter.sendMail(mailOptions);
-    console.log(`[Newsletter] ✓ נשלח ל-${emails.length} משתמשים | messageId: ${info.messageId}`);
-
-  } catch (err) {
-    // שגיאה בשליחת מיילים לא תפיל את השרת
-    console.error('[Newsletter] ✗ שגיאה:', err.message);
-  }
-};
-
+  
+      console.log(`[Newsletter] נמצאו ${users.length} משתמשים`);
+  
+      if (!users.length) return;
+  
+      const emails = users.map(u => u.email);
+      const html   = buildNewsletterHTML(prayers, announcements, prayerSectionTitle);
+  
+      console.log('[Newsletter] שולח מייל עכשיו...');
+  
+      const info = await transporter.sendMail({
+        from: `"בית הכנסת" <${process.env.EMAIL_USER}>`,
+        to:   process.env.EMAIL_USER,
+        bcc:  emails.join(','),
+        subject: `📋 עדכון — ${new Date().toLocaleDateString('he-IL')}`,
+        html,
+      });
+  
+      console.log(`[Newsletter] ✓✓✓ נשלח בהצלחה! messageId: ${info.messageId}`);
+  
+    } catch (err) {
+      console.error('[Newsletter] ✗✗✗ שגיאה מפורטת:', err);
+    }
+  };
+  
 module.exports = { sendUpdateNewsletter };
