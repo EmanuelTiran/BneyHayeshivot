@@ -2,7 +2,7 @@ const { Resend } = require('resend');
 const User        = require('../models/User');
 
 const resend = new Resend(process.env.RESEND_API_KEY);
-
+const SITE_URL = process.env.SITE_URL || 'https://bneyhayeshivot-1.onrender.com/';
 /**
  * בונה את תוכן ה-HTML למייל
  * העיצוב מותאם 1:1 לקומפוננטת ContactAndPrayerTimes:
