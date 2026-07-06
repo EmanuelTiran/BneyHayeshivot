@@ -246,9 +246,9 @@ const sendUpdateNewsletter = async (prayers, announcements, prayerSectionTitle) 
       console.log('[Newsletter] שולח מייל דרך Resend...');
   
       const { data, error } = await resend.emails.send({
-        from:    'בית הכנסת <onboarding@resend.dev>', // ← להחליף לדומיין שלך אחרי אימות
-        to:      process.env.EMAIL_USER,               // נמען ראשי
-        bcc:     emails,                                // Resend מקבל מערך ישירות
+        from:    'בית הכנסת <updates@bneyhayeshivot.online>',  // ← הדומיין החדש שלך!
+        to:      process.env.EMAIL_USER,
+        bcc:     emails,
         subject: `📋 עדכון זמני תפילה והודעות — ${new Date().toLocaleDateString('he-IL')}`,
         html,
       });
