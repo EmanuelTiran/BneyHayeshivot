@@ -1,7 +1,19 @@
 const { Resend } = require('resend');
-const User        = require('../models/User');
+const User = require('../models/User');
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+let resendClient = null;
+
+const getResendClient = () => {
+  if (!resendClient) {
+    if (!process.env.RESEND_API_KEY) {
+      throw new Error('RESEND_API_KEY חסר ב-Environment Variables!');
+    }
+    const { Resend } = require('resend');
+    resendClient = new Resend(process.env.RESEND_API_KEY);
+  }
+  return resendClient;
+};
+
 const SITE_URL = process.env.SITE_URL || 'https://bneyhayeshivot-1.onrender.com/';
 /**
  * בונה את תוכן ה-HTML למייל
@@ -215,7 +227,7 @@ const buildNewsletterHTML = (prayers, announcements, prayerSectionTitle) => {
 const sendUpdateNewsletter = async (prayers, announcements, prayerSectionTitle) => {
     try {
       console.log('[Newsletter] מתחיל תהליך שליחה...');
-  
+      const resend = getResendClient();
       const users = await User.find(
         { isActive: true, email: { $exists: true, $ne: '' } },
         'email name'
