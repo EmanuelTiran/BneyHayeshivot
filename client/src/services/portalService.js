@@ -1,13 +1,4 @@
-import { API_URL } from '../config';
-import axios from 'axios';
-
-const API = axios.create({ baseURL: `${API_URL}/api` });
-
-API.interceptors.request.use((req) => {
-  const token = localStorage.getItem('token');
-  if (token) req.headers.Authorization = `Bearer ${token}`;
-  return req;
-});
+import API from './api';
 
 export const fetchCategories      = ()           => API.get('/categories');
 export const createCategory       = (data)       => API.post('/categories', data);
@@ -25,7 +16,3 @@ export const fetchAllSponsorships     = ()       => API.get('/sponsorships');
 export const updateSponsorshipStatus  = (id, status) => API.patch(`/sponsorships/${id}/status`, { status });
 export const submitCommemorationRequest = (data) =>
     API.post('/sponsorships/from-commemoration', data);
-
-
-
-

@@ -1,0 +1,14 @@
+{
+    "include": [
+      "client/src/pages/Portal.jsx",
+      "client/src/pages/PortalCategory.jsx",
+      "client/src/pages/PortalItem.jsx",
+      "client/src/services/portalService.js",
+      "client/src/services/api.js",
+      "server/routes/portalItems.js",
+      "server/controllers/portalItemController.js",
+      "server/services/portalItemService.js",
+      "server/models/PortalItem.js",
+      "server/middleware/errorHandler.js"
+    ]
+  }
