@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { fetchItemById, submitSponsorshipRequest } from '../services/portalService';
-import {ROUTES} from '../constants/routes';
+import { ROUTES } from '../constants/routes';
 import CommunityPaymentButton from '../components/CommunityPaymentButton';
 
 const DEDICATION_TYPES = ['לזכות', 'לעילוי נשמת', 'לרפואת', 'לעילוי נשמת ולהצלחת', 'אחר'];
@@ -23,12 +23,12 @@ function SuccessBanner({ onClose }) {
 
 export default function PortalItem() {
   const { itemId } = useParams();
-  const navigate   = useNavigate();
-  const [item, setItem]         = useState(null);
-  const [loading, setLoading]   = useState(true);
-  const [error, setError]       = useState('');
-  const [sending, setSending]   = useState(false);
-  const [success, setSuccess]   = useState(false);
+  const navigate = useNavigate();
+  const [item, setItem] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [sending, setSending] = useState(false);
+  const [success, setSuccess] = useState(false);
   const [formError, setFormError] = useState('');
   const [form, setForm] = useState({
     name: '', phone: '', email: '', dedicationType: 'לזכות', dedicationName: '', adminNote: '',
@@ -65,8 +65,8 @@ export default function PortalItem() {
   };
 
   if (loading) return <div dir="rtl" className="text-center py-20">טוען...</div>;
-  if (error)   return <div dir="rtl" className="text-center py-20 text-red-600">{error}</div>;
-  if (!item)   return null;
+  if (error) return <div dir="rtl" className="text-center py-20 text-red-600">{error}</div>;
+  if (!item) return null;
 
   const categoryId = item.categoryId?._id || item.categoryId;
 
@@ -95,8 +95,15 @@ export default function PortalItem() {
               </span>
             </div>
           )}
-          {!item.available && <p className="mt-4 text-sm text-red-500 font-medium">⚠️ פריט זה אינו זמין כרגע לתמיכה</p>}
-        </div>
+          {!item.available && item.sponsorshipStatus === 'sponsored' && (
+            <p className="mt-4 text-sm text-green-600 font-medium">
+              ✡ פריט זה הוקדש {item.dedicationType ? `${item.dedicationType} ` : ''}
+              <span className="font-bold">{item.dedicatedName}</span>
+            </p>
+          )}
+          {!item.available && item.sponsorshipStatus !== 'sponsored' && (
+            <p className="mt-4 text-sm text-red-500 font-medium">⚠️ פריט זה אינו זמין כרגע לתמיכה</p>
+          )}        </div>
 
         {item.available && (
           <div className="bg-white rounded-xl shadow border border-[#cfa756]/30 p-6">

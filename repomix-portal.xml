@@ -32,7 +32,7 @@ The content is organized as follows:
 <notes>
 - Some files may have been excluded based on .gitignore rules and Repomix's configuration
 - Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
-- Only files matching these patterns are included: client/src/pages/Portal.jsx, client/src/pages/PortalCategory.jsx, client/src/pages/PortalItem.jsx, client/src/services/portalService.js, client/src/services/api.js, server/routes/portalItems.js, server/controllers/portalItemController.js, server/services/portalItemService.js, server/models/PortalItem.js, server/middleware/errorHandler.js
+- Only files matching these patterns are included: client/src/pages/Portal.jsx, client/src/pages/PortalCategory.jsx, client/src/pages/PortalItem.jsx, client/src/services/portalService.js, client/src/services/api.js, server/routes/portalItems.js, server/controllers/portalItemController.js, server/services/portalItemService.js, server/models/PortalItem.js, server/middleware/errorHandler.js, client/src/pages/Portal.jsx, client/src/pages/PortalCategory.jsx, client/src/pages/PortalItem.jsx, client/src/services/portalService.js, client/src/services/api.js, server/routes/portalItems.js, server/controllers/portalItemController.js, server/services/portalItemService.js, server/models/PortalItem.js, server/middleware/errorHandler.js
 - Files matching patterns in .gitignore are excluded
 - Files matching default ignore patterns are excluded
 - Files are sorted by Git change count (files with more changes are at the bottom)
@@ -679,16 +679,7 @@ export default function Portal() {
 </file>
 
 <file path="client/src/services/portalService.js">
-import { API_URL } from '../config';
-import axios from 'axios';
-
-const API = axios.create({ baseURL: `${API_URL}/api` });
-
-API.interceptors.request.use((req) => {
-  const token = localStorage.getItem('token');
-  if (token) req.headers.Authorization = `Bearer ${token}`;
-  return req;
-});
+import API from './api';
 
 export const fetchCategories      = ()           => API.get('/categories');
 export const createCategory       = (data)       => API.post('/categories', data);

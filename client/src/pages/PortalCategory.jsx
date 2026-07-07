@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useAuth } from '../components/context/authContext'; 
+import { useAuth } from '../components/context/authContext';
 import { fetchCategories, fetchItemsByCategory, createItem, updateItem, deleteItem } from '../services/portalService';
-import {ROUTES} from '../constants/routes';
+import { ROUTES } from '../constants/routes';
 
 function ItemModal({ initial, categoryId, onClose, onSave }) {
   const [form, setForm] = useState(
@@ -81,15 +81,21 @@ function ItemCard({ item, isAdmin, onEdit, onDelete, onClick }) {
             </span>
           )}
         </div>
-        {item.date        && <p className="text-xs text-[#cfa756] font-medium">📅 {item.date}</p>}
+        {item.date && <p className="text-xs text-[#cfa756] font-medium">📅 {item.date}</p>}
         {item.description && <p className="text-sm text-gray-500">{item.description}</p>}
-        {!item.available  && <span className="text-xs text-red-500 font-medium">• לא זמין</span>}
-        <span className="mt-1 text-xs font-medium text-[#cfa756] self-start bg-[#0d2340] px-2 py-0.5 rounded-full">לפרטים ←</span>
+        {!item.available && item.sponsorshipStatus === 'sponsored' && (
+          <span className="text-xs text-green-600 font-medium">
+            ✡ הוקדש {item.dedicationType ? `${item.dedicationType} ` : ''}{item.dedicatedName}
+          </span>
+        )}
+        {!item.available && item.sponsorshipStatus !== 'sponsored' && (
+          <span className="text-xs text-red-500 font-medium">• לא זמין</span>
+        )}        <span className="mt-1 text-xs font-medium text-[#cfa756] self-start bg-[#0d2340] px-2 py-0.5 rounded-full">לפרטים ←</span>
       </div>
       {isAdmin && (
         <div className="absolute top-2 left-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
           onClick={(e) => e.stopPropagation()}>
-          <button onClick={onEdit}   className="bg-[#cfa756] text-[#0d2340] text-xs font-bold px-2 py-1 rounded hover:bg-[#b8860b]">✎</button>
+          <button onClick={onEdit} className="bg-[#cfa756] text-[#0d2340] text-xs font-bold px-2 py-1 rounded hover:bg-[#b8860b]">✎</button>
           <button onClick={onDelete} className="bg-[#a61b1b] text-white text-xs font-bold px-2 py-1 rounded hover:bg-red-800">✕</button>
         </div>
       )}
@@ -99,13 +105,13 @@ function ItemCard({ item, isAdmin, onEdit, onDelete, onClick }) {
 
 export default function PortalCategory() {
   const { categoryId } = useParams();
-  const navigate       = useNavigate();
-  const { isAdmin }    = useAuth();
+  const navigate = useNavigate();
+  const { isAdmin } = useAuth();
   const [category, setCategory] = useState(null);
-  const [items, setItems]       = useState([]);
-  const [loading, setLoading]   = useState(true);
-  const [error, setError]       = useState('');
-  const [modal, setModal]       = useState(null);
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [modal, setModal] = useState(null);
 
   const load = async () => {
     try {
@@ -155,7 +161,7 @@ export default function PortalCategory() {
           </div>
         )}
         {loading && <p className="text-center py-20">טוען...</p>}
-        {error   && <p className="text-center text-red-600 py-20">{error}</p>}
+        {error && <p className="text-center text-red-600 py-20">{error}</p>}
         {!loading && !error && items.length === 0 && (
           <div className="text-center py-20 text-gray-500"><p className="text-5xl mb-4">📋</p><p>אין פריטים בקטגוריה זו</p></div>
         )}

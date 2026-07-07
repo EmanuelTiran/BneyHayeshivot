@@ -1,4 +1,5 @@
 const SponsorshipRequest = require('../models/SponsorshipRequest');
+const PortalItem         = require('../models/PortalItem'); // ← חדש
 const nodemailer         = require('nodemailer');
 
 const transporter = nodemailer.createTransport({
@@ -48,7 +49,34 @@ const create = async (data, itemTitle, categoryName) => {
   return request;
 };
 
-const getAll       = ()           => SponsorshipRequest.find().populate('itemId categoryId').sort({ createdAt: -1 });
-const updateStatus = (id, status) => SponsorshipRequest.findByIdAndUpdate(id, { status }, { new: true });
+const getAll = () => SponsorshipRequest.find().populate('itemId categoryId').sort({ createdAt: -1 });
+
+// ← חדש: מסנכרן את מצב ה-PortalItem בהתאם לסטטוס הבקשה
+const updateStatus = async (id, status) => {
+  const request = await SponsorshipRequest.findByIdAndUpdate(id, { status }, { new: true });
+  if (!request) return null;
+
+  // הסנכרון רלוונטי רק לבקשות מהפורטל שמקושרות לפריט אמיתי
+  if (request.source === 'portal' && request.itemId) {
+    if (status === 'approved') {
+      await PortalItem.findByIdAndUpdate(request.itemId, {
+        available:          false,
+        sponsorshipStatus:  'sponsored',
+        dedicatedName:       request.dedicationName || request.name,
+        dedicationType:      request.dedicationType,
+      });
+    } else {
+      // status === 'pending' או 'rejected' → משחררים את הפריט בחזרה לזמינות
+      await PortalItem.findByIdAndUpdate(request.itemId, {
+        available:          true,
+        sponsorshipStatus:  status === 'pending' ? 'pending' : 'available',
+        dedicatedName:       '',
+        dedicationType:      '',
+      });
+    }
+  }
+
+  return request;
+};
 
 module.exports = { create, getAll, updateStatus };
