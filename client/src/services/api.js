@@ -2,13 +2,13 @@ import axios from 'axios';
 import { API_URL } from '../config';
 
 const API = axios.create({
-  baseURL:         `${API_URL}/api`,
+  baseURL: `${API_URL}/api`,
   withCredentials: true, // ← חובה! שולח את cookie עם כל בקשה
 });
 
 // ── משתנה פנימי למנוע קריאות refresh מקביליות ───────────────────────────────
-let isRefreshing     = false;
-let failedQueue      = [];  // תור בקשות שנכשלו בזמן הרענון
+let isRefreshing = false;
+let failedQueue = [];  // תור בקשות שנכשלו בזמן הרענון
 
 const processQueue = (error, token = null) => {
   failedQueue.forEach(({ resolve, reject }) => {
@@ -31,10 +31,10 @@ API.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    const is401          = error.response?.status === 401;
+    const is401 = error.response?.status === 401;
     const alreadyRetried = originalRequest._retry;
-    const isRefreshCall  = originalRequest.url?.includes('/auth/refresh');
-    const isLoginCall    = originalRequest.url?.includes('/auth/login');
+    const isRefreshCall = originalRequest.url?.includes('/auth/refresh');
+    const isLoginCall = originalRequest.url?.includes('/auth/login');
 
     // אם זו שגיאת 401 על בקשה שעוד לא ניסינו לרענן
     if (is401 && !alreadyRetried && !isRefreshCall && !isLoginCall) {
@@ -61,7 +61,7 @@ API.interceptors.response.use(
 
         localStorage.setItem('token', newToken);
         API.defaults.headers.common.Authorization = `Bearer ${newToken}`;
-        originalRequest.headers.Authorization     = `Bearer ${newToken}`;
+        originalRequest.headers.Authorization = `Bearer ${newToken}`;
 
         processQueue(null, newToken);
         return API(originalRequest); // חזור על הבקשה המקורית
@@ -102,55 +102,62 @@ const handleSessionExpired = () => {
 
 // ── ייצוא פונקציות API ────────────────────────────────────────────────────────
 
-export const login    = (credentials) => API.post('/auth/login',    credentials);
-export const register = (userData)    => API.post('/auth/register', userData);
-export const logout   = ()            => API.post('/auth/logout');
+export const login = (credentials) => API.post('/auth/login', credentials);
+export const register = (userData) => API.post('/auth/register', userData);
+export const logout = () => API.post('/auth/logout');
 
-export const fetchAnnouncements = ()           => API.get('/announcements');
-export const createAnnouncement = (data)       => API.post('/announcements', data);
-export const updateAnnouncement = (id, data)   => API.put(`/announcements/${id}`, data);
-export const deleteAnnouncement = (id)         => API.delete(`/announcements/${id}`);
+export const fetchAnnouncements = () => API.get('/announcements');
+export const createAnnouncement = (data) => API.post('/announcements', data);
+export const updateAnnouncement = (id, data) => API.put(`/announcements/${id}`, data);
+export const deleteAnnouncement = (id) => API.delete(`/announcements/${id}`);
 
-export const fetchPrayers  = ()        => API.get('/prayers');
-export const createPrayer  = (data)    => API.post('/prayers', data);
+export const fetchPrayers = () => API.get('/prayers');
+export const createPrayer = (data) => API.post('/prayers', data);
 export const updatePrayers = (prayers, prayerSectionTitle) =>
   API.put('/prayers', { prayers, prayerSectionTitle });
 
-export const sendContactMessage          = (data)            => API.post('/contact', data);
-export const fetchContactMessages        = ()                => API.get('/contact');
+export const sendContactMessage = (data) => API.post('/contact', data);
+export const fetchContactMessages = () => API.get('/contact');
 export const updateContactMessageHandled = (id, handled) =>
   API.patch(`/contact/${id}/handled`, { handled });
 
-export const fetchMyPayments       = ()               => API.get('/payments/me');
-export const addMyDebt             = (data)           => API.post('/payments/me/debts', data);
-export const markMyDebtPaid        = (debtId, isPaid) => API.patch(`/payments/me/debts/${debtId}`, { isPaid });
-export const setMyStandingOrder    = (data)           => API.post('/payments/me/standing-order', data);
-export const cancelMyStandingOrder = ()               => API.delete('/payments/me/standing-order');
-export const addMyDonation         = (data)           => API.post('/payments/me/donations', data);
+export const fetchMyPayments = () => API.get('/payments/me');
+export const addMyDebt = (data) => API.post('/payments/me/debts', data);
+export const markMyDebtPaid = (debtId, isPaid) => API.patch(`/payments/me/debts/${debtId}`, { isPaid });
+export const setMyStandingOrder = (data) => API.post('/payments/me/standing-order', data);
+export const cancelMyStandingOrder = () => API.delete('/payments/me/standing-order');
+export const addMyDonation = (data) => API.post('/payments/me/donations', data);
 
-export const fetchAllPayments        = ()                       => API.get('/payments');
-export const fetchUserPayments       = (userId)                 => API.get(`/payments/${userId}`);
-export const addUserDebt             = (userId, data)           => API.post(`/payments/${userId}/debts`, data);
-export const markUserDebtPaid        = (userId, debtId, isPaid) => API.patch(`/payments/${userId}/debts/${debtId}`, { isPaid });
-export const deleteUserDebt          = (userId, debtId)         => API.delete(`/payments/${userId}/debts/${debtId}`);
-export const setUserStandingOrder    = (userId, data)           => API.post(`/payments/${userId}/standing-order`, data);
-export const cancelUserStandingOrder = (userId)                 => API.delete(`/payments/${userId}/standing-order`);
-export const addUserDonation         = (userId, data)           => API.post(`/payments/${userId}/donations`, data);
-export const deleteUserDonation      = (userId, donationId)     => API.delete(`/payments/${userId}/donations/${donationId}`);
-export const updateUserNotes         = (userId, notes)          => API.patch(`/payments/${userId}/notes`, { notes });
+export const fetchAllPayments = () => API.get('/payments');
+export const fetchUserPayments = (userId) => API.get(`/payments/${userId}`);
+export const addUserDebt = (userId, data) => API.post(`/payments/${userId}/debts`, data);
+export const markUserDebtPaid = (userId, debtId, isPaid) => API.patch(`/payments/${userId}/debts/${debtId}`, { isPaid });
+export const deleteUserDebt = (userId, debtId) => API.delete(`/payments/${userId}/debts/${debtId}`);
+export const setUserStandingOrder = (userId, data) => API.post(`/payments/${userId}/standing-order`, data);
+export const cancelUserStandingOrder = (userId) => API.delete(`/payments/${userId}/standing-order`);
+export const addUserDonation = (userId, data) => API.post(`/payments/${userId}/donations`, data);
+export const deleteUserDonation = (userId, donationId) => API.delete(`/payments/${userId}/donations/${donationId}`);
+export const updateUserNotes = (userId, notes) => API.patch(`/payments/${userId}/notes`, { notes });
 
-export const fetchAllUsers            = () => API.get('/users');
-export const fetchCommemorations      = () => API.get('/commemorations');
-export const fetchCommemorationById   = (id)        => API.get(`/commemorations/${id}`);
-export const createCommemoration      = (data)      => API.post('/commemorations', data);
-export const updateCommemoration      = (id, data)  => API.put(`/commemorations/${id}`, data);
-export const deleteCommemoration      = (id)        => API.delete(`/commemorations/${id}`);
+export const fetchAllUsers = () => API.get('/users');
+export const addMailingListUser = (data) => API.post('/users', data);
+
+export const updateMailingListUser = (id, data) => API.put(`/users/${id}`, data);
+export const deleteMailingListUser = (id) => API.delete(`/users/${id}`);
+export const toggleUserNewsletter = (id, receivesNewsletter) =>
+  API.patch(`/users/${id}/newsletter`, { receivesNewsletter });
+
+export const fetchCommemorations = () => API.get('/commemorations');
+export const fetchCommemorationById = (id) => API.get(`/commemorations/${id}`);
+export const createCommemoration = (data) => API.post('/commemorations', data);
+export const updateCommemoration = (id, data) => API.put(`/commemorations/${id}`, data);
+export const deleteCommemoration = (id) => API.delete(`/commemorations/${id}`);
 export const updateCommemorationStatus = (id, status) =>
   API.patch(`/commemorations/${id}/status`, { commemorationStatus: status });
 
-export const fetchGalleryImages = ()         => API.get('/gallery');
-export const createGalleryImage = (data)     => API.post('/gallery', data);
+export const fetchGalleryImages = () => API.get('/gallery');
+export const createGalleryImage = (data) => API.post('/gallery', data);
 export const updateGalleryImage = (id, data) => API.put(`/gallery/${id}`, data);
-export const deleteGalleryImage = (id)       => API.delete(`/gallery/${id}`);
+export const deleteGalleryImage = (id) => API.delete(`/gallery/${id}`);
 
 export default API;

@@ -145,9 +145,9 @@ const buildNewsletterHTML = (prayers, announcements, prayerSectionTitle) => {
                 </a>
                 <p style="margin: 10px 0 0; color: #666; font-size: 14px;">
                   ${new Date().toLocaleDateString('he-IL', {
-                    weekday: 'long', year: 'numeric',
-                    month: 'long',   day: 'numeric'
-                  })}
+    weekday: 'long', year: 'numeric',
+    month: 'long', day: 'numeric'
+  })}
                 </p>
               </td>
             </tr>
@@ -225,44 +225,48 @@ const buildNewsletterHTML = (prayers, announcements, prayerSectionTitle) => {
 };
 
 const sendUpdateNewsletter = async (prayers, announcements, prayerSectionTitle) => {
-    try {
-      console.log('[Newsletter] מתחיל תהליך שליחה...');
-      const resend = getResendClient();
-      const users = await User.find(
-        { isActive: true, email: { $exists: true, $ne: '' } },
-        'email name'
-      ).lean();
-  
-      console.log(`[Newsletter] נמצאו ${users.length} משתמשים`);
-  
-      if (!users.length) {
-        console.log('[Newsletter] אין משתמשים לשליחה');
-        return;
-      }
-  
-      const emails = users.map(u => u.email);
-      const html   = buildNewsletterHTML(prayers, announcements, prayerSectionTitle);
-  
-      console.log('[Newsletter] שולח מייל דרך Resend...');
-  
-      const { data, error } = await resend.emails.send({
-        from:    'בית הכנסת <updates@bneyhayeshivot.online>',  // ← הדומיין החדש שלך!
-        to:      process.env.EMAIL_USER,
-        bcc:     emails,
-        subject: `📋 עדכון זמני תפילה והודעות — ${new Date().toLocaleDateString('he-IL')}`,
-        html,
-      });
-  
-      if (error) {
-        console.error('[Newsletter] ✗✗✗ שגיאה מ-Resend:', error);
-        return;
-      }
-  
-      console.log(`[Newsletter] ✓✓✓ נשלח בהצלחה! id: ${data.id}`);
-  
-    } catch (err) {
-      console.error('[Newsletter] ✗✗✗ שגיאה כללית:', err);
+  try {
+    console.log('[Newsletter] מתחיל תהליך שליחה...');
+    const resend = getResendClient();
+    const users = await User.find(
+      {
+        isActive: true,
+        receivesNewsletter: { $ne: false }, // ← חדש: מכבד את סימון הצ'קבוקס
+        email: { $exists: true, $ne: '' }
+      },
+      'email name'
+    ).lean();
+
+    console.log(`[Newsletter] נמצאו ${users.length} משתמשים`);
+
+    if (!users.length) {
+      console.log('[Newsletter] אין משתמשים לשליחה');
+      return;
     }
-  };
-  
-  module.exports = { sendUpdateNewsletter };
+
+    const emails = users.map(u => u.email);
+    const html = buildNewsletterHTML(prayers, announcements, prayerSectionTitle);
+
+    console.log('[Newsletter] שולח מייל דרך Resend...');
+
+    const { data, error } = await resend.emails.send({
+      from: 'בית הכנסת <updates@bneyhayeshivot.online>',  // ← הדומיין החדש שלך!
+      to: process.env.EMAIL_USER,
+      bcc: emails,
+      subject: `📋 עדכון זמני תפילה והודעות — ${new Date().toLocaleDateString('he-IL')}`,
+      html,
+    });
+
+    if (error) {
+      console.error('[Newsletter] ✗✗✗ שגיאה מ-Resend:', error);
+      return;
+    }
+
+    console.log(`[Newsletter] ✓✓✓ נשלח בהצלחה! id: ${data.id}`);
+
+  } catch (err) {
+    console.error('[Newsletter] ✗✗✗ שגיאה כללית:', err);
+  }
+};
+
+module.exports = { sendUpdateNewsletter };

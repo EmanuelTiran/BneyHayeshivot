@@ -23,7 +23,41 @@ const generateTokens = (user) => {
 // ── הרשמה ────────────────────────────────────────────────────────────────────
 
 exports.register = async (userData) => {
-  const user = new User(userData);
+  const email = userData.email?.toLowerCase().trim();
+
+  if (!email) {
+    const err = new Error('נא לספק כתובת אימייל');
+    err.statusCode = 400;
+    throw err;
+  }
+  if (!userData.password || userData.password.length < 6) {
+    const err = new Error('הסיסמה חייבת להכיל לפחות 6 תווים');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const existingUser = await User.findOne({ email });
+
+  if (existingUser) {
+    // ── מקרה 1: המשתמש כבר "מלא" — חסום כרגיל ──────────────────────────
+    if (existingUser.isFullyRegistered !== false) {
+      const err = new Error('כתובת אימייל זו כבר רשומה במערכת');
+      err.statusCode = 409; // Conflict
+      throw err;
+    }
+
+    // ── מקרה 2: זהו placeholder של רשימת תפוצה — נשלים את הרישום ──────
+    existingUser.name              = userData.name?.trim() || existingUser.name;
+    existingUser.password          = userData.password; // ה-pre('save') יבצע hash אוטומטית
+    existingUser.phone             = userData.phone?.trim() || existingUser.phone;
+    existingUser.isFullyRegistered = true;
+
+    await existingUser.save();
+    return existingUser;
+  }
+
+  // ── מקרה 3: משתמש חדש לגמרי ──────────────────────────────────────────
+  const user = new User({ ...userData, email, isFullyRegistered: true });
   return await user.save();
 };
 

@@ -5,7 +5,7 @@ exports.register = async (req, res) => {
     const user = await authService.register(req.body);
     res.status(201).json({ message: 'נרשמת בהצלחה', user });
   } catch (err) {
-    res.status(400).json({ message: err.message });
+    res.status(err.statusCode || 400).json({ message: err.message });
   }
 };
 

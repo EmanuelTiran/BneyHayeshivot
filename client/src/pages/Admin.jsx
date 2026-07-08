@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { fetchContactMessages, updateContactMessageHandled } from '../services/api';
+import {
+  fetchContactMessages, updateContactMessageHandled,
+  fetchAllUsers, addMailingListUser, updateMailingListUser,
+  deleteMailingListUser, toggleUserNewsletter,
+} from '../services/api';
 import CommemorationForm from '../components/Admin/CommemorationForm';
 import { fetchAllSponsorships, updateSponsorshipStatus } from '../services/portalService';
 
@@ -10,6 +14,67 @@ const tabInStyle = `
     to   { opacity: 1; transform: translateY(0); }
   }
 `;
+
+// ── מודאל עריכת משתמש ─────────────────────────────────────────────────────
+function EditUserModal({ user, onClose, onSave }) {
+  const [form, setForm] = useState({ name: user.name, email: user.email });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async () => {
+    setError('');
+    if (!form.name.trim() || !form.email.trim()) {
+      setError('נא למלא שם ואימייל');
+      return;
+    }
+    setSaving(true);
+    try {
+      await onSave(form);
+    } catch (err) {
+      setError(err.response?.data?.message || 'שגיאה בשמירה');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-[#0d2340]/75 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+      <div className="bg-[#f7f4e9] rounded-xl shadow-2xl border-2 border-[#cfa756] p-6 w-full max-w-md" dir="rtl">
+        <h3 className="text-xl font-bold text-[#0d2340] mb-4 border-b border-[#cfa756]/40 pb-2">
+          עריכת פרטי משתמש
+        </h3>
+        <div className="space-y-3">
+          <div>
+            <label className="text-sm font-medium text-[#0d2340]">שם מלא *</label>
+            <input
+              className="mt-1 w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-[#cfa756] outline-none"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-[#0d2340]">אימייל *</label>
+            <input
+              type="email"
+              dir="ltr"
+              className="mt-1 w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-[#cfa756] outline-none"
+              value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+            />
+          </div>
+          {error && <p className="text-red-600 text-sm font-medium">{error}</p>}
+        </div>
+        <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-200">
+          <button onClick={onClose} className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50">ביטול</button>
+          <button onClick={handleSubmit} disabled={saving}
+            className="px-4 py-2 bg-[#0d2340] text-[#cfa756] font-bold rounded-md hover:bg-[#1a365d] disabled:opacity-50">
+            {saving ? 'שומר...' : 'שמור'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ── טאב: הודעות צור קשר ──────────────────────────────────────────────────────
 function ContactMessages() {
@@ -252,11 +317,233 @@ function FilterBar({ filters, active, onChange }) {
   );
 }
 
+// ── טאב: ניהול רשימת תפוצה ────────────────────────────────────────────────
+function MailingListManagement() {
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [form, setForm] = useState({ name: '', email: '' });
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState('');
+  const [formSuccess, setFormSuccess] = useState('');
+
+  const [search, setSearch] = useState('');
+  const [sortDir, setSortDir] = useState('asc');
+  const [editingUser, setEditingUser] = useState(null);
+  const [togglingIds, setTogglingIds] = useState([]);
+
+  const load = async () => {
+    try {
+      setLoading(true);
+      const res = await fetchAllUsers();
+      setUsers(Array.isArray(res.data) ? res.data : []);
+    } catch {
+      setError('שגיאה בטעינת המשתמשים');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { load(); }, []);
+
+  // ── הוספת משתמש ────────────────────────────────────────────────────────
+  const handleSubmit = async () => {
+    setFormError('');
+    setFormSuccess('');
+    if (!form.name.trim() || !form.email.trim()) {
+      setFormError('נא למלא שם ואימייל');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await addMailingListUser(form);
+      setFormSuccess(`${form.name} נוסף/ה בהצלחה לרשימת התפוצה`);
+      setForm({ name: '', email: '' });
+      load();
+    } catch (err) {
+      setFormError(err.response?.data?.message || 'שגיאה בהוספת המשתמש');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // ── עריכה ──────────────────────────────────────────────────────────────
+  const handleEditSave = async (formData) => {
+    const res = await updateMailingListUser(editingUser._id, formData);
+    setUsers((prev) => prev.map((u) => (u._id === editingUser._id ? res.data : u)));
+    setEditingUser(null);
+  };
+
+  // ── מחיקה ──────────────────────────────────────────────────────────────
+  const handleDelete = async (user) => {
+    if (!window.confirm(`למחוק את ${user.name} לצמיתות?`)) return;
+    try {
+      await deleteMailingListUser(user._id);
+      setUsers((prev) => prev.filter((u) => u._id !== user._id));
+    } catch (err) {
+      alert(err.response?.data?.message || 'שגיאה במחיקת המשתמש');
+    }
+  };
+
+  // ── צ'קבוקס קבלת עדכוני מייל ──────────────────────────────────────────
+  const handleToggleNewsletter = async (user, checked) => {
+    setTogglingIds((prev) => [...prev, user._id]);
+    setUsers((prev) => prev.map((u) => (u._id === user._id ? { ...u, receivesNewsletter: checked } : u)));
+    try {
+      await toggleUserNewsletter(user._id, checked);
+    } catch {
+      setUsers((prev) => prev.map((u) => (u._id === user._id ? { ...u, receivesNewsletter: !checked } : u)));
+      alert('שגיאה בעדכון סטטוס העדכונים');
+    } finally {
+      setTogglingIds((prev) => prev.filter((id) => id !== user._id));
+    }
+  };
+
+  // ── סינון + מיון ──────────────────────────────────────────────────────
+  const displayedUsers = users
+    .filter((u) => (u.name || '').toLowerCase().includes(search.trim().toLowerCase()))
+    .sort((a, b) => {
+      const cmp = (a.name || '').localeCompare(b.name || '', 'he');
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+
+  const newsletterCount = users.filter((u) => u.receivesNewsletter !== false).length;
+
+  return (
+    <section className="max-w-3xl mx-auto">
+      {/* טופס הוספה */}
+      <div className="bg-white shadow rounded-lg p-5 border border-gray-200 mb-8">
+        <h2 className="text-lg font-bold text-[#0d2340] mb-4">הוספת חבר קהילה לרשימת התפוצה</h2>
+        <div className="space-y-3">
+          <div>
+            <label className="text-sm font-medium text-[#0d2340]">שם מלא *</label>
+            <input
+              className="mt-1 w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-[#cfa756] outline-none"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              placeholder="ישראל ישראלי"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-[#0d2340]">אימייל *</label>
+            <input
+              type="email"
+              dir="ltr"
+              className="mt-1 w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-[#cfa756] outline-none"
+              value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+              placeholder="email@example.com"
+            />
+          </div>
+          {formError && <p className="text-red-600 text-sm font-medium">{formError}</p>}
+          {formSuccess && <p className="text-green-600 text-sm font-medium">{formSuccess}</p>}
+          <button
+            onClick={handleSubmit}
+            disabled={submitting}
+            className="bg-[#0d2340] text-[#cfa756] font-bold px-5 py-2.5 rounded-lg hover:bg-[#1a365d] disabled:opacity-50 shadow-md"
+          >
+            {submitting ? 'מוסיף...' : '+ הוסף לרשימת תפוצה'}
+          </button>
+        </div>
+      </div>
+
+      {/* חיפוש + מיון */}
+      <div className="flex flex-wrap gap-3 items-center justify-between mb-4">
+        <h3 className="text-md font-bold text-[#0d2340]">
+          חברי קהילה ({displayedUsers.length}/{users.length}) — {newsletterCount} מנויים לעדכונים
+        </h3>
+        <div className="flex gap-2 flex-wrap">
+          <input
+            className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-[#cfa756] outline-none"
+            placeholder="חיפוש לפי שם..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <button
+            onClick={() => setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))}
+            className="text-sm font-medium bg-white border border-gray-300 rounded-md px-3 py-1.5 hover:border-[#cfa756] hover:text-[#0d2340]"
+          >
+            מיון לפי שם {sortDir === 'asc' ? '↓ א-ת' : '↑ ת-א'}
+          </button>
+        </div>
+      </div>
+
+      {loading && <p className="text-center py-6">טוען...</p>}
+      {error && <p className="text-center text-red-600 py-4">{error}</p>}
+      {!loading && !error && displayedUsers.length === 0 && (
+        <p className="text-center text-gray-500 py-10">לא נמצאו משתמשים תואמים</p>
+      )}
+
+      {!loading && !error && displayedUsers.length > 0 && (
+        <div className="grid gap-2">
+          {displayedUsers.map((u) => (
+            <div
+              key={u._id}
+              className="bg-white border border-gray-200 rounded-lg px-4 py-3 flex flex-wrap justify-between items-center gap-3"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <input
+                  type="checkbox"
+                  title="קבלת עדכוני מייל"
+                  checked={u.receivesNewsletter !== false}
+                  disabled={togglingIds.includes(u._id)}
+                  onChange={(e) => handleToggleNewsletter(u, e.target.checked)}
+                  className="w-4 h-4 shrink-0"
+                />
+                <div className="min-w-0">
+                  <p className="font-medium text-[#0d2340] truncate">{u.name}</p>
+                  <p className="text-xs text-gray-500 truncate" dir="ltr">{u.email}</p>
+                </div>
+                <span className={`text-xs font-bold px-2 py-1 rounded-full border whitespace-nowrap ${
+                  u.isFullyRegistered === false
+                    ? 'bg-yellow-100 text-yellow-800 border-yellow-300'
+                    : 'bg-green-100 text-green-800 border-green-300'
+                }`}>
+                  {u.isFullyRegistered === false ? 'רשימת תפוצה בלבד' : 'משתמש רשום'}
+                </span>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setEditingUser(u)}
+                  className="text-xs bg-[#cfa756] text-[#0d2340] font-bold px-3 py-1.5 rounded hover:bg-[#b8860b]"
+                >
+                  ✎ עריכה
+                </button>
+                <button
+                  onClick={() => handleDelete(u)}
+                  className="text-xs bg-[#a61b1b] text-white font-bold px-3 py-1.5 rounded hover:bg-red-800"
+                >
+                  ✕ מחיקה
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <p className="text-xs text-gray-400 mt-4 leading-relaxed">
+        הצ'קבוקס קובע האם המשתמש יקבל את עדכון המייל הבא (זמני תפילה והודעות).
+        ביטול הסימון אינו מוחק את המשתמש — רק חוסם ממנו את שליחת המיילים.
+      </p>
+
+      {editingUser && (
+        <EditUserModal
+          user={editingUser}
+          onClose={() => setEditingUser(null)}
+          onSave={handleEditSave}
+        />
+      )}
+    </section>
+  );
+}
+
 // ── הגדרת הטאבים ──────────────────────────────────────────────────────────────
 const TABS = [
   { id: 'contact', label: 'הודעות צור קשר' },
   { id: 'commemorations', label: 'ניהול הנצחות' },
   { id: 'sponsorships', label: 'בקשות הקדשה' },
+  { id: 'mailing', label: 'ניהול רשימת תפוצה' }, // ← חדש
+
 ];
 
 // ── Admin ראשי ────────────────────────────────────────────────────────────────
@@ -334,6 +621,7 @@ export default function Admin() {
         {activeTab === 'contact' && <ContactMessages />}
         {activeTab === 'commemorations' && <CommemorationForm />}
         {activeTab === 'sponsorships' && <SponsorshipRequests />}
+        {activeTab === 'mailing' && <MailingListManagement />}
       </div>
     </div>
   );

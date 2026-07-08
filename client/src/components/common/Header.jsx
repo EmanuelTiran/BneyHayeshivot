@@ -63,17 +63,32 @@ function Header() {
     }
   }, []);
 
-  // מיקום ראשוני
-  useEffect(() => {
-    moveUnderline(location.pathname);
-  }, [location.pathname, navItems]);
 
-  // resize
   useEffect(() => {
-    const handleResize = () => moveUnderline(location.pathname);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [location.pathname, moveUnderline]);
+    const navEl = navRef.current;
+    if (!navEl) return;
+    let cancelled = false;
+
+    moveUnderline(location.pathname); // מדידה מיידית, כמו קודם
+
+    // ה-fix המרכזי: ResizeObserver על ה-nav עצמו ועל כל לינק בתוכו.
+    // תופס כל שינוי רוחב אחרי הרינדור הראשוני (טעינת Assistant,
+    // שינוי רוחב ה-nav בגלל הלוגו/כפתורי האימות, resize של החלון)
+    // ומריץ מחדש את moveUnderline בכל פעם.
+    const observer = new ResizeObserver(() => moveUnderline(location.pathname));
+    observer.observe(navEl);
+    navEl.querySelectorAll('[data-path]').forEach((el) => observer.observe(el));
+
+    // בנוסף: המתנה מפורשת לטעינת הפונטים, כתיקון ודאי ומיידי
+    document.fonts?.ready?.then(() => {
+      if (!cancelled) moveUnderline(location.pathname);
+    });
+
+    return () => {
+      cancelled = true;
+      observer.disconnect();
+    };
+  }, [location.pathname, navItems, moveUnderline]);
 
   const toggleMenu = useCallback(() => setIsMenuOpen((prev) => !prev), []);
 
