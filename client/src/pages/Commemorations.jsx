@@ -1,9 +1,14 @@
 import { useEffect, useState } from 'react';
-import { fetchCommemorations } from '../services/api';
-// TODO (שרת): ייבא כאן את פונקציית submitSponsorshipRequest כשתחבר לשרת
-// import { submitSponsorshipRequest } from '../services/portalService';
+import {
+  fetchCommemorations,
+  createCommemoration,
+  updateCommemoration,
+  deleteCommemoration,
+} from '../services/api';
 import { submitCommemorationRequest } from '../services/portalService';
 import CommunityPaymentButton from '../components/CommunityPaymentButton';
+import { useAuth } from '../components/context/authContext';
+
 const DEDICATION_TYPES = ['לזכות', 'לעילוי נשמת', 'לרפואת', 'לעילוי נשמת ולהצלחת', 'אחר'];
 
 // סטטוס הנצחה — ערכים: 'commemorated' | 'pending' | 'none'
@@ -13,7 +18,196 @@ const STATUS_CONFIG = {
   none:         { label: 'פנוי להנצחה',     dot: '#185fa5', bg: '#e6f1fb', text: '#185fa5', border: '#85b7eb' },
 };
 
-// ── מודאל בקשת הנצחה ──────────────────────────────────────────────────────────
+// ── נירמול קישורי תמונה מ-Google Drive (זהה ל-CommemorationForm) ────────────
+const normalizeImageUrl = (url) => {
+  if (!url) return url;
+  if (url.includes('drive.google.com')) {
+    const fileId =
+      url.match(/\/d\/(.*?)\//)?.[1] ||
+      url.match(/id=(.*?)(?:&|$)/)?.[1];
+    if (fileId) return `https://lh3.googleusercontent.com/d/${fileId}`;
+  }
+  return url;
+};
+
+// ── מודאל ניהול (הוספה/עריכה) — למנהלים בלבד ────────────────────────────────
+const EMPTY_ADMIN_FORM = {
+  commemorationStatus: 'none',
+  itemName: '',
+  contributorName: '',
+  commemoratedName: '',
+  amount: '',
+  imageUrl: '',
+  date: new Date().toISOString().split('T')[0],
+};
+
+function AdminCommemorationModal({ initial, onClose, onSave }) {
+  const [form, setForm] = useState(
+    initial
+      ? {
+          commemorationStatus: initial.commemorationStatus || 'none',
+          itemName: initial.itemName || '',
+          contributorName: initial.contributorName || '',
+          commemoratedName: initial.commemoratedName || '',
+          amount: initial.amount != null ? String(initial.amount) : '',
+          imageUrl: normalizeImageUrl(initial.imageUrl || ''),
+          date: initial.date
+            ? new Date(initial.date).toISOString().split('T')[0]
+            : new Date().toISOString().split('T')[0],
+        }
+      : EMPTY_ADMIN_FORM
+  );
+  const [saving, setSaving] = useState(false);
+  const [error, setError]   = useState('');
+
+  // ← האם הפריט "פנוי להנצחה" — עדיין אין מונצח/תורם בפועל
+  const isAvailable = form.commemorationStatus === 'none';
+
+  const handleStatusChange = (newStatus) => {
+    setForm((prev) => ({ ...prev, commemorationStatus: newStatus }));
+    setError('');
+  };
+
+  const handleSubmit = async () => {
+    if (!form.itemName.trim()) {
+      setError('שם הפריט הוא שדה חובה');
+      return;
+    }
+    // שדות אלה נדרשים רק כאשר הפריט אינו פנוי (כלומר כבר יש מונצח בפועל)
+    if (!isAvailable) {
+      if (!form.contributorName.trim() || !form.commemoratedName.trim()) {
+        setError('נא למלא שם תורם ושם מונצח (חובה כאשר הסטטוס אינו "פנוי להנצחה")');
+        return;
+      }
+      if (form.amount === '' || isNaN(Number(form.amount)) || Number(form.amount) < 0) {
+        setError('יש להזין סכום חוקי');
+        return;
+      }
+    }
+    setError('');
+    setSaving(true);
+    try {
+      await onSave({
+        ...form,
+        amount: form.amount === '' ? 0 : Number(form.amount),
+      });
+    } catch {
+      setError('שגיאה בשמירה — נסה שוב');
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div
+      style={{
+        position: 'fixed', inset: 0, background: 'rgba(13,35,64,.75)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        zIndex: 55, padding: '16px', backdropFilter: 'blur(2px)',
+      }}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div
+        dir="rtl"
+        style={{
+          background: '#f7f4e9', borderRadius: '16px', border: '2px solid #cfa756',
+          padding: '24px', width: '100%', maxWidth: '460px',
+          maxHeight: '90vh', overflowY: 'auto',
+        }}
+      >
+        <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#0d2340', marginBottom: '16px', borderBottom: '1px solid rgba(207,167,86,.4)', paddingBottom: '10px' }}>
+          {initial ? '✎ עריכת הנצחה' : '+ הוספת הנצחה חדשה'}
+        </h3>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+
+          {/* ← סטטוס בראש הטופס, כדי שיקבע מה נדרש בהמשך */}
+          <Field label="סטטוס הנצחה">
+            <select
+              style={inputStyle}
+              value={form.commemorationStatus}
+              onChange={(e) => handleStatusChange(e.target.value)}
+            >
+              {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
+                <option key={key} value={key}>{cfg.label}</option>
+              ))}
+            </select>
+            {isAvailable && (
+              <p style={{ fontSize: '11px', color: '#185fa5', marginTop: '4px' }}>
+                פריט פנוי — פרטי המונצח והתורם עדיין לא ידועים ואינם חובה.
+              </p>
+            )}
+          </Field>
+
+          <Field label="שם הפריט המונצח *">
+            <input
+              style={inputStyle}
+              value={form.itemName}
+              onChange={(e) => setForm({ ...form, itemName: e.target.value })}
+              placeholder="למשל: ספר תורה, עמוד תפילה..."
+            />
+          </Field>
+
+          {/* ← שדות אלה מוצגים תמיד אך מסומנים כחובה (*) רק כשלא "פנוי" */}
+          <Field label={`שם המונצח${isAvailable ? '' : ' *'}`}>
+            <input
+              style={inputStyle}
+              value={form.commemoratedName}
+              onChange={(e) => setForm({ ...form, commemoratedName: e.target.value })}
+              placeholder={isAvailable ? 'ימולא לאחר אישור בקשת הנצחה' : 'שם הנפטר לעילוי נשמתו'}
+            />
+          </Field>
+
+          <Field label={`שם התורם / המשפחה${isAvailable ? '' : ' *'}`}>
+            <input
+              style={inputStyle}
+              value={form.contributorName}
+              onChange={(e) => setForm({ ...form, contributorName: e.target.value })}
+              placeholder={isAvailable ? 'ימולא לאחר אישור בקשת הנצחה' : 'שם המשפחה או התורם'}
+            />
+          </Field>
+
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <Field label={`סכום (₪)${isAvailable ? '' : ' *'}`} style={{ flex: 1 }}>
+              <input
+                type="number" min="0" style={inputStyle}
+                value={form.amount}
+                onChange={(e) => setForm({ ...form, amount: e.target.value })}
+                placeholder="0"
+              />
+            </Field>
+            <Field label="תאריך" style={{ flex: 1 }}>
+              <input
+                type="date" style={inputStyle}
+                value={form.date}
+                onChange={(e) => setForm({ ...form, date: e.target.value })}
+              />
+            </Field>
+          </div>
+
+          <Field label="קישור לתמונה (URL)">
+            <input
+              type="url" dir="ltr" style={{ ...inputStyle, textAlign: 'left' }}
+              value={form.imageUrl}
+              onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
+              placeholder="https://... או קישור Google Drive"
+            />
+          </Field>
+
+          {error && <p style={{ color: '#a32d2d', fontSize: '12px', fontWeight: 600 }}>{error}</p>}
+        </div>
+
+        <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '20px', paddingTop: '14px', borderTop: '1px solid rgba(207,167,86,.25)' }}>
+          <button onClick={onClose} style={cancelBtnStyle}>ביטול</button>
+          <button onClick={handleSubmit} disabled={saving} style={submitBtnStyle}>
+            {saving ? 'שומר...' : 'שמור'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── מודאל בקשת הנצחה (ציבורי — ללא שינוי) ────────────────────────────────────
 function RequestModal({ item, onClose, onSuccess }) {
   const [form, setForm] = useState({
     name: '', phone: '', email: '',
@@ -61,7 +255,6 @@ function RequestModal({ item, onClose, onSuccess }) {
           maxHeight: '90vh', overflowY: 'auto',
         }}
       >
-        {/* כותרת */}
         <div style={{ marginBottom: '20px', paddingBottom: '14px', borderBottom: '1px solid rgba(207,167,86,.25)' }}>
           <h3 style={{ fontSize: '17px', fontWeight: 700, color: '#0d2340', marginBottom: '4px' }}>
             📝 בקשת הנצחה
@@ -71,7 +264,6 @@ function RequestModal({ item, onClose, onSuccess }) {
           </p>
         </div>
 
-        {/* שדות */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           <Field label="שם מלא *">
             <input
@@ -134,7 +326,7 @@ function RequestModal({ item, onClose, onSuccess }) {
             <p style={{ color: '#a32d2d', fontSize: '12px', fontWeight: 600 }}>{formError}</p>
           )}
 
-            <CommunityPaymentButton />
+          <CommunityPaymentButton />
           <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '4px' }}>
             <button onClick={onClose} style={cancelBtnStyle}>ביטול</button>
             <button onClick={handleSubmit} disabled={sending} style={submitBtnStyle}>
@@ -179,7 +371,7 @@ function SuccessBanner({ onClose }) {
 }
 
 // ── כרטיס הנצחה ───────────────────────────────────────────────────────────────
-function CommemorationCard({ item, onRequest }) {
+function CommemorationCard({ item, onRequest, isAdmin, onEdit, onDelete }) {
   const cfg = STATUS_CONFIG[item.commemorationStatus] || STATUS_CONFIG.none;
   const isCommemoratedAlready = item.commemorationStatus === 'commemorated';
   const isPending             = item.commemorationStatus === 'pending';
@@ -196,6 +388,7 @@ function CommemorationCard({ item, onRequest }) {
     <div
       dir="rtl"
       style={{
+        position: 'relative',
         background: '#fff', borderRadius: '16px',
         border: `1px solid ${isCommemoratedAlready ? 'rgba(97,196,89,.35)' : isPending ? 'rgba(239,159,39,.3)' : 'rgba(207,167,86,.2)'}`,
         boxShadow: '0 2px 8px rgba(13,35,64,.06)',
@@ -205,10 +398,34 @@ function CommemorationCard({ item, onRequest }) {
       onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 6px 24px rgba(13,35,64,.13)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
       onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 2px 8px rgba(13,35,64,.06)'; e.currentTarget.style.transform = 'translateY(0)'; }}
     >
+      {/* כפתורי ניהול — למנהלים בלבד */}
+      {isAdmin && (
+        <div style={{ position: 'absolute', top: '8px', left: '8px', zIndex: 5, display: 'flex', gap: '4px' }}>
+          <button
+            onClick={(e) => { e.stopPropagation(); onEdit(item); }}
+            title="עריכה"
+            style={{
+              background: '#cfa756', color: '#0d2340', fontSize: '11px', fontWeight: 700,
+              padding: '4px 8px', borderRadius: '6px', border: 'none', cursor: 'pointer',
+              boxShadow: '0 1px 4px rgba(0,0,0,.2)',
+            }}
+          >✎</button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onDelete(item._id); }}
+            title="מחיקה"
+            style={{
+              background: '#a61b1b', color: '#fff', fontSize: '11px', fontWeight: 700,
+              padding: '4px 8px', borderRadius: '6px', border: 'none', cursor: 'pointer',
+              boxShadow: '0 1px 4px rgba(0,0,0,.2)',
+            }}
+          >✕</button>
+        </div>
+      )}
+
       {/* תמונה / placeholder */}
       {item.imageUrl ? (
         <img
-          src={item.imageUrl}
+          src={normalizeImageUrl(item.imageUrl)}
           alt={`הנצחת ${item.commemoratedName}`}
           style={{ width: '100%', height: '140px', objectFit: 'cover' }}
           onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
@@ -227,7 +444,6 @@ function CommemorationCard({ item, onRequest }) {
 
       {/* גוף */}
       <div style={{ padding: '16px', flex: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        {/* שם הפריט + סטטוס */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
           <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#0d2340', lineHeight: 1.3, flex: 1 }}>
             {item.itemName}
@@ -242,7 +458,6 @@ function CommemorationCard({ item, onRequest }) {
           </span>
         </div>
 
-        {/* פרטים */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', flex: 1 }}>
           {item.commemoratedName && item.commemorationStatus !== 'none' && (
             <Row label='לעילוי נשמת:' value={item.commemoratedName} bold />
@@ -258,7 +473,6 @@ function CommemorationCard({ item, onRequest }) {
           )}
         </div>
 
-        {/* כפתור בקשה — רק לפריטים שאינם מונצחים */}
         {!isCommemoratedAlready && (
           <button
             onClick={() => onRequest(item)}
@@ -282,21 +496,26 @@ function CommemorationCard({ item, onRequest }) {
 
 // ── עמוד ראשי ─────────────────────────────────────────────────────────────────
 export default function Commemorations() {
+  const { isAdmin } = useAuth();
   const [commemorations, setCommemorations] = useState([]);
   const [loading, setLoading]               = useState(true);
   const [error, setError]                   = useState(null);
   const [activeFilter, setActiveFilter]     = useState('all');
   const [modalItem, setModalItem]           = useState(null);
   const [showSuccess, setShowSuccess]       = useState(false);
+  const [adminModal, setAdminModal]         = useState(null); // null | 'add' | { item }
+  const [actionError, setActionError]       = useState('');
 
-  useEffect(() => {
+  const load = () => {
+    setLoading(true);
     fetchCommemorations()
-      .then((res) => setCommemorations(res.data))
+      .then((res) => { setCommemorations(res.data); setError(null); })
       .catch(() => setError('אירעה שגיאה בטעינת ההנצחות. אנא נסה שוב מאוחר יותר.'))
       .finally(() => setLoading(false));
-  }, []);
+  };
 
-  // ספירות לפילטרים
+  useEffect(() => { load(); }, []);
+
   const counts = {
     all:          commemorations.length,
     commemorated: commemorations.filter((i) => i.commemorationStatus === 'commemorated').length,
@@ -315,9 +534,37 @@ export default function Commemorations() {
     { key: 'none',         label: `פנוי להנצחה (${counts.none})` },
   ];
 
+  // ── פעולות ניהול (אדמין בלבד) ──────────────────────────────────────────────
+  const handleAdminSave = async (form) => {
+    setActionError('');
+    try {
+      if (adminModal === 'add') {
+        await createCommemoration(form);
+      } else {
+        await updateCommemoration(adminModal.item._id, form);
+      }
+      setAdminModal(null);
+      load();
+    } catch {
+      setActionError('שגיאה בשמירת ההנצחה');
+      throw new Error('save failed'); // כדי שהמודאל ידע להישאר פתוח ולהציג שגיאה
+    }
+  };
+
+  const handleAdminDelete = async (id) => {
+    if (!window.confirm('האם אתה בטוח שברצונך למחוק הנצחה זו?')) return;
+    try {
+      await deleteCommemoration(id);
+      setCommemorations((prev) => prev.filter((c) => c._id !== id));
+    } catch {
+      setActionError('שגיאה במחיקת ההנצחה');
+    }
+  };
+
+  const showAdminBar = isAdmin && isAdmin();
+
   return (
     <div dir="rtl" style={{ minHeight: '100vh', background: '#f7f4ee' }}>
-      {/* כותרת */}
       <div style={{
         background: 'linear-gradient(135deg, #0d2340 0%, #1a365d 100%)',
         padding: '48px 16px', textAlign: 'center',
@@ -332,7 +579,29 @@ export default function Commemorations() {
       </div>
 
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px 16px' }}>
-        {/* פילטרים */}
+        {/* שורת ניהול — למנהלים בלבד */}
+        {showAdminBar && (
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
+            <button
+              onClick={() => setAdminModal('add')}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '6px',
+                background: '#0d2340', color: '#cfa756', fontWeight: 700,
+                padding: '9px 18px', borderRadius: '10px', border: 'none',
+                cursor: 'pointer', fontSize: '13px', boxShadow: '0 2px 6px rgba(13,35,64,.2)',
+              }}
+            >
+              <span style={{ fontSize: '15px' }}>+</span> הוסף הנצחה
+            </button>
+          </div>
+        )}
+
+        {actionError && (
+          <div style={{ marginBottom: '16px', background: '#fef2f2', border: '1px solid #fca5a5', color: '#b91c1c', borderRadius: '10px', padding: '10px 16px', fontSize: '13px', fontWeight: 600 }}>
+            {actionError}
+          </div>
+        )}
+
         {!loading && !error && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '28px' }}>
             {FILTERS.map(({ key, label }) => (
@@ -353,7 +622,6 @@ export default function Commemorations() {
           </div>
         )}
 
-        {/* מצבים */}
         {loading && <Spinner />}
         {error && <ErrorBox msg={error} />}
         {!loading && !error && filtered.length === 0 && (
@@ -363,7 +631,6 @@ export default function Commemorations() {
           </div>
         )}
 
-        {/* רשת כרטיסים */}
         {!loading && !error && filtered.length > 0 && (
           <div style={{
             display: 'grid',
@@ -375,13 +642,15 @@ export default function Commemorations() {
                 key={item._id}
                 item={item}
                 onRequest={setModalItem}
+                isAdmin={showAdminBar}
+                onEdit={(it) => setAdminModal({ item: it })}
+                onDelete={handleAdminDelete}
               />
             ))}
           </div>
         )}
       </div>
 
-      {/* מודאל בקשה */}
       {modalItem && !showSuccess && (
         <RequestModal
           item={modalItem}
@@ -390,9 +659,16 @@ export default function Commemorations() {
         />
       )}
 
-      {/* באנר הצלחה */}
       {showSuccess && (
         <SuccessBanner onClose={() => setShowSuccess(false)} />
+      )}
+
+      {adminModal && (
+        <AdminCommemorationModal
+          initial={adminModal !== 'add' ? adminModal.item : null}
+          onClose={() => setAdminModal(null)}
+          onSave={handleAdminSave}
+        />
       )}
     </div>
   );

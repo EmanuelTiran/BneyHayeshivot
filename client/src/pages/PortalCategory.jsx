@@ -16,6 +16,15 @@ function ItemModal({ initial, categoryId, onClose, onSave }) {
     await onSave(form);
     setSaving(false);
   };
+  const descriptionTemplates = [
+    "שבת זאת פנויה להקדשה. לפרטים  לחץ כאן או לפנות  אל הרב ישעיה ממן או לרב יוסף שיטרית",
+    "נתרם להצלחת...",
+    "לעילוי נשמת...",
+    "לרפואה שלמה...",
+    "הקדשת יום לימוד...",
+  ];
+
+  const [selectedTemplate, setSelectedTemplate] = useState("");
 
   return (
     <div className="fixed inset-0 bg-[#0d2340]/75 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
@@ -30,9 +39,51 @@ function ItemModal({ initial, categoryId, onClose, onSave }) {
               value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="לדוג': שיעור יומי — כ׳ תמוז" />
           </div>
           <div>
-            <label className="text-sm font-medium text-[#0d2340]">תיאור</label>
-            <textarea className="mt-1 w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-[#cfa756] outline-none"
-              rows={2} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+            <label className="text-sm font-medium text-[#0d2340]">
+              תיאור
+            </label>
+
+            {initial && (
+              <select
+                className="mt-1 mb-2 w-full border border-gray-300 rounded-md px-3 py-2"
+                value={selectedTemplate}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setSelectedTemplate(value);
+
+                  if (value) {
+                    setForm({
+                      ...form,
+                      description: value,
+                    });
+                  }
+                }}
+              >
+                <option value="">בחר תבנית...</option>
+
+                {descriptionTemplates.map((item, index) => (
+                  <option key={index} value={item}>
+                    {item}
+                  </option>
+                ))}
+
+                <option value={form.description}>
+                  טקסט קיים
+                </option>
+              </select>
+            )}
+
+            <textarea
+              className="mt-1 w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-[#cfa756] outline-none"
+              rows={4}
+              value={form.description}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  description: e.target.value,
+                })
+              }
+            />
           </div>
           <div className="flex gap-3">
             <div className="flex-1">

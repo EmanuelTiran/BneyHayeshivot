@@ -148,7 +148,7 @@ const ContactAndPrayerTimes = ({ isButtonTransparent }) => {
 
       {/* הכרזות */}
       {announcements.length > 0 && (
-        <div className="mb-8 space-y-3">
+        <div className="mb-8 space-y-3" translate="no">
           {announcements.map((announcement, index) => (
             <div
               key={announcement._id ?? index}
