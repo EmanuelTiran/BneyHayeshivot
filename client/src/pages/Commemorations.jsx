@@ -8,6 +8,7 @@ import {
 import { submitCommemorationRequest } from '../services/portalService';
 import CommunityPaymentButton from '../components/CommunityPaymentButton';
 import { useAuth } from '../components/context/authContext';
+import ImageUploader from '../components/ImageUploader';
 
 const DEDICATION_TYPES = ['לזכות', 'לעילוי נשמת', 'לרפואת', 'לעילוי נשמת ולהצלחת', 'אחר'];
 
@@ -29,6 +30,56 @@ const normalizeImageUrl = (url) => {
   }
   return url;
 };
+
+// ── Lightbox – תצוגת תמונה מלאה בלחיצה ───────────────────────────────────────
+function ImageLightbox({ src, alt, onClose }) {
+  useEffect(() => {
+    const handleKey = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [onClose]);
+
+  if (!src) return null;
+
+  return (
+    <div
+      style={{
+        position: 'fixed', inset: 0, background: 'rgba(13,35,64,.92)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        zIndex: 80, padding: '20px', cursor: 'zoom-out',
+        animation: 'fadeIn .2s ease',
+      }}
+      onClick={onClose}
+    >
+      <button
+        onClick={onClose}
+        aria-label="סגור"
+        style={{
+          position: 'absolute', top: '18px', left: '18px',
+          width: '38px', height: '38px', borderRadius: '50%',
+          background: 'rgba(255,255,255,.12)', border: '1px solid rgba(255,255,255,.25)',
+          color: '#fff', fontSize: '18px', cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 81,
+        }}
+      >
+        ✕
+      </button>
+      <img
+        src={src}
+        alt={alt}
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          maxWidth: '92vw', maxHeight: '90vh', objectFit: 'contain',
+          borderRadius: '12px', boxShadow: '0 24px 64px rgba(0,0,0,.6)',
+          cursor: 'default',
+        }}
+        draggable={false}
+      />
+      <style>{`@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }`}</style>
+    </div>
+  );
+}
 
 // ── מודאל ניהול (הוספה/עריכה) — למנהלים בלבד ────────────────────────────────
 const EMPTY_ADMIN_FORM = {
@@ -184,13 +235,34 @@ function AdminCommemorationModal({ initial, onClose, onSave }) {
             </Field>
           </div>
 
-          <Field label="קישור לתמונה (URL)">
+          <Field label="תמונה">
+            <ImageUploader
+              onUploaded={(url) => setForm((f) => ({ ...f, imageUrl: url }))}
+            />
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '10px 0' }}>
+              <div style={{ flex: 1, height: '1px', background: '#e5e7eb' }} />
+              <span style={{ fontSize: '11px', color: '#9ca3af' }}>או הדבק קישור</span>
+              <div style={{ flex: 1, height: '1px', background: '#e5e7eb' }} />
+            </div>
+
             <input
               type="url" dir="ltr" style={{ ...inputStyle, textAlign: 'left' }}
               value={form.imageUrl}
               onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
               placeholder="https://... או קישור Google Drive"
             />
+
+            {form.imageUrl && (
+              <div style={{ marginTop: '8px', height: '110px', borderRadius: '10px', overflow: 'hidden', background: '#f3f4f6', border: '1px solid #e5e7eb' }}>
+                <img
+                  src={normalizeImageUrl(form.imageUrl)}
+                  alt="תצוגה מקדימה"
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  onError={(e) => { e.target.style.display = 'none'; }}
+                />
+              </div>
+            )}
           </Field>
 
           {error && <p style={{ color: '#a32d2d', fontSize: '12px', fontWeight: 600 }}>{error}</p>}
@@ -371,7 +443,7 @@ function SuccessBanner({ onClose }) {
 }
 
 // ── כרטיס הנצחה ───────────────────────────────────────────────────────────────
-function CommemorationCard({ item, onRequest, isAdmin, onEdit, onDelete }) {
+function CommemorationCard({ item, onRequest, isAdmin, onEdit, onDelete, onImageClick }) {
   const cfg = STATUS_CONFIG[item.commemorationStatus] || STATUS_CONFIG.none;
   const isCommemoratedAlready = item.commemorationStatus === 'commemorated';
   const isPending             = item.commemorationStatus === 'pending';
@@ -383,6 +455,8 @@ function CommemorationCard({ item, onRequest, isAdmin, onEdit, onDelete }) {
   const formattedAmount = item.amount
     ? new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS', minimumFractionDigits: 0 }).format(item.amount)
     : null;
+
+  const imgSrc = item.imageUrl ? normalizeImageUrl(item.imageUrl) : null;
 
   return (
     <div
@@ -422,18 +496,19 @@ function CommemorationCard({ item, onRequest, isAdmin, onEdit, onDelete }) {
         </div>
       )}
 
-      {/* תמונה / placeholder */}
-      {item.imageUrl ? (
+      {/* תמונה / placeholder — לחיצה על תמונה קיימת פותחת Lightbox */}
+      {imgSrc ? (
         <img
-          src={normalizeImageUrl(item.imageUrl)}
+          src={imgSrc}
           alt={`הנצחת ${item.commemoratedName}`}
-          style={{ width: '100%', height: '140px', objectFit: 'cover' }}
+          style={{ width: '100%', height: '140px', objectFit: 'cover', cursor: 'zoom-in' }}
+          onClick={() => onImageClick({ src: imgSrc, alt: item.commemoratedName || item.itemName })}
           onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
         />
       ) : null}
       <div
         style={{
-          display: item.imageUrl ? 'none' : 'flex',
+          display: imgSrc ? 'none' : 'flex',
           width: '100%', height: '140px',
           background: 'linear-gradient(135deg, #0d2340 0%, #1a365d 100%)',
           alignItems: 'center', justifyContent: 'center',
@@ -505,6 +580,7 @@ export default function Commemorations() {
   const [showSuccess, setShowSuccess]       = useState(false);
   const [adminModal, setAdminModal]         = useState(null); // null | 'add' | { item }
   const [actionError, setActionError]       = useState('');
+  const [lightbox, setLightbox]             = useState(null); // null | { src, alt }
 
   const load = () => {
     setLoading(true);
@@ -645,6 +721,7 @@ export default function Commemorations() {
                 isAdmin={showAdminBar}
                 onEdit={(it) => setAdminModal({ item: it })}
                 onDelete={handleAdminDelete}
+                onImageClick={setLightbox}
               />
             ))}
           </div>
@@ -668,6 +745,14 @@ export default function Commemorations() {
           initial={adminModal !== 'add' ? adminModal.item : null}
           onClose={() => setAdminModal(null)}
           onSave={handleAdminSave}
+        />
+      )}
+
+      {lightbox && (
+        <ImageLightbox
+          src={lightbox.src}
+          alt={lightbox.alt}
+          onClose={() => setLightbox(null)}
         />
       )}
     </div>

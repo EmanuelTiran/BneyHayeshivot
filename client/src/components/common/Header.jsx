@@ -4,20 +4,44 @@ import { Link, useLocation } from 'react-router-dom';
 import { NAVIGATION_ITEMS, ROUTES } from '../../constants/routes';
 import { useAuth } from '../context/authContext';
 
+/* ─────────────────────────────────────────────
+   GoldParticles – חלקיקי זהב יוקרתיים עם וריאציות
+   ───────────────────────────────────────────── */
 function GoldParticles() {
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
-      {[...Array(8)].map((_, i) => (
+      {/* חלקיקים קטנים – אבק זהב */}
+      {[...Array(20)].map((_, i) => (
         <div
-          key={i}
-          className="absolute rounded-full bg-[#cfa756] opacity-20"
+          key={`dust-${i}`}
+          className="absolute rounded-full"
           style={{
-            width: `${Math.random() * 3 + 1}px`,
-            height: `${Math.random() * 3 + 1}px`,
-            left: `${10 + i * 11}%`,
-            top: `${20 + (i % 3) * 30}%`,
-            animation: `floatParticle ${3 + i * 0.4}s ease-in-out infinite`,
-            animationDelay: `${i * 0.3}s`,
+            width: `${Math.random() * 2 + 0.5}px`,
+            height: `${Math.random() * 2 + 0.5}px`,
+            left: `${Math.random() * 100}%`,
+            top: `${Math.random() * 100}%`,
+            background: `radial-gradient(circle, rgba(255,233,160,0.9) 0%, rgba(207,167,86,0.4) 60%, transparent 100%)`,
+            boxShadow: `0 0 ${Math.random() * 4 + 2}px rgba(207,167,86,0.7)`,
+            animation: `floatDust ${4 + i * 0.5}s ease-in-out infinite`,
+            animationDelay: `${Math.random() * 4}s`,
+          }}
+        />
+      ))}
+      {/* חלקיקים בינוניים – נצנצים */}
+      {[...Array(5)].map((_, i) => (
+        <div
+          key={`sparkle-${i}`}
+          className="absolute"
+          style={{
+            width: `${Math.random() * 8 + 3}px`,
+            height: `${Math.random() * 8 + 3}px`,
+            left: `${10 + i * 18}%`,
+            top: `${15 + (i % 3) * 28}%`,
+            background: `radial-gradient(circle, rgba(255,248,224,1) 0%, rgba(207,167,86,0.8) 40%, transparent 70%)`,
+            borderRadius: '50%',
+            boxShadow: `0 0 ${6 + i * 2}px rgba(247,217,138,0.9), 0 0 ${12 + i * 3}px rgba(207,167,86,0.5)`,
+            animation: `sparklePulse ${2.5 + i * 0.6}s ease-in-out infinite`,
+            animationDelay: `${i * 0.45}s`,
           }}
         />
       ))}
@@ -25,6 +49,34 @@ function GoldParticles() {
   );
 }
 
+/* ─────────────────────────────────────────────
+   LightSweep – קרן אור שעוברת על הגבול התחתון
+   ───────────────────────────────────────────── */
+function LightSweep() {
+  return (
+    <div className="absolute bottom-0 left-0 right-0 h-[3px] overflow-hidden pointer-events-none" aria-hidden="true">
+      {/* בסיס הגבול – גרדיאנט זהב */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background: 'linear-gradient(90deg, #b8860b 0%, #cfa756 20%, #f7d98a 40%, #ffe9a0 50%, #f7d98a 60%, #cfa756 80%, #b8860b 100%)',
+        }}
+      />
+      {/* קרן אור נעה */}
+      <div
+        className="absolute inset-y-0 w-[60%]"
+        style={{
+          background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.7) 30%, rgba(255,255,255,0.9) 50%, rgba(255,255,255,0.7) 70%, transparent 100%)',
+          animation: 'sweepLight 3.5s ease-in-out infinite',
+        }}
+      />
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   Header – משודרג
+   ───────────────────────────────────────────── */
 function Header() {
   const { user, isAuthenticated, isAdmin, logout } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -34,26 +86,22 @@ function Header() {
   const navRef = useRef(null);
   const location = useLocation();
 
-  // בנה רשימת לינקי ניווט כולל אדמין
   const navItems = useMemo(() => {
     const items = [...NAVIGATION_ITEMS];
     if (isAuthenticated && isAdmin()) items.push({ path: ROUTES.ADMIN, label: 'ניהול' });
     return items;
   }, [isAuthenticated, isAdmin]);
 
-  // סגור מובייל מנו בניווט
   useEffect(() => {
     setIsMenuOpen(false);
   }, [location.pathname]);
 
-  // scroll listener
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // הזזת underline לכפתור הפעיל
   const moveUnderline = useCallback((path) => {
     const btn = navRef.current?.querySelector(`[data-path="${path}"]`);
     if (btn) {
@@ -63,23 +111,17 @@ function Header() {
     }
   }, []);
 
-
   useEffect(() => {
     const navEl = navRef.current;
     if (!navEl) return;
     let cancelled = false;
 
-    moveUnderline(location.pathname); // מדידה מיידית, כמו קודם
+    moveUnderline(location.pathname);
 
-    // ה-fix המרכזי: ResizeObserver על ה-nav עצמו ועל כל לינק בתוכו.
-    // תופס כל שינוי רוחב אחרי הרינדור הראשוני (טעינת Assistant,
-    // שינוי רוחב ה-nav בגלל הלוגו/כפתורי האימות, resize של החלון)
-    // ומריץ מחדש את moveUnderline בכל פעם.
     const observer = new ResizeObserver(() => moveUnderline(location.pathname));
     observer.observe(navEl);
     navEl.querySelectorAll('[data-path]').forEach((el) => observer.observe(el));
 
-    // בנוסף: המתנה מפורשת לטעינת הפונטים, כתיקון ודאי ומיידי
     document.fonts?.ready?.then(() => {
       if (!cancelled) moveUnderline(location.pathname);
     });
@@ -96,15 +138,56 @@ function Header() {
     if (isAuthenticated) {
       return (
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-[#cfa756]/30 bg-[#cfa756]/5">
-            <div className="w-2 h-2 rounded-full bg-[#cfa756] animate-pulse" />
-            <span className="text-[16px] font-semibold text-[#f7f4e9]/90">
+          {/* משתמש מחובר – תגית יוקרתית */}
+          <div
+            className="flex items-center gap-2.5 px-4 py-2 rounded-full border border-[#cfa756]/40"
+            style={{
+              background: 'linear-gradient(135deg, rgba(207,167,86,0.08) 0%, rgba(184,134,11,0.04) 100%)',
+              backdropFilter: 'blur(8px)',
+              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06), 0 0 12px rgba(207,167,86,0.08)',
+            }}
+          >
+            <div
+              className="w-2.5 h-2.5 rounded-full"
+              style={{
+                background: 'radial-gradient(circle, #ffe9a0 0%, #cfa756 70%)',
+                boxShadow: '0 0 6px rgba(207,167,86,0.8), 0 0 14px rgba(247,217,138,0.5)',
+                animation: 'pulse 2s ease-in-out infinite',
+              }}
+            />
+            <span
+              className="text-[16px] font-semibold tracking-wide"
+              style={{
+                color: '#f7f4e9',
+                textShadow: '0 0 8px rgba(207,167,86,0.35)',
+              }}
+            >
               {user?.name || 'משתמש'}
             </span>
           </div>
+          {/* כפתור התנתקות */}
           <button
             onClick={logout}
-            className="px-4 py-1.5 rounded-full border border-[#a61b1b]/60 bg-[#a61b1b]/10 text-[#f7f4e9]/80 text-[16px] hover:bg-[#a61b1b] hover:text-white transition"
+            className="px-5 py-2 rounded-full text-[15px] font-semibold tracking-wide transition-all duration-300"
+            style={{
+              border: '1px solid rgba(166,27,27,0.55)',
+              background: 'linear-gradient(135deg, rgba(166,27,27,0.12) 0%, rgba(166,27,27,0.04) 100%)',
+              color: '#f7f4e9',
+              backdropFilter: 'blur(6px)',
+              textShadow: '0 0 6px rgba(166,27,27,0.3)',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'linear-gradient(135deg, #a61b1b 0%, #7a1010 100%)';
+              e.currentTarget.style.color = '#ffffff';
+              e.currentTarget.style.boxShadow = '0 0 20px rgba(166,27,27,0.5), 0 0 40px rgba(166,27,27,0.2)';
+              e.currentTarget.style.borderColor = '#c0392b';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'linear-gradient(135deg, rgba(166,27,27,0.12) 0%, rgba(166,27,27,0.04) 100%)';
+              e.currentTarget.style.color = '#f7f4e9';
+              e.currentTarget.style.boxShadow = 'none';
+              e.currentTarget.style.borderColor = 'rgba(166,27,27,0.55)';
+            }}
           >
             התנתק
           </button>
@@ -113,21 +196,90 @@ function Header() {
     }
     return (
       <div className="flex items-center gap-3">
+        {/* התחבר */}
         <Link
           to={ROUTES.LOGIN}
-          className="px-4 py-1.5 rounded-full border border-[#cfa756]/50 text-[#cfa756] text-[16px] font-semibold hover:bg-[#cfa756]/10 transition"
+          className="px-5 py-2 rounded-full text-[15px] font-semibold tracking-wide transition-all duration-300"
+          style={{
+            border: '1px solid rgba(207,167,86,0.55)',
+            color: '#cfa756',
+            background: 'transparent',
+            backdropFilter: 'blur(6px)',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'rgba(207,167,86,0.12)';
+            e.currentTarget.style.boxShadow = '0 0 18px rgba(207,167,86,0.25), 0 0 36px rgba(207,167,86,0.1)';
+            e.currentTarget.style.borderColor = '#f7d98a';
+            e.currentTarget.style.color = '#f7d98a';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'transparent';
+            e.currentTarget.style.boxShadow = 'none';
+            e.currentTarget.style.borderColor = 'rgba(207,167,86,0.55)';
+            e.currentTarget.style.color = '#cfa756';
+          }}
         >
           התחבר
         </Link>
+        {/* הירשם */}
         <Link
           to={ROUTES.REGISTER}
-          className="px-5 py-1.5 rounded-full bg-gradient-to-r from-[#cfa756] to-[#b8860b] text-[#0d2340] text-[16px] font-bold hover:scale-105 transition"
+          className="px-6 py-2 rounded-full text-[15px] font-bold tracking-wide transition-all duration-300"
+          style={{
+            background: 'linear-gradient(135deg, #cfa756 0%, #b8860b 50%, #8b6914 100%)',
+            color: '#0d2340',
+            boxShadow: '0 4px 20px rgba(207,167,86,0.35), 0 0 40px rgba(207,167,86,0.15)',
+            border: '1px solid rgba(255,233,160,0.4)',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'scale(1.06)';
+            e.currentTarget.style.boxShadow = '0 6px 28px rgba(247,217,138,0.55), 0 0 50px rgba(207,167,86,0.3)';
+            e.currentTarget.style.borderColor = '#ffe9a0';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'scale(1)';
+            e.currentTarget.style.boxShadow = '0 4px 20px rgba(207,167,86,0.35), 0 0 40px rgba(207,167,86,0.15)';
+            e.currentTarget.style.borderColor = 'rgba(255,233,160,0.4)';
+          }}
         >
           הירשם
         </Link>
       </div>
     );
   }, [isAuthenticated, user?.name, logout]);
+
+  /* ── SVG כתר (בשימוש חוזר) ── */
+  const CrownSVG = ({ id, size = 14 }) => (
+    <svg className="crown-icon" width={size} height={(size * 11) / 14} viewBox="0 0 20 16" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id={id} x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="#ffe9a0">
+            <animate attributeName="stop-color" values="#ffe9a0;#f7d98a;#cfa756;#f7d98a;#ffe9a0" dur="2.2s" repeatCount="indefinite" />
+          </stop>
+          <stop offset="100%" stopColor="#b8860b">
+            <animate attributeName="stop-color" values="#b8860b;#cfa756;#f7d98a;#cfa756;#b8860b" dur="2.2s" repeatCount="indefinite" />
+          </stop>
+        </linearGradient>
+        {/* גלואו לכתר */}
+        <filter id={`glow-${id}`} x="-40%" y="-40%" width="180%" height="180%">
+          <feGaussianBlur stdDeviation="0.8" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+      </defs>
+      <g filter={`url(#glow-${id})`}>
+        <polygon points="1,14 1,7 5,11 10,2 15,11 19,7 19,14" fill={`url(#${id})`} stroke="#b8860b" strokeWidth="0.6" strokeLinejoin="round" />
+        <rect x="1" y="13" width="18" height="2.5" rx="1" fill={`url(#${id})`} stroke="#b8860b" strokeWidth="0.5" />
+        <circle cx="10" cy="2.5" r="1.2" fill="#fff8e0">
+          <animate attributeName="r" values="1.2;1.5;1.2" dur="2.2s" repeatCount="indefinite" />
+        </circle>
+        <circle cx="1.2" cy="7.2" r="1" fill="#fff8e0" />
+        <circle cx="18.8" cy="7.2" r="1" fill="#fff8e0" />
+      </g>
+    </svg>
+  );
 
   return (
     <>
@@ -139,14 +291,30 @@ function Header() {
           font-weight: 600;
         }
 
-        @keyframes floatParticle {
-          0%,100% { transform: translateY(0); }
-          50%      { transform: translateY(-8px); }
+        /* ── אנימציות חלקיקים ── */
+        @keyframes floatDust {
+          0%, 100% { transform: translateY(0) translateX(0); opacity: 0.3; }
+          25%      { transform: translateY(-12px) translateX(3px); opacity: 0.7; }
+          50%      { transform: translateY(-5px) translateX(-2px); opacity: 0.5; }
+          75%      { transform: translateY(-15px) translateX(1px); opacity: 0.8; }
+        }
+
+        @keyframes sparklePulse {
+          0%, 100% { transform: scale(0.7); opacity: 0.3; }
+          30%      { transform: scale(1.4); opacity: 1; }
+          60%      { transform: scale(0.8); opacity: 0.5; }
+          80%      { transform: scale(1.2); opacity: 0.9; }
+        }
+
+        @keyframes sweepLight {
+          0%   { left: -60%; }
+          50%  { left: 100%; }
+          100% { left: -60%; }
         }
 
         @keyframes crownGlow {
-          0%,100% { filter: drop-shadow(0 0 2px rgba(207,167,86,0.5)) drop-shadow(0 0 6px rgba(207,167,86,0.25)); }
-          50%      { filter: drop-shadow(0 0 5px rgba(247,217,138,0.95)) drop-shadow(0 0 12px rgba(207,167,86,0.5)); }
+          0%, 100% { filter: drop-shadow(0 0 3px rgba(207,167,86,0.6)) drop-shadow(0 0 8px rgba(207,167,86,0.3)); }
+          50%      { filter: drop-shadow(0 0 7px rgba(247,217,138,1)) drop-shadow(0 0 16px rgba(207,167,86,0.65)); }
         }
 
         .crown-icon {
@@ -154,28 +322,74 @@ function Header() {
           display: block;
         }
 
+        @keyframes pulse {
+          0%, 100% { opacity: 0.7; }
+          50%      { opacity: 1; }
+        }
+
         @keyframes mobileMenuIn {
-          from { opacity: 0; transform: translateY(-8px); }
-          to   { opacity: 1; transform: translateY(0); }
+          from { opacity: 0; transform: translateY(-10px) scale(0.97); }
+          to   { opacity: 1; transform: translateY(0) scale(1); }
         }
 
         @keyframes mobileLinkIn {
-          from { opacity: 0; transform: translateX(12px); }
+          from { opacity: 0; transform: translateX(16px); }
           to   { opacity: 1; transform: translateX(0); }
         }
 
-       .glass-dark {
-  background: rgba(22, 38, 65, 0.95);
-  backdrop-filter: blur(20px);
-  border-bottom: 3px solid #cfa756;
-}
+        @keyframes logoShine {
+          0%   { background-position: -200% center; }
+          100% { background-position: 200% center; }
+        }
+
+        /* ── Glass משודרג ── */
+        .glass-dark {
+          background: linear-gradient(180deg,
+            rgba(18, 32, 56, 0.97) 0%,
+            rgba(13, 35, 64, 0.96) 40%,
+            rgba(10, 25, 47, 0.97) 100%
+          );
+          backdrop-filter: blur(28px) saturate(140%);
+          -webkit-backdrop-filter: blur(28px) saturate(140%);
+          border-bottom: none;
+          position: relative;
+        }
+
+        /* טקסטורת שיש עדינה */
+        .glass-dark::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background:
+            radial-gradient(ellipse at 15% 50%, rgba(207,167,86,0.04) 0%, transparent 55%),
+            radial-gradient(ellipse at 75% 50%, rgba(207,167,86,0.03) 0%, transparent 55%),
+            radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.015) 0%, transparent 70%);
+          pointer-events: none;
+          z-index: 0;
+        }
+
+        /* וינייטה */
+        .glass-dark::after {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background:
+            radial-gradient(ellipse at 50% 100%, rgba(0,0,0,0.35) 0%, transparent 70%);
+          pointer-events: none;
+          z-index: 0;
+        }
 
         .mobile-menu-enter {
-          animation: mobileMenuIn 0.22s cubic-bezier(.4,0,.2,1) both;
+          animation: mobileMenuIn 0.25s cubic-bezier(.4,0,.2,1) both;
         }
 
         .mobile-link-enter {
-          animation: mobileLinkIn 0.2s cubic-bezier(.4,0,.2,1) both;
+          animation: mobileLinkIn 0.22s cubic-bezier(.4,0,.2,1) both;
+        }
+
+        /* hover-underline מורחב עם גלואו */
+        .nav-link-hover:hover {
+          text-shadow: 0 0 14px rgba(207,167,86,0.55), 0 0 28px rgba(207,167,86,0.2);
         }
       `}</style>
 
@@ -183,135 +397,176 @@ function Header() {
         className="header-font fixed top-0 left-0 right-0 z-50 glass-dark"
         style={{ direction: 'rtl' }}
       >
-        <GoldParticles />
+        {/* חלקיקי זהב */}
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <GoldParticles />
+        </div>
 
-        <div className="container mx-auto px-6 py-3">
+        {/* קו תחתון עם קרן אור */}
+        <div style={{ position: 'relative', zIndex: 2 }}>
+          <LightSweep />
+        </div>
+
+        <div className="container mx-auto px-6 py-3 relative z-10">
           <div className="flex items-center justify-between">
 
-            {/* Logo */}
-            <Link to={ROUTES.HOME}>
-              <img src="/logo.png" className="h-16" alt="לוגו" />
+            {/* ── Logo עם אפקט shine ── */}
+            <Link
+              to={ROUTES.HOME}
+              className="relative group"
+              style={{
+                filter: 'drop-shadow(0 0 10px rgba(207,167,86,0.35))',
+                transition: 'filter 0.4s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.filter = 'drop-shadow(0 0 22px rgba(247,217,138,0.7)) drop-shadow(0 0 40px rgba(207,167,86,0.4))';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.filter = 'drop-shadow(0 0 10px rgba(207,167,86,0.35))';
+              }}
+            >
+              {/* shine overlay על הלוגו */}
+              <div className="relative inline-block">
+                <img src="/logo.png" className="h-16 relative z-10" alt="לוגו" />
+                <div
+                  className="absolute inset-0 z-20 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                  style={{
+                    background: 'linear-gradient(105deg, transparent 35%, rgba(255,255,255,0.3) 45%, rgba(255,255,255,0.5) 50%, rgba(255,255,255,0.3) 55%, transparent 65%)',
+                    backgroundSize: '200% 100%',
+                    animation: 'logoShine 1.5s ease-in-out infinite',
+                  }}
+                />
+              </div>
             </Link>
 
-            {/* Desktop Nav */}
+            {/* ── Desktop Nav ── */}
             <nav
               ref={navRef}
               className="notranslate hidden lg:flex items-center justify-center flex-1 gap-10 relative"
             >
-              {navItems.map(({ path, label }, i) => (
-                <Link
-                  key={path}
-                  to={path}
-                  data-path={path}
-                  className={`relative text-[18px] tracking-widest uppercase font-bold transition-colors duration-200 pb-2 ${location.pathname === path
-                    ? 'text-[#cfa756]'
-                    : 'text-[#f7f4e9]/80 hover:text-[#cfa756]'
+              {navItems.map(({ path, label }, i) => {
+                const isActive = location.pathname === path;
+                return (
+                  <Link
+                    key={path}
+                    to={path}
+                    data-path={path}
+                    className={`nav-link-hover relative text-[18px] tracking-widest uppercase font-bold transition-all duration-300 pb-2 ${
+                      isActive
+                        ? 'text-[#cfa756]'
+                        : 'text-[#f7f4e9]/80 hover:text-[#cfa756]'
                     }`}
-                  style={{ animationDelay: `${i * 80}ms` }}
-                >
-                  <span>{label}</span>
-                </Link>
-              ))}
+                    style={{
+                      animationDelay: `${i * 80}ms`,
+                      textShadow: isActive
+                        ? '0 0 16px rgba(207,167,86,0.55), 0 0 32px rgba(207,167,86,0.2)'
+                        : 'none',
+                    }}
+                  >
+                    {/* רקע hover עדין */}
+                    <span
+                      className="absolute inset-0 rounded-lg -mx-2 -my-1 opacity-0 transition-opacity duration-300 pointer-events-none"
+                      style={{
+                        background: 'radial-gradient(ellipse at center, rgba(207,167,86,0.08) 0%, transparent 70%)',
+                      }}
+                    />
+                    <span className="relative z-10">{label}</span>
+                  </Link>
+                );
+              })}
 
-              {/* underline נע */}
+              {/* underline מוזהב נע */}
               <span
-                className="absolute bottom-0 h-px bg-gradient-to-r from-[#cfa756] to-[#f7d98a] pointer-events-none"
+                className="absolute bottom-0 pointer-events-none z-20"
                 style={{
                   left: underlineStyle.left,
                   width: underlineStyle.width,
                   opacity: underlineStyle.opacity,
-                  transition: 'left 0.28s cubic-bezier(.4,0,.2,1), width 0.28s cubic-bezier(.4,0,.2,1), opacity 0.2s',
+                  height: '2px',
+                  background: 'linear-gradient(90deg, #cfa756, #f7d98a 40%, #ffe9a0 50%, #f7d98a 60%, #cfa756)',
+                  borderRadius: '2px',
+                  boxShadow: '0 0 10px rgba(247,217,138,0.7), 0 0 22px rgba(207,167,86,0.4)',
+                  transition: 'left 0.3s cubic-bezier(.4,0,.2,1), width 0.3s cubic-bezier(.4,0,.2,1), opacity 0.25s',
                 }}
               />
 
-              {/* כתר נע — אחד שנע מעל הלינק הפעיל */}
+              {/* כתר נע */}
               <span
-                className="absolute pointer-events-none"
+                className="absolute pointer-events-none z-20"
                 style={{
                   top: '-18px',
                   left: crownLeft,
                   opacity: underlineStyle.opacity,
-                  transition: 'left 0.28s cubic-bezier(.4,0,.2,1), opacity 0.2s',
+                  transition: 'left 0.3s cubic-bezier(.4,0,.2,1), opacity 0.25s',
                 }}
               >
-                <svg className="crown-icon" width="14" height="11" viewBox="0 0 20 16" xmlns="http://www.w3.org/2000/svg">
-                  <defs>
-                    <linearGradient id="crownGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                      <stop offset="0%" stopColor="#ffe9a0">
-                        <animate attributeName="stop-color" values="#ffe9a0;#f7d98a;#cfa756;#f7d98a;#ffe9a0" dur="2.2s" repeatCount="indefinite" />
-                      </stop>
-                      <stop offset="100%" stopColor="#b8860b">
-                        <animate attributeName="stop-color" values="#b8860b;#cfa756;#f7d98a;#cfa756;#b8860b" dur="2.2s" repeatCount="indefinite" />
-                      </stop>
-                    </linearGradient>
-                  </defs>
-                  <polygon points="1,14 1,7 5,11 10,2 15,11 19,7 19,14" fill="url(#crownGrad)" stroke="#b8860b" strokeWidth="0.6" strokeLinejoin="round" />
-                  <rect x="1" y="13" width="18" height="2.5" rx="1" fill="url(#crownGrad)" stroke="#b8860b" strokeWidth="0.5" />
-                  <circle cx="10" cy="2.5" r="1.2" fill="#fff8e0" />
-                  <circle cx="1.2" cy="7.2" r="1" fill="#fff8e0" />
-                  <circle cx="18.8" cy="7.2" r="1" fill="#fff8e0" />
-                </svg>
+                <CrownSVG id="crownGrad" size={14} />
               </span>
             </nav>
 
-            {/* Auth */}
+            {/* ── Auth ── */}
             <div className="hidden lg:flex items-center">
               {AuthButtons}
             </div>
 
-            {/* Mobile burger */}
+            {/* ── Mobile burger ── */}
             <button
               onClick={toggleMenu}
-              className="lg:hidden text-[#cfa756] text-2xl focus:outline-none"
+              className="lg:hidden text-[#cfa756] text-2xl focus:outline-none transition-transform duration-300 hover:scale-110"
+              style={{
+                textShadow: '0 0 10px rgba(207,167,86,0.5)',
+              }}
               aria-label={isMenuOpen ? 'סגור תפריט' : 'פתח תפריט'}
             >
               {isMenuOpen ? '✕' : '☰'}
             </button>
           </div>
 
-          {/* Mobile menu */}
+          {/* ── Mobile menu ── */}
           {isMenuOpen && (
-            <div className="mobile-menu-enter lg:hidden mt-4 pb-4 flex flex-col border-t border-[#cfa756]/20">
-              {navItems.map(({ path, label }, i) => (
-                <Link
-                  key={path}
-                  to={path}
-                  onClick={() => setIsMenuOpen(false)}
-                  className={`mobile-link-enter px-2 py-3 text-[17px] font-bold tracking-wide border-b border-[#cfa756]/10 transition-colors ${location.pathname === path
-                    ? 'text-[#cfa756]'
-                    : 'text-[#f7f4e9]/80 hover:text-[#cfa756]'
+            <div
+              className="mobile-menu-enter lg:hidden mt-4 pb-4 flex flex-col"
+              style={{
+                borderTop: '1px solid rgba(207,167,86,0.25)',
+                background: 'linear-gradient(180deg, rgba(13,35,64,0.6) 0%, rgba(10,25,47,0.5) 100%)',
+                backdropFilter: 'blur(16px)',
+                borderRadius: '0 0 16px 16px',
+              }}
+            >
+              {navItems.map(({ path, label }, i) => {
+                const isActive = location.pathname === path;
+                return (
+                  <Link
+                    key={path}
+                    to={path}
+                    onClick={() => setIsMenuOpen(false)}
+                    className={`mobile-link-enter px-4 py-3.5 text-[17px] font-bold tracking-wide transition-all duration-300 flex items-center gap-3 ${
+                      isActive
+                        ? 'text-[#cfa756]'
+                        : 'text-[#f7f4e9]/80 hover:text-[#cfa756]'
                     }`}
-                  style={{ animationDelay: `${i * 50}ms` }}
-                >
-                  {location.pathname === path && (
-                    <span className="inline-block ml-2 mb-0.5 align-middle">
-                      <svg className="crown-icon" width="12" height="9" viewBox="0 0 20 16" xmlns="http://www.w3.org/2000/svg">
-                        <defs>
-                          <linearGradient id="crownGradMobile" x1="0%" y1="0%" x2="0%" y2="100%">
-                            <stop offset="0%" stopColor="#ffe9a0">
-                              <animate attributeName="stop-color" values="#ffe9a0;#f7d98a;#cfa756;#f7d98a;#ffe9a0" dur="2.2s" repeatCount="indefinite" />
-                            </stop>
-                            <stop offset="100%" stopColor="#b8860b">
-                              <animate attributeName="stop-color" values="#b8860b;#cfa756;#f7d98a;#cfa756;#b8860b" dur="2.2s" repeatCount="indefinite" />
-                            </stop>
-                          </linearGradient>
-                        </defs>
-                        <polygon points="1,14 1,7 5,11 10,2 15,11 19,7 19,14" fill="url(#crownGradMobile)" stroke="#b8860b" strokeWidth="0.6" strokeLinejoin="round" />
-                        <rect x="1" y="13" width="18" height="2.5" rx="1" fill="url(#crownGradMobile)" stroke="#b8860b" strokeWidth="0.5" />
-                        <circle cx="10" cy="2.5" r="1.2" fill="#fff8e0" />
-                        <circle cx="1.2" cy="7.2" r="1" fill="#fff8e0" />
-                        <circle cx="18.8" cy="7.2" r="1" fill="#fff8e0" />
-                      </svg>
-                    </span>
-                  )}
-                  <span>{label}</span>
-                </Link>
-              ))}
+                    style={{
+                      animationDelay: `${i * 55}ms`,
+                      borderBottom: '1px solid rgba(207,167,86,0.08)',
+                      textShadow: isActive ? '0 0 10px rgba(207,167,86,0.4)' : 'none',
+                      background: isActive
+                        ? 'linear-gradient(90deg, rgba(207,167,86,0.08) 0%, transparent 100%)'
+                        : 'transparent',
+                    }}
+                  >
+                    {isActive && (
+                      <span className="inline-block flex-shrink-0">
+                        <CrownSVG id="crownGradMobile" size={12} />
+                      </span>
+                    )}
+                    <span>{label}</span>
+                  </Link>
+                );
+              })}
 
-              {/* Auth במובייל */}
               <div
-                className="mobile-link-enter mt-4 flex flex-col gap-2"
-                style={{ animationDelay: `${navItems.length * 50}ms` }}
+                className="mobile-link-enter mt-4 px-4 flex flex-col gap-3"
+                style={{ animationDelay: `${navItems.length * 55}ms` }}
               >
                 {AuthButtons}
               </div>
@@ -320,7 +575,8 @@ function Header() {
         </div>
       </header>
 
-      <div className="h-[72px]" />
+      {/* spacer */}
+      {/* <div className="h-[72px]" /> */}
     </>
   );
 }

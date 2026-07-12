@@ -11,7 +11,7 @@ import {
     updateGalleryImage,
     deleteGalleryImage,
 } from '../services/api';
-
+import ImageUploader from './ImageUploader';
 // ─── נירמול כתובת Google Drive ────────────────────────────────────────────────
 const normalizeImageUrl = (url) => {
     if (!url) return url;
@@ -157,6 +157,7 @@ function Lightbox({ image, onClose }) {
 
 // ─── מנהל גלריה (מודאל) ───────────────────────────────────────────────────────
 function GalleryManagerModal({ isOpen, onClose, images, onRefresh }) {
+
     const [mode, setMode] = useState('list');
     const [editingId, setEditingId] = useState(null);
     const [form, setForm] = useState({ imageUrl: '', title: '', description: '' });
@@ -290,13 +291,27 @@ function GalleryManagerModal({ isOpen, onClose, images, onRefresh }) {
 
                     {(mode === 'add' || mode === 'edit') && (
                         <div className="space-y-5">
-                            <Field label="קישור לתמונה *" id="imageUrl" error={errors.imageUrl}>
+                            <Field label="תמונה *" id="imageUrl" error={errors.imageUrl}>
+                                <ImageUploader
+                                    onUploaded={(url) => {
+                                        setForm((f) => ({ ...f, imageUrl: url }));
+                                        setErrors((er) => ({ ...er, imageUrl: undefined }));
+                                    }}
+                                />
+
+                                <div className="flex items-center gap-2 my-3">
+                                    <div className="flex-1 h-px bg-gray-200" />
+                                    <span className="text-xs text-gray-400">או הדבק קישור</span>
+                                    <div className="flex-1 h-px bg-gray-200" />
+                                </div>
+
                                 <input
                                     id="imageUrl" type="text" value={form.imageUrl} dir="ltr"
                                     onChange={(e) => { setForm((f) => ({ ...f, imageUrl: e.target.value })); setErrors((er) => ({ ...er, imageUrl: undefined })); }}
                                     placeholder="https://... או קישור Google Drive"
                                     className={inputClass('imageUrl')}
                                 />
+
                                 {form.imageUrl && (
                                     <div className="mt-2 h-28 rounded-lg overflow-hidden bg-gray-100 border border-gray-200">
                                         <img src={normalizeImageUrl(form.imageUrl)} alt="תצוגה מקדימה"
@@ -445,7 +460,7 @@ export default function ImageGallery() {
                     <div className="text-center mb-4">
                         <h1 className="text-2xl font-bold text-[#0d2340] flex items-center justify-center gap-2">
                             <span className="text-[#cfa756]">✦</span>
-                           הודעות מערכת
+                            הודעות מערכת
                             <span className="text-[#cfa756]">✦</span>
                         </h1>
                         <div className="w-16 h-0.5 bg-gradient-to-r from-[#cfa756] to-[#b8860b] mx-auto mt-2 rounded-full" />

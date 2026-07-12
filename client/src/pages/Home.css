@@ -1,16 +1,182 @@
-/* בקובץ CSS חיצוני או בבלוק <style> ב-HTML */
-@media print {
-  body { /* או אלמנט ספציפי אחר שתרצה להדפיס */
-    -webkit-print-color-adjust: exact; /* עבור דפדפני WebKit כמו Chrome ו-Safari */
-    print-color-adjust: exact; /* תקן CSS3 */
-  }
+/* ─────────────────────────────────────────────
+   Home.css – אנימציות וסגנונות גלובליים
+   ───────────────────────────────────────────── */
 
-  .element-to-print { /* לדוגמה, אם תיתן ל-div שלך class "element-to-print" */
-    background-image: url("/1776676161060 (1).png") !important;
-    background-size: cover !important;
-    background-position: center !important;
-    background-repeat: no-repeat !important;
-    /* וודא שגובה האלמנט מספיק כדי שהתמונה תהיה גלויה */
-    min-height: 300px !important; 
-  }
-}
+   @import url('https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&display=swap');
+
+   /* חלקיקים – float */
+   @keyframes floatDust {
+     0%, 100% {
+       transform: translateY(0) translateX(0);
+       opacity: 0.25;
+     }
+     25% {
+       transform: translateY(-14px) translateX(4px);
+       opacity: 0.7;
+     }
+     50% {
+       transform: translateY(-6px) translateX(-3px);
+       opacity: 0.45;
+     }
+     75% {
+       transform: translateY(-18px) translateX(2px);
+       opacity: 0.8;
+     }
+   }
+   
+   /* נצנצים – sparkle */
+   @keyframes sparklePulse {
+     0%, 100% {
+       transform: scale(0.6);
+       opacity: 0.25;
+     }
+     30% {
+       transform: scale(1.45);
+       opacity: 1;
+     }
+     60% {
+       transform: scale(0.75);
+       opacity: 0.5;
+     }
+     80% {
+       transform: scale(1.25);
+       opacity: 0.9;
+     }
+   }
+   
+   /* קרן אור סורקת */
+   @keyframes sweepLight {
+     0% {
+       left: -60%;
+     }
+     50% {
+       left: 100%;
+     }
+     100% {
+       left: -60%;
+     }
+   }
+   
+   /* גלואו לכתר */
+   @keyframes crownGlow {
+     0%, 100% {
+       filter: drop-shadow(0 0 3px rgba(207, 167, 86, 0.6)) drop-shadow(0 0 8px rgba(207, 167, 86, 0.3));
+     }
+     50% {
+       filter: drop-shadow(0 0 7px rgba(247, 217, 138, 1)) drop-shadow(0 0 16px rgba(207, 167, 86, 0.65));
+     }
+   }
+   
+   /* פולס עדין */
+   @keyframes softPulse {
+     0%, 100% {
+       opacity: 0.7;
+     }
+     50% {
+       opacity: 1;
+     }
+   }
+   
+   /* כניסה מלמטה */
+   @keyframes fadeInUp {
+     from {
+       opacity: 0;
+       transform: translateY(24px);
+     }
+     to {
+       opacity: 1;
+       transform: translateY(0);
+     }
+   }
+   
+   /* שיין על לוגו */
+   @keyframes logoShine {
+     0% {
+       background-position: -200% center;
+     }
+     100% {
+       background-position: 200% center;
+     }
+   }
+   
+   /* אנימציה לגבול מוזהב */
+   @keyframes borderGlow {
+     0%, 100% {
+       border-color: rgba(207, 167, 86, 0.35);
+       box-shadow: 0 0 12px rgba(207, 167, 86, 0.1), 0 0 24px rgba(207, 167, 86, 0.05);
+     }
+     50% {
+       border-color: rgba(247, 217, 138, 0.7);
+       box-shadow: 0 0 20px rgba(207, 167, 86, 0.25), 0 0 40px rgba(207, 167, 86, 0.12);
+     }
+   }
+   
+   /* Utility classes */
+   .home-hero {
+     animation: fadeInUp 0.8s cubic-bezier(0.4, 0, 0.2, 1) both;
+   }
+   
+   .glass-card {
+     background: rgba(22, 38, 65, 0.85);
+     backdrop-filter: blur(20px);
+     -webkit-backdrop-filter: blur(20px);
+     border: 1px solid rgba(207, 167, 86, 0.25);
+   }
+   
+   .glass-card-light {
+     background: rgba(247, 244, 233, 0.92);
+     backdrop-filter: blur(16px);
+     -webkit-backdrop-filter: blur(16px);
+     border: 1px solid rgba(207, 167, 86, 0.35);
+   }
+   
+   .text-gold {
+     color: #cfa756;
+   }
+   
+   .text-gold-light {
+     color: #f7d98a;
+   }
+   
+   .bg-navy {
+     background-color: #0d2340;
+   }
+   
+   .bg-navy-light {
+     background-color: #162641;
+   }
+   
+   /* הדפסה */
+   @media print {
+     body * {
+       visibility: hidden;
+     }
+     .element-to-print,
+     .element-to-print * {
+       visibility: visible;
+     }
+     .element-to-print {
+       position: absolute;
+       left: 0;
+       top: 0;
+       width: 100%;
+     }
+   }
+   
+   /* scrollbar מותאם */
+   ::-webkit-scrollbar {
+     width: 8px;
+   }
+   
+   ::-webkit-scrollbar-track {
+     background: #0d2340;
+   }
+   
+   ::-webkit-scrollbar-thumb {
+     background: linear-gradient(180deg, #cfa756, #b8860b);
+     border-radius: 4px;
+   }
+   
+   ::-webkit-scrollbar-thumb:hover {
+     background: linear-gradient(180deg, #f7d98a, #cfa756);
+   }
