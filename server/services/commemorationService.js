@@ -22,10 +22,11 @@ exports.createCommemoration = async (data) => {
  * @param {Object} data - הנתונים המעודכנים
  */
 exports.updateCommemoration = async (id, data) => {
-  return Commemoration.findByIdAndUpdate(id, data, {
-    new: true,
-    runValidators: true,
-  });
+  const doc = await Commemoration.findById(id);
+  if (!doc) return null;
+
+  Object.assign(doc, data);
+  return doc.save(); // כאן this בתוך הולידטורים המותאמים אישית יצביע נכון על המסמך
 };
 
 /**

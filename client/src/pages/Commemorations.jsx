@@ -14,9 +14,9 @@ const DEDICATION_TYPES = ['לזכות', 'לעילוי נשמת', 'לרפואת',
 
 // סטטוס הנצחה — ערכים: 'commemorated' | 'pending' | 'none'
 const STATUS_CONFIG = {
-  commemorated: { label: 'הונצח',           dot: '#3b6d11', bg: '#eaf3de', text: '#3b6d11', border: '#97c459' },
-  pending:      { label: 'ממתין לאישור',    dot: '#854f0b', bg: '#faeeda', text: '#854f0b', border: '#ef9f27' },
-  none:         { label: 'פנוי להנצחה',     dot: '#185fa5', bg: '#e6f1fb', text: '#185fa5', border: '#85b7eb' },
+  commemorated: { label: 'הונצח', dot: '#3b6d11', bg: '#eaf3de', text: '#3b6d11', border: '#97c459' },
+  pending: { label: 'ממתין לאישור', dot: '#854f0b', bg: '#faeeda', text: '#854f0b', border: '#ef9f27' },
+  none: { label: 'פנוי להנצחה', dot: '#185fa5', bg: '#e6f1fb', text: '#185fa5', border: '#85b7eb' },
 };
 
 // ── נירמול קישורי תמונה מ-Google Drive (זהה ל-CommemorationForm) ────────────
@@ -96,20 +96,20 @@ function AdminCommemorationModal({ initial, onClose, onSave }) {
   const [form, setForm] = useState(
     initial
       ? {
-          commemorationStatus: initial.commemorationStatus || 'none',
-          itemName: initial.itemName || '',
-          contributorName: initial.contributorName || '',
-          commemoratedName: initial.commemoratedName || '',
-          amount: initial.amount != null ? String(initial.amount) : '',
-          imageUrl: normalizeImageUrl(initial.imageUrl || ''),
-          date: initial.date
-            ? new Date(initial.date).toISOString().split('T')[0]
-            : new Date().toISOString().split('T')[0],
-        }
+        commemorationStatus: initial.commemorationStatus || 'none',
+        itemName: initial.itemName || '',
+        contributorName: initial.contributorName || '',
+        commemoratedName: initial.commemoratedName || '',
+        amount: initial.amount != null ? String(initial.amount) : '',
+        imageUrl: normalizeImageUrl(initial.imageUrl || ''),
+        date: initial.date
+          ? new Date(initial.date).toISOString().split('T')[0]
+          : new Date().toISOString().split('T')[0],
+      }
       : EMPTY_ADMIN_FORM
   );
   const [saving, setSaving] = useState(false);
-  const [error, setError]   = useState('');
+  const [error, setError] = useState('');
 
   // ← האם הפריט "פנוי להנצחה" — עדיין אין מונצח/תורם בפועל
   const isAvailable = form.commemorationStatus === 'none';
@@ -285,7 +285,7 @@ function RequestModal({ item, onClose, onSuccess }) {
     name: '', phone: '', email: '',
     dedicationType: 'לזכות', dedicationName: '', adminNote: '',
   });
-  const [sending, setSending]     = useState(false);
+  const [sending, setSending] = useState(false);
   const [formError, setFormError] = useState('');
 
   const handleSubmit = async () => {
@@ -298,7 +298,7 @@ function RequestModal({ item, onClose, onSuccess }) {
     try {
       await submitCommemorationRequest({
         ...form,
-        itemName:        item.itemName,
+        itemName: item.itemName,
         commemorationId: item._id,
       });
       onSuccess();
@@ -446,7 +446,7 @@ function SuccessBanner({ onClose }) {
 function CommemorationCard({ item, onRequest, isAdmin, onEdit, onDelete, onImageClick }) {
   const cfg = STATUS_CONFIG[item.commemorationStatus] || STATUS_CONFIG.none;
   const isCommemoratedAlready = item.commemorationStatus === 'commemorated';
-  const isPending             = item.commemorationStatus === 'pending';
+  const isPending = item.commemorationStatus === 'pending';
 
   const formattedDate = item.date
     ? new Date(item.date).toLocaleDateString('he-IL', { year: 'numeric', month: 'long', day: 'numeric' })
@@ -569,18 +569,93 @@ function CommemorationCard({ item, onRequest, isAdmin, onEdit, onDelete, onImage
   );
 }
 
+// ─────────────────────────────────────────────
+// GoldParticles – חלקיקי זהב לדף
+// ─────────────────────────────────────────────
+function GoldParticles() {
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      {[...Array(18)].map((_, i) => (
+        <div
+          key={`dust-${i}`}
+          className="absolute rounded-full"
+          style={{
+            width: `${Math.random() * 2 + 0.5}px`,
+            height: `${Math.random() * 2 + 0.5}px`,
+            left: `${Math.random() * 100}%`,
+            top: `${Math.random() * 100}%`,
+            background:
+              'radial-gradient(circle, rgba(255,233,160,.9) 0%, rgba(207,167,86,.5) 60%, transparent 100%)',
+            boxShadow:
+              '0 0 8px rgba(207,167,86,.8)',
+            animation: `floatDust ${4 + i * .4}s ease-in-out infinite`,
+            animationDelay: `${Math.random() * 3}s`,
+          }}
+        />
+      ))}
+
+      {[...Array(5)].map((_, i) => (
+        <div
+          key={`spark-${i}`}
+          className="absolute rounded-full"
+          style={{
+            width: `${5 + i * 2}px`,
+            height: `${5 + i * 2}px`,
+            left: `${15 + i * 18}%`,
+            top: `${20 + (i % 3) * 25}%`,
+            background:
+              'radial-gradient(circle,#fff8e0 0%,#cfa756 45%,transparent 70%)',
+            boxShadow:
+              '0 0 15px rgba(247,217,138,.9)',
+            animation:
+              `sparklePulse ${2.5 + i * .5}s ease-in-out infinite`,
+            animationDelay: `${i * .4}s`,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+
+// ─────────────────────────────────────────────
+// LightSweep – פס אור תחתון
+// ─────────────────────────────────────────────
+function LightSweep() {
+  return (
+    <div className="absolute bottom-0 left-0 right-0 h-[3px] overflow-hidden">
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            'linear-gradient(90deg,#b8860b,#cfa756,#ffe9a0,#cfa756,#b8860b)',
+        }}
+      />
+
+      <div
+        className="absolute inset-y-0 w-[60%]"
+        style={{
+          background:
+            'linear-gradient(90deg,transparent,rgba(255,255,255,.8),transparent)',
+          animation: 'sweepLight 3.5s infinite',
+        }}
+      />
+    </div>
+  );
+}
+
 // ── עמוד ראשי ─────────────────────────────────────────────────────────────────
 export default function Commemorations() {
   const { isAdmin } = useAuth();
   const [commemorations, setCommemorations] = useState([]);
-  const [loading, setLoading]               = useState(true);
-  const [error, setError]                   = useState(null);
-  const [activeFilter, setActiveFilter]     = useState('all');
-  const [modalItem, setModalItem]           = useState(null);
-  const [showSuccess, setShowSuccess]       = useState(false);
-  const [adminModal, setAdminModal]         = useState(null); // null | 'add' | { item }
-  const [actionError, setActionError]       = useState('');
-  const [lightbox, setLightbox]             = useState(null); // null | { src, alt }
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [activeFilter, setActiveFilter] = useState('all');
+  const [modalItem, setModalItem] = useState(null);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [adminModal, setAdminModal] = useState(null); // null | 'add' | { item }
+  const [actionError, setActionError] = useState('');
+  const [lightbox, setLightbox] = useState(null); // null | { src, alt }
 
   const load = () => {
     setLoading(true);
@@ -593,10 +668,10 @@ export default function Commemorations() {
   useEffect(() => { load(); }, []);
 
   const counts = {
-    all:          commemorations.length,
+    all: commemorations.length,
     commemorated: commemorations.filter((i) => i.commemorationStatus === 'commemorated').length,
-    pending:      commemorations.filter((i) => i.commemorationStatus === 'pending').length,
-    none:         commemorations.filter((i) => i.commemorationStatus === 'none').length,
+    pending: commemorations.filter((i) => i.commemorationStatus === 'pending').length,
+    none: commemorations.filter((i) => i.commemorationStatus === 'none').length,
   };
 
   const filtered = activeFilter === 'all'
@@ -604,10 +679,10 @@ export default function Commemorations() {
     : commemorations.filter((i) => i.commemorationStatus === activeFilter);
 
   const FILTERS = [
-    { key: 'all',          label: `הכל (${counts.all})` },
+    { key: 'all', label: `הכל (${counts.all})` },
     { key: 'commemorated', label: `הונצח (${counts.commemorated})` },
-    { key: 'pending',      label: `ממתין לאישור (${counts.pending})` },
-    { key: 'none',         label: `פנוי להנצחה (${counts.none})` },
+    { key: 'pending', label: `ממתין לאישור (${counts.pending})` },
+    { key: 'none', label: `פנוי להנצחה (${counts.none})` },
   ];
 
   // ── פעולות ניהול (אדמין בלבד) ──────────────────────────────────────────────
@@ -641,17 +716,109 @@ export default function Commemorations() {
 
   return (
     <div dir="rtl" style={{ minHeight: '100vh', background: '#f7f4ee' }}>
-      <div style={{
-        background: 'linear-gradient(135deg, #0d2340 0%, #1a365d 100%)',
-        padding: '48px 16px', textAlign: 'center',
-      }}>
-        <h1 style={{ fontSize: '32px', fontWeight: 800, color: '#cfa756', marginBottom: '8px' }}>
-          לוח הנצחות
-        </h1>
-        <p style={{ color: 'rgba(247,244,233,.75)', fontSize: '15px' }}>
-          הנצחות ותרומות לעילוי נשמת יקירינו
-        </p>
-        <div style={{ width: '48px', height: '3px', background: '#cfa756', margin: '16px auto 0', borderRadius: '2px' }} />
+      <div
+        className="relative overflow-hidden"
+        dir="rtl"
+        style={{
+          background:
+            'linear-gradient(180deg, rgba(18,32,56,.98) 0%, rgba(13,35,64,.96) 100%)',
+          padding: '10px 16px',
+          textAlign: 'center',
+          backdropFilter: 'blur(20px)',
+          borderBottom: '1px solid rgba(207,167,86,.2)',
+        }}
+      >
+
+        <GoldParticles />
+
+        <div className="relative z-10">
+
+          <h1
+            style={{
+              fontSize: '36px',
+              fontWeight: 800,
+              color: '#cfa756',
+              marginBottom: '10px',
+              textShadow:
+                '0 0 15px rgba(207,167,86,.45), 0 0 35px rgba(207,167,86,.2)',
+            }}
+          >
+            לוח הנצחות
+          </h1>
+
+          <p
+            style={{
+              color: 'rgba(247,244,233,.8)',
+              fontSize: '16px',
+              letterSpacing: '1px',
+            }}
+          >
+            הנצחות ותרומות לעילוי נשמת יקירינו
+          </p>
+
+
+          <div
+            style={{
+              width: '70px',
+              height: '3px',
+              margin: '20px auto 0',
+              borderRadius: '5px',
+              background:
+                'linear-gradient(90deg,#b8860b,#ffe9a0,#b8860b)',
+              boxShadow:
+                '0 0 15px rgba(207,167,86,.8)',
+            }}
+          />
+
+        </div>
+
+
+        <LightSweep />
+
+
+        <style>{`
+
+    @keyframes floatDust {
+      0%,100% {
+        transform:translateY(0);
+        opacity:.3;
+      }
+      50% {
+        transform:translateY(-15px);
+        opacity:.9;
+      }
+    }
+
+
+    @keyframes sparklePulse {
+      0%,100% {
+        transform:scale(.7);
+        opacity:.4;
+      }
+
+      50% {
+        transform:scale(1.4);
+        opacity:1;
+      }
+    }
+
+
+    @keyframes sweepLight {
+      0% {
+        left:-60%;
+      }
+
+      50% {
+        left:100%;
+      }
+
+      100% {
+        left:-60%;
+      }
+    }
+
+  `}</style>
+
       </div>
 
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px 16px' }}>

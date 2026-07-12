@@ -13,12 +13,11 @@ exports.login = async (req, res) => {
   try {
     const { token, refreshToken, user } = await authService.login(req.body);
 
-    // Refresh token ב-httpOnly cookie (הכי בטוח)
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
-      secure:   true,           // ← תמיד true ב-Render (HTTPS)
-      sameSite: 'none',         // ← חובה לcross-origin! (במקום 'strict')
-      maxAge:   7 * 24 * 60 * 60 * 1000,
+      secure:   process.env.NODE_ENV === 'production', // ← היה true קבוע, זה שבר לוקאלית
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      maxAge:   30 * 24 * 60 * 60 * 1000, // ← 30 יום במקום 7
     });
 
     res.json({ token, user });

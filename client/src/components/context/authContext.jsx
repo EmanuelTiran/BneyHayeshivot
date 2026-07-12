@@ -26,6 +26,32 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   }, []);
 
+  useEffect(() => {
+    if (!token) return;
+  
+    const REFRESH_INTERVAL = 10 * 60 * 1000; // כל 10 דק' (לפני שה-15 דק' פגות)
+  
+    const interval = setInterval(async () => {
+      try {
+        const response = await fetch(`${API_URL}/api/auth/refresh`, {
+          method: 'POST',
+          credentials: 'include',
+        });
+        const data = await response.json();
+        if (response.ok) {
+          setToken(data.token);
+          localStorage.setItem('token', data.token);
+        }
+        // אם נכשל — ה-interceptor/handleSessionExpired כבר יטפלו בזה
+        // בבקשה הבאה שתיכשל עם 401
+      } catch {
+        /* silent — ננסה שוב בסבב הבא */
+      }
+    }, REFRESH_INTERVAL);
+  
+    return () => clearInterval(interval);
+  }, [token]);
+
   // ── רישום handler לפקיעת session (נקרא מ-api.js) ────────────────────────────
   useEffect(() => {
     registerSessionExpiredHandler(() => {
