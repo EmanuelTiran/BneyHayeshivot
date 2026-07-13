@@ -7,6 +7,13 @@ import {
 import CommemorationForm from '../components/Admin/CommemorationForm';
 import { fetchAllSponsorships, updateSponsorshipStatus } from '../services/portalService';
 
+// ── וולידציית אימייל משותפת ────────────────────────────────────────────────
+const isValidEmail = (email) => {
+  const regex =
+    /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)+$/;
+  return regex.test((email || '').trim());
+};
+
 // ── אנימציית כניסה לטאב ───────────────────────────────────────────────────────
 const tabInStyle = `
   @keyframes tabIn {
@@ -21,10 +28,17 @@ function EditUserModal({ user, onClose, onSave }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
+  const emailInvalid = form.email.trim() !== '' && !isValidEmail(form.email);
+  const canSubmit = form.name.trim() && form.email.trim() && !emailInvalid && !saving;
+
   const handleSubmit = async () => {
     setError('');
     if (!form.name.trim() || !form.email.trim()) {
       setError('נא למלא שם ואימייל');
+      return;
+    }
+    if (!isValidEmail(form.email)) {
+      setError('כתובת האימייל אינה תקינה');
       return;
     }
     setSaving(true);
@@ -57,16 +71,21 @@ function EditUserModal({ user, onClose, onSave }) {
             <input
               type="email"
               dir="ltr"
-              className="mt-1 w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-[#cfa756] outline-none"
+              className={`mt-1 w-full rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-[#cfa756] border ${
+                emailInvalid ? 'border-red-500' : 'border-gray-300'
+              }`}
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
             />
           </div>
+          {emailInvalid && (
+            <p className="text-red-600 text-sm font-medium">כתובת האימייל אינה תקינה</p>
+          )}
           {error && <p className="text-red-600 text-sm font-medium">{error}</p>}
         </div>
         <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-200">
           <button onClick={onClose} className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50">ביטול</button>
-          <button onClick={handleSubmit} disabled={saving}
+          <button onClick={handleSubmit} disabled={!canSubmit}
             className="px-4 py-2 bg-[#0d2340] text-[#cfa756] font-bold rounded-md hover:bg-[#1a365d] disabled:opacity-50">
             {saving ? 'שומר...' : 'שמור'}
           </button>
@@ -332,6 +351,9 @@ function MailingListManagement() {
   const [editingUser, setEditingUser] = useState(null);
   const [togglingIds, setTogglingIds] = useState([]);
 
+  const emailInvalid = form.email.trim() !== '' && !isValidEmail(form.email);
+  const canSubmit = form.name.trim() && form.email.trim() && !emailInvalid && !submitting;
+
   const load = async () => {
     try {
       setLoading(true);
@@ -352,6 +374,10 @@ function MailingListManagement() {
     setFormSuccess('');
     if (!form.name.trim() || !form.email.trim()) {
       setFormError('נא למלא שם ואימייל');
+      return;
+    }
+    if (!isValidEmail(form.email)) {
+      setFormError('כתובת האימייל אינה תקינה');
       return;
     }
     setSubmitting(true);
@@ -429,17 +455,21 @@ function MailingListManagement() {
             <input
               type="email"
               dir="ltr"
-              className="mt-1 w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-[#cfa756] outline-none"
+              className={`mt-1 w-full rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-[#cfa756]
+                ${emailInvalid ? 'border-red-500' : 'border-gray-300'} border`}
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
               placeholder="email@example.com"
             />
           </div>
+          {emailInvalid && (
+            <p className="text-red-600 text-sm font-medium">כתובת האימייל אינה תקינה</p>
+          )}
           {formError && <p className="text-red-600 text-sm font-medium">{formError}</p>}
           {formSuccess && <p className="text-green-600 text-sm font-medium">{formSuccess}</p>}
           <button
             onClick={handleSubmit}
-            disabled={submitting}
+            disabled={!canSubmit}
             className="bg-[#0d2340] text-[#cfa756] font-bold px-5 py-2.5 rounded-lg hover:bg-[#1a365d] disabled:opacity-50 shadow-md"
           >
             {submitting ? 'מוסיף...' : '+ הוסף לרשימת תפוצה'}
@@ -494,11 +524,10 @@ function MailingListManagement() {
                   <p className="font-medium text-[#0d2340] truncate">{u.name}</p>
                   <p className="text-xs text-gray-500 truncate" dir="ltr">{u.email}</p>
                 </div>
-                <span className={`text-xs font-bold px-2 py-1 rounded-full border whitespace-nowrap ${
-                  u.isFullyRegistered === false
-                    ? 'bg-yellow-100 text-yellow-800 border-yellow-300'
-                    : 'bg-green-100 text-green-800 border-green-300'
-                }`}>
+                <span className={`text-xs font-bold px-2 py-1 rounded-full border whitespace-nowrap ${u.isFullyRegistered === false
+                  ? 'bg-yellow-100 text-yellow-800 border-yellow-300'
+                  : 'bg-green-100 text-green-800 border-green-300'
+                  }`}>
                   {u.isFullyRegistered === false ? 'רשימת תפוצה בלבד' : 'משתמש רשום'}
                 </span>
               </div>
