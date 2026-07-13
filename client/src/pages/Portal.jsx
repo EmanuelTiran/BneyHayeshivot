@@ -2,82 +2,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../components/context/authContext';
 import { fetchCategories, createCategory, updateCategory, deleteCategory } from '../services/portalService';
-import { ROUTES } from '../constants/routes'; 
-
-// ─────────────────────────────────────────────
-// GoldParticles – חלקיקי זהב לדף
-// ─────────────────────────────────────────────
-function GoldParticles() {
-  return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      {[...Array(18)].map((_, i) => (
-        <div
-          key={`dust-${i}`}
-          className="absolute rounded-full"
-          style={{
-            width: `${Math.random() * 2 + 0.5}px`,
-            height: `${Math.random() * 2 + 0.5}px`,
-            left: `${Math.random() * 100}%`,
-            top: `${Math.random() * 100}%`,
-            background:
-              'radial-gradient(circle, rgba(255,233,160,.9) 0%, rgba(207,167,86,.5) 60%, transparent 100%)',
-            boxShadow:
-              '0 0 8px rgba(207,167,86,.8)',
-            animation: `floatDust ${4 + i * .4}s ease-in-out infinite`,
-            animationDelay: `${Math.random() * 3}s`,
-          }}
-        />
-      ))}
-
-      {[...Array(5)].map((_, i) => (
-        <div
-          key={`spark-${i}`}
-          className="absolute rounded-full"
-          style={{
-            width: `${5 + i * 2}px`,
-            height: `${5 + i * 2}px`,
-            left: `${15 + i * 18}%`,
-            top: `${20 + (i % 3) * 25}%`,
-            background:
-              'radial-gradient(circle,#fff8e0 0%,#cfa756 45%,transparent 70%)',
-            boxShadow:
-              '0 0 15px rgba(247,217,138,.9)',
-            animation:
-              `sparklePulse ${2.5 + i * .5}s ease-in-out infinite`,
-            animationDelay: `${i * .4}s`,
-          }}
-        />
-      ))}
-    </div>
-  );
-}
-
-
-// ─────────────────────────────────────────────
-// LightSweep – פס אור תחתון
-// ─────────────────────────────────────────────
-function LightSweep() {
-  return (
-    <div className="absolute bottom-0 left-0 right-0 h-[3px] overflow-hidden">
-      <div
-        className="absolute inset-0"
-        style={{
-          background:
-            'linear-gradient(90deg,#b8860b,#cfa756,#ffe9a0,#cfa756,#b8860b)',
-        }}
-      />
-
-      <div
-        className="absolute inset-y-0 w-[60%]"
-        style={{
-          background:
-            'linear-gradient(90deg,transparent,rgba(255,255,255,.8),transparent)',
-          animation: 'sweepLight 3.5s infinite',
-        }}
-      />
-    </div>
-  );
-}
+import { ROUTES } from '../constants/routes';
+import PageHeader from '../components/common/PageHeader';
 
 function CategoryModal({ initial, onClose, onSave }) {
   const [form, setForm] = useState(
@@ -206,111 +132,12 @@ export default function Portal() {
   };
 
   return (
-    <div dir="rtl" className="min-h-screen bg-[#f7f4e9]">
-      <div
-  className="relative overflow-hidden"
-  dir="rtl"
-  style={{
-    background:
-      'linear-gradient(180deg, rgba(18,32,56,.98) 0%, rgba(13,35,64,.96) 100%)',
-    padding: '15px 16px',
-    textAlign: 'center',
-    backdropFilter: 'blur(20px)',
-    borderBottom: '1px solid rgba(207,167,86,.2)',
-  }}
->
+    <div dir="rtl" className="min-h-screen bg-[#f7f4ee]">
+      <PageHeader
+        title="פורטל הקדשות ותמיכה"
+        subtitle="בחר קטגוריה כדי לצפות בפרטים ולהגיש בקשת הנצחה"
+      />
 
-  <GoldParticles />
-
-  <div className="relative z-10">
-
-    <h1
-      style={{
-        fontSize: '36px',
-        fontWeight: 800,
-        color: '#cfa756',
-        marginBottom: '10px',
-        textShadow:
-          '0 0 15px rgba(207,167,86,.45), 0 0 35px rgba(207,167,86,.2)',
-      }}
-    >
-      פורטל הקדשות ותמיכה
-    </h1>
-
-    <p
-      style={{
-        color: 'rgba(247,244,233,.8)',
-        fontSize: '16px',
-        letterSpacing: '1px',
-      }}
-    >
-      בחר קטגוריה כדי לצפות בפרטים ולהגיש בקשת הנצחה
-    </p>
-
-
-    <div
-      style={{
-        width:'70px',
-        height:'3px',
-        margin:'20px auto 0',
-        borderRadius:'5px',
-        background:
-          'linear-gradient(90deg,#b8860b,#ffe9a0,#b8860b)',
-        boxShadow:
-          '0 0 15px rgba(207,167,86,.8)',
-      }}
-    />
-
-  </div>
-
-
-  <LightSweep />
-
-
-  <style>{`
-
-    @keyframes floatDust {
-      0%,100% {
-        transform:translateY(0);
-        opacity:.3;
-      }
-      50% {
-        transform:translateY(-15px);
-        opacity:.9;
-      }
-    }
-
-
-    @keyframes sparklePulse {
-      0%,100% {
-        transform:scale(.7);
-        opacity:.4;
-      }
-
-      50% {
-        transform:scale(1.4);
-        opacity:1;
-      }
-    }
-
-
-    @keyframes sweepLight {
-      0% {
-        left:-60%;
-      }
-
-      50% {
-        left:100%;
-      }
-
-      100% {
-        left:-60%;
-      }
-    }
-
-  `}</style>
-
-</div>
       <div className="max-w-5xl mx-auto px-4 py-10">
         {isAdmin && isAdmin() && (
           <div className="flex justify-end mb-6">

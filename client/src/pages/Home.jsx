@@ -4,49 +4,7 @@ import CommunityPaymentButton from '../components/CommunityPaymentButton';
 import ContactAndPrayerTimes from '../components/ContactAndPrayerTimes/ContactAndPrayerTimes';
 import ImageGallery from '../components/ImageGallery';
 import { useAuth } from '../components/context/authContext';
-
-/* ─────────────────────────────────────────────
-   GoldParticles – חלקיקי זהב לרקע
-   ───────────────────────────────────────────── */
-function GoldParticles() {
-  return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
-      {[...Array(15)].map((_, i) => (
-        <div
-          key={`dust-${i}`}
-          className="absolute rounded-full"
-          style={{
-            width: `${Math.random() * 2 + 0.5}px`,
-            height: `${Math.random() * 2 + 0.5}px`,
-            left: `${Math.random() * 100}%`,
-            top: `${Math.random() * 100}%`,
-            background: `radial-gradient(circle, rgba(255,233,160,0.8) 0%, rgba(207,167,86,0.3) 60%, transparent 100%)`,
-            boxShadow: `0 0 ${Math.random() * 4 + 2}px rgba(207,167,86,0.6)`,
-            animation: `floatDust ${4 + i * 0.4}s ease-in-out infinite`,
-            animationDelay: `${Math.random() * 4}s`,
-          }}
-        />
-      ))}
-      {[...Array(4)].map((_, i) => (
-        <div
-          key={`sparkle-${i}`}
-          className="absolute"
-          style={{
-            width: `${Math.random() * 6 + 2}px`,
-            height: `${Math.random() * 6 + 2}px`,
-            left: `${15 + i * 22}%`,
-            top: `${20 + (i % 3) * 25}%`,
-            background: `radial-gradient(circle, rgba(255,248,224,1) 0%, rgba(207,167,86,0.7) 40%, transparent 70%)`,
-            borderRadius: '50%',
-            boxShadow: `0 0 ${6 + i * 2}px rgba(247,217,138,0.8), 0 0 ${12 + i * 3}px rgba(207,167,86,0.4)`,
-            animation: `sparklePulse ${2.5 + i * 0.6}s ease-in-out infinite`,
-            animationDelay: `${i * 0.5}s`,
-          }}
-        />
-      ))}
-    </div>
-  );
-}
+import GoldParticles from '../components/common/GoldParticles';
 
 const Home = () => {
   const [isButtonTransparent, setIsButtonTransparent] = useState(false);

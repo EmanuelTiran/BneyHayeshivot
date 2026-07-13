@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../components/context/authContext';
 import { fetchCategories, fetchItemsByCategory, createItem, updateItem, deleteItem } from '../services/portalService';
 import { ROUTES } from '../constants/routes';
+import PageHeader from '../components/common/PageHeader';
 
 function ItemModal({ initial, categoryId, onClose, onSave }) {
   const [form, setForm] = useState(
@@ -190,18 +191,20 @@ export default function PortalCategory() {
   };
 
   return (
-    <div dir="rtl" className="min-h-screen bg-[#f7f4e9]">
-      <div className="bg-gradient-to-b from-[#0d2340] to-[#1a365d] py-10 px-6">
-        <div className="max-w-5xl mx-auto">
-          <button onClick={() => navigate(ROUTES.PORTAL)} className="text-[#cfa756] text-sm mb-4 flex items-center gap-1 hover:underline">
+    <div dir="rtl" className="min-h-screen bg-[#f7f4ee]">
+      <PageHeader
+        title={category ? `${category.icon || ''} ${category.name}` : 'טוען...'}
+        subtitle={category?.description}
+      >
+        <div className="max-w-5xl mx-auto text-right mb-2">
+          <button
+            onClick={() => navigate(ROUTES.PORTAL)}
+            className="text-[#cfa756] text-sm flex items-center gap-1 hover:underline"
+          >
             → חזרה לקטגוריות
           </button>
-          <h1 className="text-3xl font-bold text-[#cfa756]">
-            {category ? `${category.icon || ''} ${category.name}` : 'טוען...'}
-          </h1>
-          {category?.description && <p className="text-[#f7f4e9]/70 mt-1">{category.description}</p>}
         </div>
-      </div>
+      </PageHeader>
       <div className="max-w-5xl mx-auto px-4 py-8">
         {isAdmin && isAdmin() && (
           <div className="flex justify-end mb-6">

@@ -3,76 +3,8 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { NAVIGATION_ITEMS, ROUTES } from '../../constants/routes';
 import { useAuth } from '../context/authContext';
-
-/* ─────────────────────────────────────────────
-   GoldParticles – חלקיקי זהב יוקרתיים עם וריאציות
-   ───────────────────────────────────────────── */
-function GoldParticles() {
-  return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
-      {/* חלקיקים קטנים – אבק זהב */}
-      {[...Array(20)].map((_, i) => (
-        <div
-          key={`dust-${i}`}
-          className="absolute rounded-full"
-          style={{
-            width: `${Math.random() * 2 + 0.5}px`,
-            height: `${Math.random() * 2 + 0.5}px`,
-            left: `${Math.random() * 100}%`,
-            top: `${Math.random() * 100}%`,
-            background: `radial-gradient(circle, rgba(255,233,160,0.9) 0%, rgba(207,167,86,0.4) 60%, transparent 100%)`,
-            boxShadow: `0 0 ${Math.random() * 4 + 2}px rgba(207,167,86,0.7)`,
-            animation: `floatDust ${4 + i * 0.5}s ease-in-out infinite`,
-            animationDelay: `${Math.random() * 4}s`,
-          }}
-        />
-      ))}
-      {/* חלקיקים בינוניים – נצנצים */}
-      {[...Array(5)].map((_, i) => (
-        <div
-          key={`sparkle-${i}`}
-          className="absolute"
-          style={{
-            width: `${Math.random() * 8 + 3}px`,
-            height: `${Math.random() * 8 + 3}px`,
-            left: `${10 + i * 18}%`,
-            top: `${15 + (i % 3) * 28}%`,
-            background: `radial-gradient(circle, rgba(255,248,224,1) 0%, rgba(207,167,86,0.8) 40%, transparent 70%)`,
-            borderRadius: '50%',
-            boxShadow: `0 0 ${6 + i * 2}px rgba(247,217,138,0.9), 0 0 ${12 + i * 3}px rgba(207,167,86,0.5)`,
-            animation: `sparklePulse ${2.5 + i * 0.6}s ease-in-out infinite`,
-            animationDelay: `${i * 0.45}s`,
-          }}
-        />
-      ))}
-    </div>
-  );
-}
-
-/* ─────────────────────────────────────────────
-   LightSweep – קרן אור שעוברת על הגבול התחתון
-   ───────────────────────────────────────────── */
-function LightSweep() {
-  return (
-    <div className="absolute bottom-0 left-0 right-0 h-[3px] overflow-hidden pointer-events-none" aria-hidden="true">
-      {/* בסיס הגבול – גרדיאנט זהב */}
-      <div
-        className="absolute inset-0"
-        style={{
-          background: 'linear-gradient(90deg, #b8860b 0%, #cfa756 20%, #f7d98a 40%, #ffe9a0 50%, #f7d98a 60%, #cfa756 80%, #b8860b 100%)',
-        }}
-      />
-      {/* קרן אור נעה */}
-      <div
-        className="absolute inset-y-0 w-[60%]"
-        style={{
-          background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.7) 30%, rgba(255,255,255,0.9) 50%, rgba(255,255,255,0.7) 70%, transparent 100%)',
-          animation: 'sweepLight 3.5s ease-in-out infinite',
-        }}
-      />
-    </div>
-  );
-}
+import GoldParticles from './GoldParticles';
+import LightSweep from './LightSweep';
 
 /* ─────────────────────────────────────────────
    Header – משודרג
@@ -291,27 +223,6 @@ function Header() {
           font-weight: 600;
         }
 
-        /* ── אנימציות חלקיקים ── */
-        @keyframes floatDust {
-          0%, 100% { transform: translateY(0) translateX(0); opacity: 0.3; }
-          25%      { transform: translateY(-12px) translateX(3px); opacity: 0.7; }
-          50%      { transform: translateY(-5px) translateX(-2px); opacity: 0.5; }
-          75%      { transform: translateY(-15px) translateX(1px); opacity: 0.8; }
-        }
-
-        @keyframes sparklePulse {
-          0%, 100% { transform: scale(0.7); opacity: 0.3; }
-          30%      { transform: scale(1.4); opacity: 1; }
-          60%      { transform: scale(0.8); opacity: 0.5; }
-          80%      { transform: scale(1.2); opacity: 0.9; }
-        }
-
-        @keyframes sweepLight {
-          0%   { left: -60%; }
-          50%  { left: 100%; }
-          100% { left: -60%; }
-        }
-
         @keyframes crownGlow {
           0%, 100% { filter: drop-shadow(0 0 3px rgba(207,167,86,0.6)) drop-shadow(0 0 8px rgba(207,167,86,0.3)); }
           50%      { filter: drop-shadow(0 0 7px rgba(247,217,138,1)) drop-shadow(0 0 16px rgba(207,167,86,0.65)); }
@@ -344,39 +255,11 @@ function Header() {
 
         /* ── Glass משודרג ── */
         .glass-dark {
-          background: linear-gradient(180deg,
-            rgba(18, 32, 56, 0.97) 0%,
-            rgba(13, 35, 64, 0.96) 40%,
-            rgba(10, 25, 47, 0.97) 100%
-          );
-          backdrop-filter: blur(28px) saturate(140%);
-          -webkit-backdrop-filter: blur(28px) saturate(140%);
-          border-bottom: none;
+          background: linear-gradient(180deg, rgba(18,32,56,.98) 0%, rgba(13,35,64,.96) 100%);
+          backdrop-filter: blur(20px);
+          -webkit-backdrop-filter: blur(20px);
+          border-bottom: 1px solid rgba(207,167,86,.2);
           position: relative;
-        }
-
-        /* טקסטורת שיש עדינה */
-        .glass-dark::before {
-          content: '';
-          position: absolute;
-          inset: 0;
-          background:
-            radial-gradient(ellipse at 15% 50%, rgba(207,167,86,0.04) 0%, transparent 55%),
-            radial-gradient(ellipse at 75% 50%, rgba(207,167,86,0.03) 0%, transparent 55%),
-            radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.015) 0%, transparent 70%);
-          pointer-events: none;
-          z-index: 0;
-        }
-
-        /* וינייטה */
-        .glass-dark::after {
-          content: '';
-          position: absolute;
-          inset: 0;
-          background:
-            radial-gradient(ellipse at 50% 100%, rgba(0,0,0,0.35) 0%, transparent 70%);
-          pointer-events: none;
-          z-index: 0;
         }
 
         .mobile-menu-enter {

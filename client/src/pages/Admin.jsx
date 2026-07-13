@@ -6,6 +6,7 @@ import {
 } from '../services/api';
 import CommemorationForm from '../components/Admin/CommemorationForm';
 import { fetchAllSponsorships, updateSponsorshipStatus } from '../services/portalService';
+import PageHeader from '../components/common/PageHeader';
 
 // ── וולידציית אימייל משותפת ────────────────────────────────────────────────
 const isValidEmail = (email) => {
@@ -604,11 +605,15 @@ export default function Admin() {
   };
 
   return (
-    <div dir="rtl" className="max-w-5xl mx-auto p-4">
+    <div dir="rtl" className="min-h-screen bg-[#f7f4ee]">
+      <PageHeader
+        title="פאנל ניהול"
+        subtitle="ניהול הודעות, הנצחות, תמיכות ורשימת תפוצה"
+      />
+
+      <div className="max-w-5xl mx-auto p-4">
       {/* הזרקת keyframes לאנימציה */}
       <style>{tabInStyle}</style>
-
-      <h1 className="text-2xl font-bold mb-6 text-center text-[#0d2340]">פאנל ניהול</h1>
 
       {/* רצועת טאבים עם underline נע */}
       <div
@@ -651,6 +656,7 @@ export default function Admin() {
         {activeTab === 'commemorations' && <CommemorationForm />}
         {activeTab === 'sponsorships' && <SponsorshipRequests />}
         {activeTab === 'mailing' && <MailingListManagement />}
+      </div>
       </div>
     </div>
   );

@@ -12,6 +12,7 @@ import {
     deleteGalleryImage,
 } from '../services/api';
 import ImageUploader from './ImageUploader';
+import PageHeader from './common/PageHeader';
 // ─── נירמול כתובת Google Drive ────────────────────────────────────────────────
 const normalizeImageUrl = (url) => {
     if (!url) return url;
@@ -25,12 +26,12 @@ const normalizeImageUrl = (url) => {
 };
 
 // ─── 3D Carousel constants ────────────────────────────────────────────────────
-const CARD_W = 220;   // px – wide side for A4 landscape feel in carousel
-const CARD_H = 311;   // px ≈ 220 * (297/210) keeps A4 ratio
-const OFFSET_X_1 = 190;
-const OFFSET_X_2 = 355;
-const OFFSET_Z_1 = -260;
-const OFFSET_Z_2 = -400;
+const CARD_W = 'clamp(190px, 25vw, 300px)';
+const CARD_H = 'clamp(269px, 35.4vw, 424px)';   // יחס A4: 297/210
+const OFFSET_X_1 = 'clamp(160px, 21vw, 260px)';
+const OFFSET_X_2 = 'clamp(300px, 39vw, 480px)';
+const OFFSET_Z_1 = -320;
+const OFFSET_Z_2 = -480;
 const ROTATE_Y = 22;
 
 /** Maps relative position (diff) → CSS transform style object */
@@ -53,38 +54,37 @@ function getSlideStyle(diff) {
         transform: 'translateX(0) translateZ(0) rotateY(0deg)',
         opacity: 1,
         zIndex: 10,
-        width: 240,
-        height: 339,   // 240 * (297/210)
+        width: 'clamp(210px, 27.5vw, 330px)',
+        height: 'clamp(297px, 38.9vw, 467px)',
         boxShadow: '0 24px 64px rgba(0,0,0,0.75)',
         border: '1.5px solid rgba(207,167,86,0.55)',
     };
     if (diff === -1) return {
         ...base,
-        transform: `translateX(-${OFFSET_X_1}px) translateZ(${OFFSET_Z_1}px) rotateY(${ROTATE_Y}deg)`,
+        transform: `translateX(calc(-1 * ${OFFSET_X_1})) translateZ(${OFFSET_Z_1}px) rotateY(${ROTATE_Y}deg)`,
         opacity: 0.88, zIndex: 8,
         border: '1px solid rgba(255,255,255,0.18)',
     };
     if (diff === -2) return {
         ...base,
-        transform: `translateX(-${OFFSET_X_2}px) translateZ(${OFFSET_Z_2}px) rotateY(${ROTATE_Y}deg)`,
+        transform: `translateX(calc(-1 * ${OFFSET_X_2})) translateZ(${OFFSET_Z_2}px) rotateY(${ROTATE_Y}deg)`,
         opacity: 0.55, zIndex: 6,
         border: '1px solid rgba(255,255,255,0.10)',
     };
     if (diff === 1) return {
         ...base,
-        transform: `translateX(${OFFSET_X_1}px) translateZ(${OFFSET_Z_1}px) rotateY(-${ROTATE_Y}deg)`,
+        transform: `translateX(${OFFSET_X_1}) translateZ(${OFFSET_Z_1}px) rotateY(-${ROTATE_Y}deg)`,
         opacity: 0.88, zIndex: 8,
         border: '1px solid rgba(255,255,255,0.18)',
     };
     if (diff === 2) return {
         ...base,
-        transform: `translateX(${OFFSET_X_2}px) translateZ(${OFFSET_Z_2}px) rotateY(-${ROTATE_Y}deg)`,
+        transform: `translateX(${OFFSET_X_2}) translateZ(${OFFSET_Z_2}px) rotateY(-${ROTATE_Y}deg)`,
         opacity: 0.55, zIndex: 6,
         border: '1px solid rgba(255,255,255,0.10)',
     };
     return { ...base, opacity: 0, pointerEvents: 'none', zIndex: 0 };
 }
-
 // ─── וריאנטים לאנימציית כיתוב ─────────────────────────────────────────────────
 const captionVariants = {
     hidden: { opacity: 0, y: 18 },
@@ -407,9 +407,12 @@ export default function ImageGallery() {
     // ── מצב טעינה ──
     if (loading) {
         return (
-            <div className="flex flex-col items-center justify-center h-64 bg-[#f7f4e9]">
-                <div className="w-8 h-8 border-4 border-[#cfa756] border-t-transparent rounded-full animate-spin mb-3" />
-                <p className="text-sm text-gray-500">טוען גלריה...</p>
+            <div dir="rtl" className="min-h-screen bg-[#f7f4ee]">
+                <PageHeader title="הודעות מערכת" subtitle="גלריית הודעות ועדכונים" />
+                <div className="flex flex-col items-center justify-center h-64">
+                    <div className="w-8 h-8 border-4 border-[#cfa756] border-t-transparent rounded-full animate-spin mb-3" />
+                    <p className="text-sm text-gray-500">טוען גלריה...</p>
+                </div>
             </div>
         );
     }
@@ -417,9 +420,12 @@ export default function ImageGallery() {
     // ── מצב שגיאה ──
     if (error) {
         return (
-            <div className="flex flex-col items-center justify-center h-64 bg-[#f7f4e9]">
-                <p className="text-red-500 text-sm mb-3">{error}</p>
-                <button onClick={loadImages} className="text-sm text-[#cfa756] hover:underline">נסה שוב</button>
+            <div dir="rtl" className="min-h-screen bg-[#f7f4ee]">
+                <PageHeader title="הודעות מערכת" subtitle="גלריית הודעות ועדכונים" />
+                <div className="flex flex-col items-center justify-center h-64">
+                    <p className="text-red-500 text-sm mb-3">{error}</p>
+                    <button onClick={loadImages} className="text-sm text-[#cfa756] hover:underline">נסה שוב</button>
+                </div>
             </div>
         );
     }
@@ -427,19 +433,22 @@ export default function ImageGallery() {
     // ── גלריה ריקה ──
     if (!images.length) {
         return (
-            <div dir="rtl" className="flex flex-col items-center justify-center h-64 rounded-2xl bg-white border border-gray-100 shadow-sm text-gray-400 mx-4">
-                <ImageIcon size={36} className="mb-3 opacity-40" />
-                <p className="text-sm">הגלריה ריקה כרגע</p>
-                {isAdmin && isAdmin() && (
-                    <button onClick={() => setIsModalOpen(true)}
-                        className="mt-4 bg-[#cfa756] hover:bg-[#b8860b] text-[#0d2340] font-bold px-5 py-2 rounded-lg text-sm transition-colors shadow-sm">
-                        הוסף תמונה ראשונה
-                    </button>
-                )}
-                <GalleryManagerModal
-                    isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}
-                    images={images} onRefresh={loadImages}
-                />
+            <div dir="rtl" className="min-h-screen bg-[#f7f4ee]">
+                <PageHeader title="הודעות מערכת" subtitle="גלריית הודעות ועדכונים" />
+                <div className="flex flex-col items-center justify-center h-64 rounded-2xl bg-white border border-gray-100 shadow-sm text-gray-400 mx-4 mt-8">
+                    <ImageIcon size={36} className="mb-3 opacity-40" />
+                    <p className="text-sm">הגלריה ריקה כרגע</p>
+                    {isAdmin && isAdmin() && (
+                        <button onClick={() => setIsModalOpen(true)}
+                            className="mt-4 bg-[#cfa756] hover:bg-[#b8860b] text-[#0d2340] font-bold px-5 py-2 rounded-lg text-sm transition-colors shadow-sm">
+                            הוסף תמונה ראשונה
+                        </button>
+                    )}
+                    <GalleryManagerModal
+                        isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}
+                        images={images} onRefresh={loadImages}
+                    />
+                </div>
             </div>
         );
     }
@@ -449,194 +458,184 @@ export default function ImageGallery() {
             {/* ─── Lightbox ─────────────────────────────────────────────────────── */}
             <Lightbox image={lightboxImage} onClose={() => setLightboxImage(null)} />
 
-            <div
-                className="flex justify-center items-start py-8 px-4 min-h-screen bg-[#f7f4e9]"
-                dir="rtl"
-            >
-                <div
-                    className="relative w-full select-none"
-                >
-                    {/* ── כותרת ── */}
-                    <div className="text-center mb-4">
-                        <h1 className="text-2xl font-bold text-[#0d2340] flex items-center justify-center gap-2">
-                            <span className="text-[#cfa756]">✦</span>
-                            הודעות מערכת
-                            <span className="text-[#cfa756]">✦</span>
-                        </h1>
-                        <div className="w-16 h-0.5 bg-gradient-to-r from-[#cfa756] to-[#b8860b] mx-auto mt-2 rounded-full" />
-                    </div>
+            <div dir="rtl" className="min-h-screen bg-[#f7f4ee]">
+                <PageHeader title="הודעות מערכת" subtitle="גלריית הודעות ועדכונים" />
 
-                    {/* ── מונה תמונות ── */}
-                    <AnimatePresence mode="wait">
-                        <motion.p
-                            key={`counter-${index}`}
-                            initial={{ opacity: 0, y: -6 }}
-                            animate={{ opacity: 1, y: 0, transition: { duration: 0.35, ease: 'easeOut' } }}
-                            exit={{ opacity: 0, transition: { duration: 0.2 } }}
-                            className="text-center text-xs font-semibold tracking-[0.25em] uppercase mb-3 text-[#cfa756]"
-                        >
-                            {String(index + 1).padStart(2, '0')} / {String(n).padStart(2, '0')}
-                        </motion.p>
-                    </AnimatePresence>
+                <div className="flex justify-center items-start py-8 px-4">
+                    <div
+                        className="relative w-full select-none"
+                    >
+                        <AnimatePresence mode="wait">
+                            <motion.p
+                                key={`counter-${index}`}
+                                initial={{ opacity: 0, y: -6 }}
+                                animate={{ opacity: 1, y: 0, transition: { duration: 0.35, ease: 'easeOut' } }}
+                                exit={{ opacity: 0, transition: { duration: 0.2 } }}
+                                className="text-center text-xs font-semibold tracking-[0.25em] uppercase mb-3 text-[#cfa756]"
+                            >
+                                {String(index + 1).padStart(2, '0')} / {String(n).padStart(2, '0')}
+                            </motion.p>
+                        </AnimatePresence>
 
-                    {/* ─── 3D CAROUSEL SCENE ────────────────────────────────────────── */}
-                    {/*
+                        {/* ─── 3D CAROUSEL SCENE ────────────────────────────────────────── */}
+                        {/*
                         perspective מוגדר inline כי Tailwind לא תומך בו ישירות.
                         גובה ה-scene = CARD_H של הכרטיס הפעיל (339px) + מרווח מה.
                     */}
-                    <div
-                        style={{ perspective: 1000 }}
-                        className="relative flex items-center justify-center"
-                    >
-                        {/* ── כפתור ניווט שמאל ── */}
-                        {n > 1 && (
-                            <motion.button
-                                onClick={() => go(-1)}
-                                whileTap={{ scale: 0.88 }}
-                                style={{ zIndex: 20 }}
-                                className="absolute left-0 top-1/2 -translate-y-1/2 p-2 rounded-full bg-[#0d2340]/10 hover:bg-[#cfa756]/20 border border-[#cfa756]/30 text-[#cfa756] transition-all"
-                                aria-label="תמונה קודמת"
-                            >
-                                {/* RTL: שמאל = קדימה */}
-                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                    <polyline points="15 18 9 12 15 6" />
-                                </svg>
-                            </motion.button>
-                        )}
-
-                        {/* ── Stage – כל הכרטיסים ── */}
                         <div
-                            style={{
-                                position: 'relative',
-                                height: 360,
-                                width: '100%',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                transformStyle: 'preserve-3d',
-                            }}
-                            onMouseEnter={() => setIsHovered(true)}
-                            onMouseLeave={() => setIsHovered(false)}
+                            style={{ perspective: 1000 }}
+                            className="relative flex items-center justify-center"
                         >
-                            {images.map((img, i) => {
-                                const diff = getDiff(i);
-                                const slideStyle = getSlideStyle(diff);
-                                const isActive = diff === 0;
-                                const isVisible = Math.abs(diff) <= 2;
+                            {/* ── כפתור ניווט שמאל ── */}
+                            {n > 1 && (
+                                <motion.button
+                                    onClick={() => go(-1)}
+                                    whileTap={{ scale: 0.88 }}
+                                    style={{ zIndex: 20 }}
+                                    className="absolute left-0 top-1/2 -translate-y-1/2 p-2 rounded-full bg-[#0d2340]/10 hover:bg-[#cfa756]/20 border border-[#cfa756]/30 text-[#cfa756] transition-all"
+                                    aria-label="תמונה קודמת"
+                                >
+                                    {/* RTL: שמאל = קדימה */}
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                        <polyline points="15 18 9 12 15 6" />
+                                    </svg>
+                                </motion.button>
+                            )}
 
-                                if (!isVisible) return null;
+                            {/* ── Stage – כל הכרטיסים ── */}
+                            <div
+                                style={{
+                                    position: 'relative',
+                                    height: 'clamp(320px, 42vw, 500px)',
+                                    width: '100%',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    transformStyle: 'preserve-3d',
+                                }}
+                                onMouseEnter={() => setIsHovered(true)}
+                                onMouseLeave={() => setIsHovered(false)}
+                            >
+                                {images.map((img, i) => {
+                                    const diff = getDiff(i);
+                                    const slideStyle = getSlideStyle(diff);
+                                    const isActive = diff === 0;
+                                    const isVisible = Math.abs(diff) <= 2;
 
-                                return (
-                                    <div
-                                        key={img._id}
-                                        style={{
-                                            ...slideStyle,
-                                            backgroundImage: `url(${img.imageUrl})`,
-                                        }}
-                                        onClick={() => {
-                                            if (isActive) {
-                                                setLightboxImage(img);
-                                            } else {
-                                                setIndex(i);
-                                            }
-                                        }}
-                                    >
-                                        {/* gradient overlay on active card */}
-                                        {isActive && (
-                                            <div
-                                                style={{
-                                                    position: 'absolute',
-                                                    inset: 0,
-                                                    background: 'linear-gradient(to top, rgba(13,35,64,0.85) 0%, rgba(13,35,64,0.08) 50%, transparent 100%)',
-                                                    pointerEvents: 'none',
-                                                }}
-                                            />
-                                        )}
+                                    if (!isVisible) return null;
 
-                                        {/* cursor-zoom-in hint on active */}
-                                        {isActive && (
-                                            <div style={{ position: 'absolute', inset: 0, cursor: 'zoom-in' }} />
-                                        )}
+                                    return (
+                                        <div
+                                            key={img._id}
+                                            style={{
+                                                ...slideStyle,
+                                                backgroundImage: `url(${img.imageUrl})`,
+                                            }}
+                                            onClick={() => {
+                                                if (isActive) {
+                                                    setLightboxImage(img);
+                                                } else {
+                                                    setIndex(i);
+                                                }
+                                            }}
+                                        >
+                                            {/* gradient overlay on active card */}
+                                            {isActive && (
+                                                <div
+                                                    style={{
+                                                        position: 'absolute',
+                                                        inset: 0,
+                                                        background: 'linear-gradient(to top, rgba(13,35,64,0.85) 0%, rgba(13,35,64,0.08) 50%, transparent 100%)',
+                                                        pointerEvents: 'none',
+                                                    }}
+                                                />
+                                            )}
 
-                                        {/* ── כפתור ניהול גלריה – מופיע על הכרטיס הפעיל בריחוף ── */}
-                                        {isActive && isAdmin && isAdmin() && (
-                                            <AnimatePresence>
-                                                {isHovered && (
-                                                    <motion.button
-                                                        key="edit-btn"
-                                                        initial={{ opacity: 0, y: -8, scale: 0.9 }}
-                                                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                                                        exit={{ opacity: 0, y: -8, scale: 0.9 }}
-                                                        transition={{ duration: 0.2 }}
-                                                        onClick={(e) => { e.stopPropagation(); setIsModalOpen(true); }}
-                                                        style={{ position: 'absolute', top: 16, right: 16, zIndex: 30 }}
-                                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-[#0d2340] bg-[#cfa756] hover:bg-[#b8860b] shadow-lg transition-all"
-                                                        whileHover={{ scale: 1.05 }}
-                                                        whileTap={{ scale: 0.95 }}
-                                                    >
-                                                        <Edit3 size={12} strokeWidth={2.5} />
-                                                        ניהול גלריה
-                                                    </motion.button>
-                                                )}
-                                            </AnimatePresence>
-                                        )}
-                                    </div>
-                                );
-                            })}
+                                            {/* cursor-zoom-in hint on active */}
+                                            {isActive && (
+                                                <div style={{ position: 'absolute', inset: 0, cursor: 'zoom-in' }} />
+                                            )}
+
+                                            {/* ── כפתור ניהול גלריה – מופיע על הכרטיס הפעיל בריחוף ── */}
+                                            {isActive && isAdmin && isAdmin() && (
+                                                <AnimatePresence>
+                                                    {isHovered && (
+                                                        <motion.button
+                                                            key="edit-btn"
+                                                            initial={{ opacity: 0, y: -8, scale: 0.9 }}
+                                                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                            exit={{ opacity: 0, y: -8, scale: 0.9 }}
+                                                            transition={{ duration: 0.2 }}
+                                                            onClick={(e) => { e.stopPropagation(); setIsModalOpen(true); }}
+                                                            style={{ position: 'absolute', top: 16, right: 16, zIndex: 30 }}
+                                                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-[#0d2340] bg-[#cfa756] hover:bg-[#b8860b] shadow-lg transition-all"
+                                                            whileHover={{ scale: 1.05 }}
+                                                            whileTap={{ scale: 0.95 }}
+                                                        >
+                                                            <Edit3 size={12} strokeWidth={2.5} />
+                                                            ניהול גלריה
+                                                        </motion.button>
+                                                    )}
+                                                </AnimatePresence>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            {/* ── כפתור ניווט ימין ── */}
+                            {n > 1 && (
+                                <motion.button
+                                    onClick={() => go(1)}
+                                    whileTap={{ scale: 0.88 }}
+                                    style={{ zIndex: 20 }}
+                                    className="absolute right-0 top-1/2 -translate-y-1/2 p-2 rounded-full bg-[#0d2340]/10 hover:bg-[#cfa756]/20 border border-[#cfa756]/30 text-[#cfa756] transition-all"
+                                    aria-label="תמונה הבאה"
+                                >
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                        <polyline points="9 18 15 12 9 6" />
+                                    </svg>
+                                </motion.button>
+                            )}
                         </div>
 
-                        {/* ── כפתור ניווט ימין ── */}
-                        {n > 1 && (
-                            <motion.button
-                                onClick={() => go(1)}
-                                whileTap={{ scale: 0.88 }}
-                                style={{ zIndex: 20 }}
-                                className="absolute right-0 top-1/2 -translate-y-1/2 p-2 rounded-full bg-[#0d2340]/10 hover:bg-[#cfa756]/20 border border-[#cfa756]/30 text-[#cfa756] transition-all"
-                                aria-label="תמונה הבאה"
+                        {/* ─── כיתוב תמונה פעילה (מחוץ ל-stage כדי לא להיחסם) ───────── */}
+                        <AnimatePresence mode="wait">
+                            <motion.div
+                                key={`caption-${current?._id ?? index}`}
+                                variants={captionVariants}
+                                initial="hidden"
+                                animate="visible"
+                                exit="exit"
+                                className="text-center mt-5 px-4"
                             >
-                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                    <polyline points="9 18 15 12 9 6" />
-                                </svg>
-                            </motion.button>
+                                <h2 className="text-xl font-bold text-[#0d2340] leading-tight tracking-tight drop-shadow">
+                                    {current?.title}
+                                </h2>
+                                {current?.description && (
+                                    <p className="text-sm text-[#0d2340]/60 mt-1 leading-relaxed line-clamp-2 max-w-sm mx-auto">
+                                        {current.description}
+                                    </p>
+                                )}
+                            </motion.div>
+                        </AnimatePresence>
+
+                        {/* ── נקודות ניווט ── */}
+                        {n > 1 && (
+                            <div className="flex justify-center gap-1.5 mt-5">
+                                {images.map((_, i) => (
+                                    <motion.button
+                                        key={i}
+                                        onClick={() => setIndex(i)}
+                                        animate={{ width: i === index ? 24 : 8, opacity: i === index ? 1 : 0.35 }}
+                                        transition={{ duration: 0.3 }}
+                                        className="h-1.5 rounded-full bg-[#cfa756]"
+                                        aria-label={`עבור לתמונה ${i + 1}`}
+                                    />
+                                ))}
+                            </div>
                         )}
                     </div>
-
-                    {/* ─── כיתוב תמונה פעילה (מחוץ ל-stage כדי לא להיחסם) ───────── */}
-                    <AnimatePresence mode="wait">
-                        <motion.div
-                            key={`caption-${current?._id ?? index}`}
-                            variants={captionVariants}
-                            initial="hidden"
-                            animate="visible"
-                            exit="exit"
-                            className="text-center mt-5 px-4"
-                        >
-                            <h2 className="text-xl font-bold text-[#0d2340] leading-tight tracking-tight drop-shadow">
-                                {current?.title}
-                            </h2>
-                            {current?.description && (
-                                <p className="text-sm text-[#0d2340]/60 mt-1 leading-relaxed line-clamp-2 max-w-sm mx-auto">
-                                    {current.description}
-                                </p>
-                            )}
-                        </motion.div>
-                    </AnimatePresence>
-
-                    {/* ── נקודות ניווט ── */}
-                    {n > 1 && (
-                        <div className="flex justify-center gap-1.5 mt-5">
-                            {images.map((_, i) => (
-                                <motion.button
-                                    key={i}
-                                    onClick={() => setIndex(i)}
-                                    animate={{ width: i === index ? 24 : 8, opacity: i === index ? 1 : 0.35 }}
-                                    transition={{ duration: 0.3 }}
-                                    className="h-1.5 rounded-full bg-[#cfa756]"
-                                    aria-label={`עבור לתמונה ${i + 1}`}
-                                />
-                            ))}
-                        </div>
-                    )}
                 </div>
             </div>
 
