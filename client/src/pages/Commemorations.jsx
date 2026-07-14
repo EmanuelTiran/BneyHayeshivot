@@ -536,7 +536,7 @@ function CommemorationCard({ item, onRequest, isAdmin, onEdit, onDelete, onImage
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', flex: 1 }}>
           {item.commemoratedName && item.commemorationStatus !== 'none' && (
-            <Row label='לעילוי נשמת:' value={item.commemoratedName} bold />
+            <Row label='מוקדש ל:' value={item.commemoratedName} bold />
           )}
           {item.contributorName && item.commemorationStatus !== 'none' && (
             <Row label='נתרם ע"י:' value={item.contributorName} />

@@ -32,7 +32,7 @@ The content is organized as follows:
 <notes>
 - Some files may have been excluded based on .gitignore rules and Repomix's configuration
 - Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
-- Only files matching these patterns are included: client/src/pages/Portal.jsx, client/src/pages/PortalCategory.jsx, client/src/pages/PortalItem.jsx, client/src/services/portalService.js, client/src/services/api.js, server/routes/portalItems.js, server/controllers/portalItemController.js, server/services/portalItemService.js, server/models/PortalItem.js, server/middleware/errorHandler.js, client/src/pages/Commemorations.jsx, client/src/components/Admin/CommemorationForm.jsx, client/src/services/api.js, server/server.js, server/models/Commemoration.js, server/routes/commemorations.js, server/controllers/commemorationController.js, server/services/commemorationService.js
+- Only files matching these patterns are included: client/src/pages/Commemorations.jsx, client/src/components/Admin/CommemorationForm.jsx, client/src/services/api.js, server/server.js, server/models/Commemoration.js, server/routes/commemorations.js, server/controllers/commemorationController.js, server/services/commemorationService.js, client/src/pages/Portal.jsx, client/src/services/portalService.js, client/src/components/ImageUploader.jsx, client/src/services/api.js, server/models/Category.js, server/controllers/categoryController.js, server/routes/categories.js, server/server.js
 - Files matching patterns in .gitignore are excluded
 - Files matching default ignore patterns are excluded
 - Files are sorted by Git change count (files with more changes are at the bottom)
@@ -42,37 +42,203 @@ The content is organized as follows:
 
 <directory_structure>
 client/src/components/Admin/CommemorationForm.jsx
+client/src/components/ImageUploader.jsx
 client/src/pages/Commemorations.jsx
 client/src/pages/Portal.jsx
-client/src/pages/PortalCategory.jsx
-client/src/pages/PortalItem.jsx
 client/src/services/api.js
 client/src/services/portalService.js
+server/controllers/categoryController.js
 server/controllers/commemorationController.js
-server/controllers/portalItemController.js
-server/middleware/errorHandler.js
+server/models/Category.js
 server/models/Commemoration.js
-server/models/PortalItem.js
+server/routes/categories.js
 server/routes/commemorations.js
-server/routes/portalItems.js
 server/server.js
 server/services/commemorationService.js
-server/services/portalItemService.js
 </directory_structure>
 
 <files>
 This section contains the contents of the repository's files.
 
-<file path="server/controllers/portalItemController.js">
-const service = require('../services/portalItemService');
+<file path="client/src/components/ImageUploader.jsx">
+import { useState, useRef, useCallback } from 'react';
+import { UploadCloud, Loader2, CheckCircle2, XCircle, X } from 'lucide-react';
+
+// ─── הגדרות imgbb ──────────────────────────────────────────────────────────
+// חשוב: אל תשמור את המפתח ישירות בקוד. הגדר אותו כמשתנה סביבה.
+// Vite:            VITE_IMGBB_API_KEY=xxxx   -> import.meta.env.VITE_IMGBB_API_KEY
+// Create React App: REACT_APP_IMGBB_API_KEY=xxxx -> process.env.REACT_APP_IMGBB_API_KEY
+const IMGBB_API_KEY = import.meta.env.VITE_IMGBB_API_KEY ;
+const IMGBB_UPLOAD_URL = 'https://api.imgbb.com/1/upload';
+
+/**
+ * מעלה קובץ תמונה ל-imgbb ומחזיר את כתובת ה-URL הסופית.
+ * @param {File} file
+ * @param {number} [expirationSeconds] - אופציונלי, 60–15552000 שניות
+ */
+async function uploadToImgbb(file, expirationSeconds) {
+    if (!IMGBB_API_KEY) {
+        throw new Error('חסר מפתח API של imgbb (VITE_IMGBB_API_KEY / REACT_APP_IMGBB_API_KEY)');
+    }
+
+    const formData = new FormData();
+    formData.append('image', file); // imgbb מקבל גם קובץ בינארי ישירות ב-multipart/form-data
+
+    const params = new URLSearchParams({ key: IMGBB_API_KEY });
+    if (expirationSeconds) params.set('expiration', String(expirationSeconds));
+
+    const res = await fetch(`${IMGBB_UPLOAD_URL}?${params.toString()}`, {
+        method: 'POST',
+        body: formData,
+    });
+
+    const json = await res.json();
+
+    if (!res.ok || !json?.success) {
+        throw new Error(json?.error?.message || 'העלאת התמונה נכשלה');
+    }
+
+    return {
+        url: json.data.url,                 // כתובת התמונה המלאה
+        displayUrl: json.data.display_url,  // כתובת תצוגה (לרוב זהה)
+        thumbUrl: json.data.thumb?.url,      // תמונה ממוזערת
+        deleteUrl: json.data.delete_url,     // קישור למחיקה בצד imgbb (שימושי אם תרצה לשמור)
+        raw: json.data,
+    };
+}
+
+/**
+ * קומפוננטת העלאת תמונה ל-imgbb.
+ * עם סיום מוצלח קורא ל-onUploaded(url, fullResult)
+ *
+ * שימוש:
+ *   <ImageUploader onUploaded={(url) => setForm(f => ({ ...f, imageUrl: url }))} />
+ */
+export default function ImageUploader({ onUploaded, expirationSeconds }) {
+    const [status, setStatus] = useState('idle'); // idle | uploading | success | error
+    const [errorMsg, setErrorMsg] = useState('');
+    const [previewUrl, setPreviewUrl] = useState(null);
+    const [uploadedUrl, setUploadedUrl] = useState(null);
+    const inputRef = useRef(null);
+
+    const reset = useCallback(() => {
+        setStatus('idle');
+        setErrorMsg('');
+        setPreviewUrl(null);
+        setUploadedUrl(null);
+        if (inputRef.current) inputRef.current.value = '';
+    }, []);
+
+    const handleFile = useCallback(async (file) => {
+        if (!file) return;
+        if (!file.type.startsWith('image/')) {
+            setStatus('error');
+            setErrorMsg('יש לבחור קובץ תמונה בלבד');
+            return;
+        }
+
+        setPreviewUrl(URL.createObjectURL(file));
+        setStatus('uploading');
+        setErrorMsg('');
+
+        try {
+            const result = await uploadToImgbb(file, expirationSeconds);
+            setUploadedUrl(result.url);
+            setStatus('success');
+            onUploaded?.(result.url, result);
+        } catch (err) {
+            setStatus('error');
+            setErrorMsg(err.message || 'שגיאה בהעלאת התמונה');
+        }
+    }, [onUploaded, expirationSeconds]);
+
+    const onInputChange = (e) => handleFile(e.target.files?.[0]);
+
+    const onDrop = (e) => {
+        e.preventDefault();
+        handleFile(e.dataTransfer.files?.[0]);
+    };
+
+    return (
+        <div dir="rtl" className="w-full">
+            <div
+                onClick={() => status !== 'uploading' && inputRef.current?.click()}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={onDrop}
+                className={`relative flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-colors
+                    ${status === 'error' ? 'border-red-300 bg-red-50' : 'border-[#cfa756]/40 hover:border-[#cfa756] hover:bg-[#cfa756]/5'}`}
+            >
+                <input
+                    ref={inputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={onInputChange}
+                />
+
+                {previewUrl && (
+                    <img
+                        src={previewUrl}
+                        alt="תצוגה מקדימה"
+                        className="w-24 h-24 object-cover rounded-lg border border-gray-200 mb-1"
+                    />
+                )}
+
+                {status === 'idle' && (
+                    <>
+                        <UploadCloud size={22} className="text-[#cfa756]" />
+                        <p className="text-sm text-gray-600">גרור תמונה לכאן או לחץ לבחירה</p>
+                    </>
+                )}
+
+                {status === 'uploading' && (
+                    <>
+                        <Loader2 size={22} className="text-[#cfa756] animate-spin" />
+                        <p className="text-sm text-gray-600">מעלה תמונה...</p>
+                    </>
+                )}
+
+                {status === 'success' && (
+                    <>
+                        <CheckCircle2 size={22} className="text-green-600" />
+                        <p className="text-sm text-green-700 font-medium">התמונה הועלתה בהצלחה</p>
+                        <p className="text-xs text-gray-400 break-all px-2" dir="ltr">{uploadedUrl}</p>
+                        <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); reset(); }}
+                            className="text-xs text-gray-500 hover:text-gray-700 underline mt-1 flex items-center gap-1"
+                        >
+                            <X size={12} /> העלה תמונה אחרת
+                        </button>
+                    </>
+                )}
+
+                {status === 'error' && (
+                    <>
+                        <XCircle size={22} className="text-red-500" />
+                        <p className="text-sm text-red-600 font-medium">{errorMsg}</p>
+                        <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); reset(); }}
+                            className="text-xs text-gray-500 hover:text-gray-700 underline mt-1"
+                        >
+                            נסה שוב
+                        </button>
+                    </>
+                )}
+            </div>
+        </div>
+    );
+}
+
+export { uploadToImgbb };
+</file>
+
+<file path="server/controllers/categoryController.js">
+const service = require('../services/categoryService');
 
 exports.getAll = async (req, res) => {
   try { res.json(await service.getAll()); }
-  catch (err) { res.status(500).json({ message: err.message }); }
-};
-
-exports.getByCategory = async (req, res) => {
-  try { res.json(await service.getByCategory(req.params.categoryId)); }
   catch (err) { res.status(500).json({ message: err.message }); }
 };
 
@@ -105,333 +271,33 @@ exports.remove = async (req, res) => {
 };
 </file>
 
-<file path="server/middleware/errorHandler.js">
-module.exports = (err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ error: 'משהו השתבש...' });
-};
+<file path="server/models/Category.js">
+const mongoose = require('mongoose');
+
+const categorySchema = new mongoose.Schema({
+  name:        { type: String, required: true, trim: true },
+  description: { type: String, default: '' },
+  icon:        { type: String, default: '' },
+  color:       { type: String, default: '#cfa756' },
+  order:       { type: Number, default: 0 },
+}, { timestamps: true });
+
+module.exports = mongoose.model('Category', categorySchema);
 </file>
 
-<file path="server/routes/portalItems.js">
+<file path="server/routes/categories.js">
 const express = require('express');
 const router  = express.Router();
-const ctrl    = require('../controllers/portalItemController');
+const ctrl    = require('../controllers/categoryController');
 const protect = require('../middleware/authMiddleware');
 
-router.get('/',                     ctrl.getAll);
-router.get('/category/:categoryId', ctrl.getByCategory);
-router.get('/:id',                  ctrl.getById);
-router.post('/',      protect,      ctrl.create);
-router.put('/:id',    protect,      ctrl.update);
-router.delete('/:id', protect,      ctrl.remove);
+router.get('/',       ctrl.getAll);
+router.get('/:id',    ctrl.getById);
+router.post('/',      protect, ctrl.create);
+router.put('/:id',    protect, ctrl.update);
+router.delete('/:id', protect, ctrl.remove);
 
 module.exports = router;
-</file>
-
-<file path="server/services/commemorationService.js">
-const Commemoration = require('../models/Commemoration');
-
-/**
- * מחזיר את כל ההנצחות, מסודרות מהחדשה לישנה
- */
-exports.getAllCommemorations = async () => {
-  return Commemoration.find().sort({ date: -1 });
-};
-
-/**
- * יוצר הנצחה חדשה
- * @param {Object} data - הנתונים של ההנצחה החדשה
- */
-exports.createCommemoration = async (data) => {
-  const commemoration = new Commemoration(data);
-  return commemoration.save();
-};
-
-/**
- * מעדכן הנצחה קיימת לפי מזהה
- * @param {string} id - מזהה ההנצחה
- * @param {Object} data - הנתונים המעודכנים
- */
-exports.updateCommemoration = async (id, data) => {
-  return Commemoration.findByIdAndUpdate(id, data, {
-    new: true,
-    runValidators: true,
-  });
-};
-
-/**
- * מוחק הנצחה לפי מזהה
- * @param {string} id - מזהה ההנצחה
- */
-exports.deleteCommemoration = async (id) => {
-  return Commemoration.findByIdAndDelete(id);
-};
-
-/**
- * מחזיר הנצחה בודדת לפי מזהה
- * @param {string} id - מזהה ההנצחה
- */
-exports.getCommemorationById = async (id) => {
-  return Commemoration.findById(id);
-};
-</file>
-
-<file path="server/services/portalItemService.js">
-const PortalItem = require('../models/PortalItem');
-
-const getAll        = ()       => PortalItem.find().sort({ order: 1, createdAt: 1 });
-const getByCategory = (catId)  => PortalItem.find({ categoryId: catId }).sort({ order: 1, createdAt: 1 });
-const getById       = (id)     => PortalItem.findById(id).populate('categoryId');
-const create        = (data)   => PortalItem.create(data);
-const update        = (id, data) => PortalItem.findByIdAndUpdate(id, data, { new: true });
-const remove        = (id)     => PortalItem.findByIdAndDelete(id);
-
-module.exports = { getAll, getByCategory, getById, create, update, remove };
-</file>
-
-<file path="client/src/pages/PortalCategory.jsx">
-import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { useAuth } from '../components/context/authContext';
-import { fetchCategories, fetchItemsByCategory, createItem, updateItem, deleteItem } from '../services/portalService';
-import { ROUTES } from '../constants/routes';
-
-function ItemModal({ initial, categoryId, onClose, onSave }) {
-  const [form, setForm] = useState(
-    initial || { title: '', description: '', date: '', price: 0, available: true, order: 0, categoryId }
-  );
-  const [saving, setSaving] = useState(false);
-
-  const handleSubmit = async () => {
-    if (!form.title.trim()) return;
-    setSaving(true);
-    await onSave(form);
-    setSaving(false);
-  };
-  const descriptionTemplates = [
-    "שבת זאת פנויה להקדשה. לפרטים  לחץ כאן או לפנות  אל הרב ישעיה ממן או לרב יוסף שיטרית",
-    "נתרם להצלחת...",
-    "לעילוי נשמת...",
-    "לרפואה שלמה...",
-    "הקדשת יום לימוד...",
-  ];
-
-  const [selectedTemplate, setSelectedTemplate] = useState("");
-
-  return (
-    <div className="fixed inset-0 bg-[#0d2340]/75 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-      <div className="bg-[#f7f4e9] rounded-xl shadow-2xl border-2 border-[#cfa756] p-6 w-full max-w-md" dir="rtl">
-        <h3 className="text-xl font-bold text-[#0d2340] mb-4 border-b border-[#cfa756]/40 pb-2">
-          {initial ? 'עריכת פריט' : 'הוספת פריט חדש'}
-        </h3>
-        <div className="space-y-3">
-          <div>
-            <label className="text-sm font-medium text-[#0d2340]">כותרת *</label>
-            <input className="mt-1 w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-[#cfa756] outline-none"
-              value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="לדוג': שיעור יומי — כ׳ תמוז" />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-[#0d2340]">
-              תיאור
-            </label>
-
-            {initial && (
-              <select
-                className="mt-1 mb-2 w-full border border-gray-300 rounded-md px-3 py-2"
-                value={selectedTemplate}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setSelectedTemplate(value);
-
-                  if (value) {
-                    setForm({
-                      ...form,
-                      description: value,
-                    });
-                  }
-                }}
-              >
-                <option value="">בחר תבנית...</option>
-
-                {descriptionTemplates.map((item, index) => (
-                  <option key={index} value={item}>
-                    {item}
-                  </option>
-                ))}
-
-                <option value={form.description}>
-                  טקסט קיים
-                </option>
-              </select>
-            )}
-
-            <textarea
-              className="mt-1 w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-[#cfa756] outline-none"
-              rows={4}
-              value={form.description}
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  description: e.target.value,
-                })
-              }
-            />
-          </div>
-          <div className="flex gap-3">
-            <div className="flex-1">
-              <label className="text-sm font-medium text-[#0d2340]">תאריך / פרק</label>
-              <input className="mt-1 w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-[#cfa756] outline-none"
-                value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} placeholder="כ׳ תמוז תשפ״ה" />
-            </div>
-            <div className="flex-1">
-              <label className="text-sm font-medium text-[#0d2340]">מחיר (₪)</label>
-              <input type="number" className="mt-1 w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-[#cfa756] outline-none"
-                value={form.price} onChange={(e) => setForm({ ...form, price: Number(e.target.value) })} />
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <input type="checkbox" id="available" checked={form.available}
-              onChange={(e) => setForm({ ...form, available: e.target.checked })} className="w-4 h-4" />
-            <label htmlFor="available" className="text-sm font-medium text-[#0d2340]">זמין לתמיכה</label>
-          </div>
-        </div>
-        <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-200">
-          <button onClick={onClose} className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50">ביטול</button>
-          <button onClick={handleSubmit} disabled={saving}
-            className="px-4 py-2 bg-[#0d2340] text-[#cfa756] font-bold rounded-md hover:bg-[#1a365d] disabled:opacity-50">
-            {saving ? 'שומר...' : 'שמור'}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ItemCard({ item, isAdmin, onEdit, onDelete, onClick }) {
-  return (
-    <div
-      className={`relative bg-white border rounded-xl shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-200 cursor-pointer group overflow-hidden
-        ${item.available ? 'border-[#cfa756]/30' : 'border-gray-200 opacity-60'}`}
-      onClick={onClick}
-    >
-      <div className="h-1 bg-gradient-to-r from-[#0d2340] via-[#cfa756] to-[#0d2340]" />
-      <div className="p-5 flex flex-col gap-2">
-        <div className="flex justify-between items-start">
-          <h3 className="text-base font-bold text-[#0d2340]">{item.title}</h3>
-          {item.price > 0 && (
-            <span className="text-sm font-bold text-[#0d2340] bg-[#cfa756]/20 border border-[#cfa756] px-2 py-0.5 rounded-full mr-2 whitespace-nowrap">
-              ₪{item.price}
-            </span>
-          )}
-        </div>
-        {item.date && <p className="text-xs text-[#cfa756] font-medium">📅 {item.date}</p>}
-        {item.description && <p className="text-sm text-gray-500">{item.description}</p>}
-        {!item.available && item.sponsorshipStatus === 'sponsored' && (
-          <span className="text-xs text-green-600 font-medium">
-            ✡ הוקדש {item.dedicationType ? `${item.dedicationType} ` : ''}{item.dedicatedName}
-          </span>
-        )}
-        {!item.available && item.sponsorshipStatus !== 'sponsored' && (
-          <span className="text-xs text-red-500 font-medium">• לא זמין</span>
-        )}        <span className="mt-1 text-xs font-medium text-[#cfa756] self-start bg-[#0d2340] px-2 py-0.5 rounded-full">לפרטים ←</span>
-      </div>
-      {isAdmin && (
-        <div className="absolute top-2 left-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
-          onClick={(e) => e.stopPropagation()}>
-          <button onClick={onEdit} className="bg-[#cfa756] text-[#0d2340] text-xs font-bold px-2 py-1 rounded hover:bg-[#b8860b]">✎</button>
-          <button onClick={onDelete} className="bg-[#a61b1b] text-white text-xs font-bold px-2 py-1 rounded hover:bg-red-800">✕</button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-export default function PortalCategory() {
-  const { categoryId } = useParams();
-  const navigate = useNavigate();
-  const { isAdmin } = useAuth();
-  const [category, setCategory] = useState(null);
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [modal, setModal] = useState(null);
-
-  const load = async () => {
-    try {
-      setLoading(true);
-      const [catRes, itemsRes] = await Promise.all([fetchCategories(), fetchItemsByCategory(categoryId)]);
-      setCategory(catRes.data.find((c) => c._id === categoryId) || null);
-      setItems(itemsRes.data);
-    } catch { setError('שגיאה בטעינת הנתונים'); }
-    finally { setLoading(false); }
-  };
-
-  useEffect(() => { load(); }, [categoryId]);
-
-  const handleSave = async (form) => {
-    if (modal === 'add') await createItem({ ...form, categoryId });
-    else await updateItem(modal.item._id, form);
-    setModal(null);
-    load();
-  };
-
-  const handleDelete = async (id) => {
-    if (!window.confirm('למחוק פריט זה?')) return;
-    await deleteItem(id);
-    load();
-  };
-
-  return (
-    <div dir="rtl" className="min-h-screen bg-[#f7f4e9]">
-      <div className="bg-gradient-to-b from-[#0d2340] to-[#1a365d] py-10 px-6">
-        <div className="max-w-5xl mx-auto">
-          <button onClick={() => navigate(ROUTES.PORTAL)} className="text-[#cfa756] text-sm mb-4 flex items-center gap-1 hover:underline">
-            → חזרה לקטגוריות
-          </button>
-          <h1 className="text-3xl font-bold text-[#cfa756]">
-            {category ? `${category.icon || ''} ${category.name}` : 'טוען...'}
-          </h1>
-          {category?.description && <p className="text-[#f7f4e9]/70 mt-1">{category.description}</p>}
-        </div>
-      </div>
-      <div className="max-w-5xl mx-auto px-4 py-8">
-        {isAdmin && isAdmin() && (
-          <div className="flex justify-end mb-6">
-            <button onClick={() => setModal('add')}
-              className="flex items-center gap-2 bg-[#0d2340] text-[#cfa756] font-bold px-5 py-2.5 rounded-lg hover:bg-[#1a365d] shadow-md">
-              <span className="text-lg">+</span> הוסף פריט
-            </button>
-          </div>
-        )}
-        {loading && <p className="text-center py-20">טוען...</p>}
-        {error && <p className="text-center text-red-600 py-20">{error}</p>}
-        {!loading && !error && items.length === 0 && (
-          <div className="text-center py-20 text-gray-500"><p className="text-5xl mb-4">📋</p><p>אין פריטים בקטגוריה זו</p></div>
-        )}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
-          {items.map((item) => (
-            <ItemCard
-              key={item._id}
-              item={item}
-              isAdmin={isAdmin && isAdmin()}
-              onClick={() => navigate(ROUTES.PORTAL_ITEM.replace(':itemId', item._id))}
-              onEdit={() => setModal({ item })}
-              onDelete={() => handleDelete(item._id)}
-            />
-          ))}
-        </div>
-      </div>
-      {modal && (
-        <ItemModal
-          initial={modal !== 'add' ? modal.item : null}
-          categoryId={categoryId}
-          onClose={() => setModal(null)}
-          onSave={handleSave}
-        />
-      )}
-    </div>
-  );
-}
 </file>
 
 <file path="server/controllers/commemorationController.js">
@@ -524,70 +390,6 @@ exports.updateCommemorationStatus = async (req, res) => {
 };
 </file>
 
-<file path="server/models/Commemoration.js">
-const mongoose = require('mongoose');
-
-const commemorationSchema = new mongoose.Schema({
-  itemName: {
-    type: String,
-    required: [true, 'שם הפריט הוא שדה חובה'],
-    trim: true,
-  },
-  commemorationStatus: {
-    type: String,
-    enum: ['commemorated', 'pending', 'none'],
-    default: 'none',
-  },
-  contributorName: {
-    type: String,
-    required: [true, 'שם התורם הוא שדה חובה'],
-    trim: true,
-  },
-  commemoratedName: {
-    type: String,
-    required: [true, 'שם המונצח הוא שדה חובה'],
-    trim: true,
-  },
-  amount: {
-    type: Number,
-    required: [true, 'סכום התרומה הוא שדה חובה'],
-    min: [0, 'הסכום לא יכול להיות שלילי'],
-  },
-  imageUrl: {
-    type: String,
-    trim: true,
-    default: '',
-  },
-  date: {
-    type: Date,
-    default: Date.now,
-  },
-});
-
-module.exports = mongoose.model('Commemoration', commemorationSchema);
-</file>
-
-<file path="server/models/PortalItem.js">
-const mongoose = require('mongoose');
-
-const portalItemSchema = new mongoose.Schema({
-  categoryId:  { type: mongoose.Schema.Types.ObjectId, ref: 'Category', required: true },
-  title:       { type: String, required: true, trim: true },
-  description: { type: String, default: '' },
-  date:        { type: String, default: '' },
-  price:       { type: Number, default: 0 },
-  available:   { type: Boolean, default: true },
-  order:       { type: Number, default: 0 },
-
-  // ← חדש: משתייך לסנכרון עם בקשות הקדשה
-  sponsorshipStatus: { type: String, enum: ['available', 'pending', 'sponsored'], default: 'available' },
-  dedicatedName:      { type: String, default: '' }, // שם לציון בהנצחה, לאחר אישור
-  dedicationType:     { type: String, default: '' }, // "לזכות" / "לעילוי נשמת" וכו'
-}, { timestamps: true });
-
-module.exports = mongoose.model('PortalItem', portalItemSchema);
-</file>
-
 <file path="server/routes/commemorations.js">
 const express = require('express');
 const router  = express.Router();
@@ -606,6 +408,55 @@ router.patch('/:id/status', protect, ctrl.updateCommemorationStatus); // ← ח�
 router.delete('/:id', protect, ctrl.deleteCommemoration);
 
 module.exports = router;
+</file>
+
+<file path="server/services/commemorationService.js">
+const Commemoration = require('../models/Commemoration');
+
+/**
+ * מחזיר את כל ההנצחות, מסודרות מהחדשה לישנה
+ */
+exports.getAllCommemorations = async () => {
+  return Commemoration.find().sort({ date: -1 });
+};
+
+/**
+ * יוצר הנצחה חדשה
+ * @param {Object} data - הנתונים של ההנצחה החדשה
+ */
+exports.createCommemoration = async (data) => {
+  const commemoration = new Commemoration(data);
+  return commemoration.save();
+};
+
+/**
+ * מעדכן הנצחה קיימת לפי מזהה
+ * @param {string} id - מזהה ההנצחה
+ * @param {Object} data - הנתונים המעודכנים
+ */
+exports.updateCommemoration = async (id, data) => {
+  const doc = await Commemoration.findById(id);
+  if (!doc) return null;
+
+  Object.assign(doc, data);
+  return doc.save(); // כאן this בתוך הולידטורים המותאמים אישית יצביע נכון על המסמך
+};
+
+/**
+ * מוחק הנצחה לפי מזהה
+ * @param {string} id - מזהה ההנצחה
+ */
+exports.deleteCommemoration = async (id) => {
+  return Commemoration.findByIdAndDelete(id);
+};
+
+/**
+ * מחזיר הנצחה בודדת לפי מזהה
+ * @param {string} id - מזהה ההנצחה
+ */
+exports.getCommemorationById = async (id) => {
+  return Commemoration.findById(id);
+};
 </file>
 
 <file path="client/src/components/Admin/CommemorationForm.jsx">
@@ -1146,482 +997,81 @@ export default function CommemorationForm() {
 }
 </file>
 
-<file path="client/src/pages/Commemorations.jsx">
-import { useEffect, useState } from 'react';
-import { fetchCommemorations } from '../services/api';
-// TODO (שרת): ייבא כאן את פונקציית submitSponsorshipRequest כשתחבר לשרת
-// import { submitSponsorshipRequest } from '../services/portalService';
-import { submitCommemorationRequest } from '../services/portalService';
-import CommunityPaymentButton from '../components/CommunityPaymentButton';
-const DEDICATION_TYPES = ['לזכות', 'לעילוי נשמת', 'לרפואת', 'לעילוי נשמת ולהצלחת', 'אחר'];
+<file path="server/models/Commemoration.js">
+const mongoose = require('mongoose');
 
-// סטטוס הנצחה — ערכים: 'commemorated' | 'pending' | 'none'
-const STATUS_CONFIG = {
-  commemorated: { label: 'הונצח',           dot: '#3b6d11', bg: '#eaf3de', text: '#3b6d11', border: '#97c459' },
-  pending:      { label: 'ממתין לאישור',    dot: '#854f0b', bg: '#faeeda', text: '#854f0b', border: '#ef9f27' },
-  none:         { label: 'פנוי להנצחה',     dot: '#185fa5', bg: '#e6f1fb', text: '#185fa5', border: '#85b7eb' },
-};
+const commemorationSchema = new mongoose.Schema({
+  itemName: {
+    type: String,
+    required: [true, 'שם הפריט הוא שדה חובה'],
+    trim: true,
+  },
+  commemorationStatus: {
+    type: String,
+    enum: ['commemorated', 'pending', 'none'],
+    default: 'none',
+  },
+  // ← חובה רק כאשר הפריט אינו "פנוי להנצחה" (כלומר כבר יש מונצח/תורם בפועל)
+  contributorName: {
+    type: String,
+    trim: true,
+    default: '',
+    required: [
+      function () { return this.commemorationStatus !== 'none'; },
+      'שם התורם הוא שדה חובה כאשר ההנצחה אינה פנויה',
+    ],
+  },
+  commemoratedName: {
+    type: String,
+    trim: true,
+    default: '',
+    required: [
+      function () { return this.commemorationStatus !== 'none'; },
+      'שם המונצח הוא שדה חובה כאשר ההנצחה אינה פנויה',
+    ],
+  },
+  amount: {
+    type: Number,
+    default: 0,
+    min: [0, 'הסכום לא יכול להיות שלילי'],
+    required: [
+      function () { return this.commemorationStatus !== 'none'; },
+      'סכום התרומה הוא שדה חובה כאשר ההנצחה אינה פנויה',
+    ],
+  },
+  imageUrl: {
+    type: String,
+    trim: true,
+    default: '',
+  },
+  date: {
+    type: Date,
+    default: Date.now,
+  },
+});
 
-// ── מודאל בקשת הנצחה ──────────────────────────────────────────────────────────
-function RequestModal({ item, onClose, onSuccess }) {
-  const [form, setForm] = useState({
-    name: '', phone: '', email: '',
-    dedicationType: 'לזכות', dedicationName: '', adminNote: '',
-  });
-  const [sending, setSending]     = useState(false);
-  const [formError, setFormError] = useState('');
+module.exports = mongoose.model('Commemoration', commemorationSchema);
+</file>
 
-  const handleSubmit = async () => {
-    setFormError('');
-    if (!form.name.trim() || !form.phone.trim() || !form.email.trim()) {
-      setFormError('נא למלא את כל השדות המסומנים *');
-      return;
-    }
-    setSending(true);
-    try {
-      await submitCommemorationRequest({
-        ...form,
-        itemName:        item.itemName,
-        commemorationId: item._id,
-      });
-      onSuccess();
-    } catch {
-      setFormError('שגיאה בשליחה — נסה שוב');
-    } finally {
-      setSending(false);
-    }
-  };
+<file path="client/src/services/portalService.js">
+import API from './api';
 
-  return (
-    <div
-      style={{
-        position: 'fixed', inset: 0, background: 'rgba(13,35,64,.72)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        zIndex: 50, padding: '16px',
-      }}
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-    >
-      <div
-        dir="rtl"
-        style={{
-          background: '#fff', borderRadius: '16px',
-          border: '1.5px solid rgba(207,167,86,.4)',
-          padding: '28px', width: '100%', maxWidth: '440px',
-          maxHeight: '90vh', overflowY: 'auto',
-        }}
-      >
-        {/* כותרת */}
-        <div style={{ marginBottom: '20px', paddingBottom: '14px', borderBottom: '1px solid rgba(207,167,86,.25)' }}>
-          <h3 style={{ fontSize: '17px', fontWeight: 700, color: '#0d2340', marginBottom: '4px' }}>
-            📝 בקשת הנצחה
-          </h3>
-          <p style={{ fontSize: '12px', color: '#6b7280' }}>
-            פריט: <strong style={{ color: '#0d2340' }}>{item.itemName}</strong>
-          </p>
-        </div>
+export const fetchCategories      = ()           => API.get('/categories');
+export const createCategory       = (data)       => API.post('/categories', data);
+export const updateCategory       = (id, data)   => API.put(`/categories/${id}`, data);
+export const deleteCategory       = (id)         => API.delete(`/categories/${id}`);
 
-        {/* שדות */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-          <Field label="שם מלא *">
-            <input
-              style={inputStyle}
-              placeholder="ישראל ישראלי"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-            />
-          </Field>
+export const fetchItemsByCategory = (catId)      => API.get(`/portal-items/category/${catId}`);
+export const fetchItemById        = (id)         => API.get(`/portal-items/${id}`);
+export const createItem           = (data)       => API.post('/portal-items', data);
+export const updateItem           = (id, data)   => API.put(`/portal-items/${id}`, data);
+export const deleteItem           = (id)         => API.delete(`/portal-items/${id}`);
 
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <Field label="טלפון *" style={{ flex: 1 }}>
-              <input
-                style={{ ...inputStyle, direction: 'ltr' }}
-                placeholder="050-0000000"
-                value={form.phone}
-                onChange={(e) => setForm({ ...form, phone: e.target.value })}
-              />
-            </Field>
-            <Field label="אימייל *" style={{ flex: 1 }}>
-              <input
-                type="email"
-                style={{ ...inputStyle, direction: 'ltr' }}
-                placeholder="email@example.com"
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-              />
-            </Field>
-          </div>
-
-          <Field label="סוג ההנצחה">
-            <select
-              style={inputStyle}
-              value={form.dedicationType}
-              onChange={(e) => setForm({ ...form, dedicationType: e.target.value })}
-            >
-              {DEDICATION_TYPES.map((t) => <option key={t}>{t}</option>)}
-            </select>
-          </Field>
-
-          <Field label="שם לציון בהנצחה">
-            <input
-              style={inputStyle}
-              placeholder="לדוג׳: חנה בת רות"
-              value={form.dedicationName}
-              onChange={(e) => setForm({ ...form, dedicationName: e.target.value })}
-            />
-          </Field>
-
-          <Field label="הערה לגבאי">
-            <textarea
-              style={{ ...inputStyle, minHeight: '72px', resize: 'vertical' }}
-              placeholder="פרטים נוספים, בקשות מיוחדות..."
-              value={form.adminNote}
-              onChange={(e) => setForm({ ...form, adminNote: e.target.value })}
-            />
-          </Field>
-
-          {formError && (
-            <p style={{ color: '#a32d2d', fontSize: '12px', fontWeight: 600 }}>{formError}</p>
-          )}
-
-            <CommunityPaymentButton />
-          <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '4px' }}>
-            <button onClick={onClose} style={cancelBtnStyle}>ביטול</button>
-            <button onClick={handleSubmit} disabled={sending} style={submitBtnStyle}>
-              {sending ? '⏳ שולח...' : '📤 שלח בקשה'}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── באנר הצלחה ────────────────────────────────────────────────────────────────
-function SuccessBanner({ onClose }) {
-  return (
-    <div
-      style={{
-        position: 'fixed', inset: 0, background: 'rgba(13,35,64,.72)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        zIndex: 60, padding: '16px',
-      }}
-    >
-      <div
-        dir="rtl"
-        style={{
-          background: '#fff', borderRadius: '16px',
-          border: '2px solid #cfa756',
-          padding: '36px 28px', maxWidth: '360px', width: '100%', textAlign: 'center',
-        }}
-      >
-        <div style={{ fontSize: '52px', marginBottom: '12px' }}>✅</div>
-        <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#0d2340', marginBottom: '8px' }}>
-          בקשתך נשלחה!
-        </h3>
-        <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '24px' }}>
-          הגבאי יצור עמך קשר בהקדם לאישור הבקשה. תודה רבה!
-        </p>
-        <button onClick={onClose} style={submitBtnStyle}>סגור</button>
-      </div>
-    </div>
-  );
-}
-
-// ── כרטיס הנצחה ───────────────────────────────────────────────────────────────
-function CommemorationCard({ item, onRequest }) {
-  const cfg = STATUS_CONFIG[item.commemorationStatus] || STATUS_CONFIG.none;
-  const isCommemoratedAlready = item.commemorationStatus === 'commemorated';
-  const isPending             = item.commemorationStatus === 'pending';
-
-  const formattedDate = item.date
-    ? new Date(item.date).toLocaleDateString('he-IL', { year: 'numeric', month: 'long', day: 'numeric' })
-    : null;
-
-  const formattedAmount = item.amount
-    ? new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS', minimumFractionDigits: 0 }).format(item.amount)
-    : null;
-
-  return (
-    <div
-      dir="rtl"
-      style={{
-        background: '#fff', borderRadius: '16px',
-        border: `1px solid ${isCommemoratedAlready ? 'rgba(97,196,89,.35)' : isPending ? 'rgba(239,159,39,.3)' : 'rgba(207,167,86,.2)'}`,
-        boxShadow: '0 2px 8px rgba(13,35,64,.06)',
-        overflow: 'hidden', display: 'flex', flexDirection: 'column',
-        transition: 'box-shadow .2s, transform .2s',
-      }}
-      onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 6px 24px rgba(13,35,64,.13)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-      onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 2px 8px rgba(13,35,64,.06)'; e.currentTarget.style.transform = 'translateY(0)'; }}
-    >
-      {/* תמונה / placeholder */}
-      {item.imageUrl ? (
-        <img
-          src={item.imageUrl}
-          alt={`הנצחת ${item.commemoratedName}`}
-          style={{ width: '100%', height: '140px', objectFit: 'cover' }}
-          onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
-        />
-      ) : null}
-      <div
-        style={{
-          display: item.imageUrl ? 'none' : 'flex',
-          width: '100%', height: '140px',
-          background: 'linear-gradient(135deg, #0d2340 0%, #1a365d 100%)',
-          alignItems: 'center', justifyContent: 'center',
-        }}
-      >
-        <HeartIcon />
-      </div>
-
-      {/* גוף */}
-      <div style={{ padding: '16px', flex: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        {/* שם הפריט + סטטוס */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
-          <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#0d2340', lineHeight: 1.3, flex: 1 }}>
-            {item.itemName}
-          </h3>
-          <span
-            style={{
-              fontSize: '10px', fontWeight: 600, padding: '3px 8px', borderRadius: '12px', whiteSpace: 'nowrap',
-              background: cfg.bg, color: cfg.text, border: `1px solid ${cfg.border}`,
-            }}
-          >
-            {cfg.label}
-          </span>
-        </div>
-
-        {/* פרטים */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', flex: 1 }}>
-          {item.commemoratedName && item.commemorationStatus !== 'none' && (
-            <Row label='לעילוי נשמת:' value={item.commemoratedName} bold />
-          )}
-          {item.contributorName && item.commemorationStatus !== 'none' && (
-            <Row label='נתרם ע"י:' value={item.contributorName} />
-          )}
-          {formattedAmount && <Row label="סכום:" value={formattedAmount} />}
-          {formattedDate && (
-            <p style={{ fontSize: '10px', color: '#9ca3af', marginTop: '6px', paddingTop: '8px', borderTop: '1px solid #f3f4f6' }}>
-              {formattedDate}
-            </p>
-          )}
-        </div>
-
-        {/* כפתור בקשה — רק לפריטים שאינם מונצחים */}
-        {!isCommemoratedAlready && (
-          <button
-            onClick={() => onRequest(item)}
-            disabled={isPending}
-            style={{
-              marginTop: '4px', width: '100%', padding: '8px',
-              borderRadius: '8px', border: 'none', fontSize: '12px', fontWeight: 700,
-              cursor: isPending ? 'default' : 'pointer',
-              background: isPending ? '#f3f4f6' : '#0d2340',
-              color: isPending ? '#9ca3af' : '#cfa756',
-              transition: 'background .15s',
-            }}
-          >
-            {isPending ? '⏳ בקשה ממתינה לאישור' : '📤 בקש הנצחה'}
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ── עמוד ראשי ─────────────────────────────────────────────────────────────────
-export default function Commemorations() {
-  const [commemorations, setCommemorations] = useState([]);
-  const [loading, setLoading]               = useState(true);
-  const [error, setError]                   = useState(null);
-  const [activeFilter, setActiveFilter]     = useState('all');
-  const [modalItem, setModalItem]           = useState(null);
-  const [showSuccess, setShowSuccess]       = useState(false);
-
-  useEffect(() => {
-    fetchCommemorations()
-      .then((res) => setCommemorations(res.data))
-      .catch(() => setError('אירעה שגיאה בטעינת ההנצחות. אנא נסה שוב מאוחר יותר.'))
-      .finally(() => setLoading(false));
-  }, []);
-
-  // ספירות לפילטרים
-  const counts = {
-    all:          commemorations.length,
-    commemorated: commemorations.filter((i) => i.commemorationStatus === 'commemorated').length,
-    pending:      commemorations.filter((i) => i.commemorationStatus === 'pending').length,
-    none:         commemorations.filter((i) => i.commemorationStatus === 'none').length,
-  };
-
-  const filtered = activeFilter === 'all'
-    ? commemorations
-    : commemorations.filter((i) => i.commemorationStatus === activeFilter);
-
-  const FILTERS = [
-    { key: 'all',          label: `הכל (${counts.all})` },
-    { key: 'commemorated', label: `הונצח (${counts.commemorated})` },
-    { key: 'pending',      label: `ממתין לאישור (${counts.pending})` },
-    { key: 'none',         label: `פנוי להנצחה (${counts.none})` },
-  ];
-
-  return (
-    <div dir="rtl" style={{ minHeight: '100vh', background: '#f7f4ee' }}>
-      {/* כותרת */}
-      <div style={{
-        background: 'linear-gradient(135deg, #0d2340 0%, #1a365d 100%)',
-        padding: '48px 16px', textAlign: 'center',
-      }}>
-        <h1 style={{ fontSize: '32px', fontWeight: 800, color: '#cfa756', marginBottom: '8px' }}>
-          לוח הנצחות
-        </h1>
-        <p style={{ color: 'rgba(247,244,233,.75)', fontSize: '15px' }}>
-          הנצחות ותרומות לעילוי נשמת יקירינו
-        </p>
-        <div style={{ width: '48px', height: '3px', background: '#cfa756', margin: '16px auto 0', borderRadius: '2px' }} />
-      </div>
-
-      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px 16px' }}>
-        {/* פילטרים */}
-        {!loading && !error && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '28px' }}>
-            {FILTERS.map(({ key, label }) => (
-              <button
-                key={key}
-                onClick={() => setActiveFilter(key)}
-                style={{
-                  padding: '7px 18px', borderRadius: '24px', fontSize: '13px', fontWeight: 600,
-                  border: activeFilter === key ? '1.5px solid #0d2340' : '1.5px solid #d1d5db',
-                  background: activeFilter === key ? '#0d2340' : '#fff',
-                  color: activeFilter === key ? '#cfa756' : '#6b7280',
-                  cursor: 'pointer', transition: 'all .15s',
-                }}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* מצבים */}
-        {loading && <Spinner />}
-        {error && <ErrorBox msg={error} />}
-        {!loading && !error && filtered.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '64px 0', color: '#9ca3af' }}>
-            <HeartIcon size={56} />
-            <p style={{ marginTop: '16px', fontSize: '16px' }}>אין הנצחות להצגה כרגע</p>
-          </div>
-        )}
-
-        {/* רשת כרטיסים */}
-        {!loading && !error && filtered.length > 0 && (
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
-            gap: '20px',
-          }}>
-            {filtered.map((item) => (
-              <CommemorationCard
-                key={item._id}
-                item={item}
-                onRequest={setModalItem}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* מודאל בקשה */}
-      {modalItem && !showSuccess && (
-        <RequestModal
-          item={modalItem}
-          onClose={() => setModalItem(null)}
-          onSuccess={() => { setModalItem(null); setShowSuccess(true); }}
-        />
-      )}
-
-      {/* באנר הצלחה */}
-      {showSuccess && (
-        <SuccessBanner onClose={() => setShowSuccess(false)} />
-      )}
-    </div>
-  );
-}
-
-// ── קומפוננטות עזר ────────────────────────────────────────────────────────────
-function Field({ label, children, style }) {
-  return (
-    <div style={style}>
-      <label style={{ fontSize: '12px', fontWeight: 600, color: '#374151', marginBottom: '5px', display: 'block' }}>
-        {label}
-      </label>
-      {children}
-    </div>
-  );
-}
-
-function Row({ label, value, bold }) {
-  return (
-    <div style={{ display: 'flex', gap: '6px', fontSize: '12px' }}>
-      <span style={{ color: '#cfa756', fontWeight: 700, minWidth: '90px', flexShrink: 0 }}>{label}</span>
-      <span style={{ color: '#0d2340', fontWeight: bold ? 700 : 400 }}>{value}</span>
-    </div>
-  );
-}
-
-function HeartIcon({ size = 36 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="#cfa756" strokeWidth="1.2">
-      <path strokeLinecap="round" strokeLinejoin="round"
-        d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5
-           2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09
-           C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5
-           c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-    </svg>
-  );
-}
-
-function Spinner() {
-  return (
-    <div style={{ display: 'flex', justifyContent: 'center', padding: '80px 0' }}>
-      <div style={{
-        width: '40px', height: '40px', borderRadius: '50%',
-        border: '3px solid #cfa756', borderTopColor: 'transparent',
-        animation: 'spin 0.8s linear infinite',
-      }} />
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-    </div>
-  );
-}
-
-function ErrorBox({ msg }) {
-  return (
-    <div style={{
-      background: '#fef2f2', border: '1px solid #fca5a5', color: '#b91c1c',
-      borderRadius: '12px', padding: '20px', textAlign: 'center', maxWidth: '420px', margin: '0 auto',
-    }}>
-      <p style={{ fontWeight: 600 }}>{msg}</p>
-    </div>
-  );
-}
-
-// סגנונות משותפים
-const inputStyle = {
-  width: '100%', border: '1px solid #d1d5db', borderRadius: '8px',
-  padding: '9px 12px', fontSize: '13px', outline: 'none',
-  fontFamily: 'inherit', background: '#fff', color: '#111827',
-  transition: 'border-color .15s',
-};
-
-const cancelBtnStyle = {
-  padding: '9px 20px', border: '1px solid #d1d5db', borderRadius: '8px',
-  background: '#fff', color: '#6b7280', cursor: 'pointer', fontSize: '13px',
-};
-
-const submitBtnStyle = {
-  padding: '9px 24px', background: '#0d2340', color: '#cfa756',
-  border: 'none', borderRadius: '8px', fontSize: '13px',
-  fontWeight: 700, cursor: 'pointer',
-};
+export const submitSponsorshipRequest = (data)   => API.post('/sponsorships', data);
+export const fetchAllSponsorships     = ()       => API.get('/sponsorships');
+export const updateSponsorshipStatus  = (id, status) => API.patch(`/sponsorships/${id}/status`, { status });
+export const submitCommemorationRequest = (data) =>
+    API.post('/sponsorships/from-commemoration', data);
 </file>
 
 <file path="client/src/pages/Portal.jsx">
@@ -1629,7 +1079,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../components/context/authContext';
 import { fetchCategories, createCategory, updateCategory, deleteCategory } from '../services/portalService';
-import { ROUTES } from '../constants/routes'; 
+import { ROUTES } from '../constants/routes';
+import PageHeader from '../components/common/PageHeader';
 
 function CategoryModal({ initial, onClose, onSave }) {
   const [form, setForm] = useState(
@@ -1758,11 +1209,12 @@ export default function Portal() {
   };
 
   return (
-    <div dir="rtl" className="min-h-screen bg-[#f7f4e9]">
-      <div className="bg-gradient-to-b from-[#0d2340] to-[#1a365d] py-12 px-6 text-center">
-        <h1 className="text-4xl font-bold text-[#cfa756] mb-2">פורטל הקדשות ותמיכה</h1>
-        <p className="text-[#f7f4e9]/80 text-lg">בחר קטגוריה כדי לצפות בפרטים ולהגיש בקשת הנצחה</p>
-      </div>
+    <div dir="rtl" className="min-h-screen bg-[#f7f4ee]">
+      <PageHeader
+        title="פורטל הקדשות ותמיכה"
+        subtitle="בחר קטגוריה כדי לצפות בפרטים ולהגיש בקשת הנצחה"
+      />
+
       <div className="max-w-5xl mx-auto px-4 py-10">
         {isAdmin && isAdmin() && (
           <div className="flex justify-end mb-6">
@@ -1805,191 +1257,836 @@ export default function Portal() {
 }
 </file>
 
-<file path="client/src/pages/PortalItem.jsx">
+<file path="client/src/pages/Commemorations.jsx">
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { fetchItemById, submitSponsorshipRequest } from '../services/portalService';
-import { ROUTES } from '../constants/routes';
+import {
+  fetchCommemorations,
+  createCommemoration,
+  updateCommemoration,
+  deleteCommemoration,
+} from '../services/api';
+import { submitCommemorationRequest } from '../services/portalService';
 import CommunityPaymentButton from '../components/CommunityPaymentButton';
+import { useAuth } from '../components/context/authContext';
+import ImageUploader from '../components/ImageUploader';
+import PageHeader from '../components/common/PageHeader';
 
 const DEDICATION_TYPES = ['לזכות', 'לעילוי נשמת', 'לרפואת', 'לעילוי נשמת ולהצלחת', 'אחר'];
 
-function SuccessBanner({ onClose }) {
+// סטטוס הנצחה — ערכים: 'commemorated' | 'pending' | 'none'
+const STATUS_CONFIG = {
+  commemorated: { label: 'הונצח', dot: '#3b6d11', bg: '#eaf3de', text: '#3b6d11', border: '#97c459' },
+  pending: { label: 'ממתין לאישור', dot: '#854f0b', bg: '#faeeda', text: '#854f0b', border: '#ef9f27' },
+  none: { label: 'פנוי להנצחה', dot: '#185fa5', bg: '#e6f1fb', text: '#185fa5', border: '#85b7eb' },
+};
+
+// ── נירמול קישורי תמונה מ-Google Drive (זהה ל-CommemorationForm) ────────────
+const normalizeImageUrl = (url) => {
+  if (!url) return url;
+  if (url.includes('drive.google.com')) {
+    const fileId =
+      url.match(/\/d\/(.*?)\//)?.[1] ||
+      url.match(/id=(.*?)(?:&|$)/)?.[1];
+    if (fileId) return `https://lh3.googleusercontent.com/d/${fileId}`;
+  }
+  return url;
+};
+
+// ── Lightbox – תצוגת תמונה מלאה בלחיצה ───────────────────────────────────────
+function ImageLightbox({ src, alt, onClose }) {
+  useEffect(() => {
+    const handleKey = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [onClose]);
+
+  if (!src) return null;
+
   return (
-    <div className="fixed inset-0 bg-[#0d2340]/75 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl border-2 border-[#cfa756] p-8 max-w-sm w-full text-center" dir="rtl">
-        <div className="text-6xl mb-4">✅</div>
-        <h3 className="text-xl font-bold text-[#0d2340] mb-2">בקשתך נשלחה!</h3>
-        <p className="text-gray-600 mb-6 text-sm">הגבאי יצור עמך קשר בהקדם לאישור הבקשה. תודה רבה!</p>
-        <button onClick={onClose} className="bg-[#0d2340] text-[#cfa756] font-bold px-6 py-2.5 rounded-lg hover:bg-[#1a365d] w-full">
-          סגור
-        </button>
+    <div
+      style={{
+        position: 'fixed', inset: 0, background: 'rgba(13,35,64,.92)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        zIndex: 80, padding: '20px', cursor: 'zoom-out',
+        animation: 'fadeIn .2s ease',
+      }}
+      onClick={onClose}
+    >
+      <button
+        onClick={onClose}
+        aria-label="סגור"
+        style={{
+          position: 'absolute', top: '18px', left: '18px',
+          width: '38px', height: '38px', borderRadius: '50%',
+          background: 'rgba(255,255,255,.12)', border: '1px solid rgba(255,255,255,.25)',
+          color: '#fff', fontSize: '18px', cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 81,
+        }}
+      >
+        ✕
+      </button>
+      <img
+        src={src}
+        alt={alt}
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          maxWidth: '92vw', maxHeight: '90vh', objectFit: 'contain',
+          borderRadius: '12px', boxShadow: '0 24px 64px rgba(0,0,0,.6)',
+          cursor: 'default',
+        }}
+        draggable={false}
+      />
+      <style>{`@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }`}</style>
+    </div>
+  );
+}
+
+// ── מודאל ניהול (הוספה/עריכה) — למנהלים בלבד ────────────────────────────────
+const EMPTY_ADMIN_FORM = {
+  commemorationStatus: 'none',
+  itemName: '',
+  contributorName: '',
+  commemoratedName: '',
+  amount: '',
+  imageUrl: '',
+  date: new Date().toISOString().split('T')[0],
+};
+
+function AdminCommemorationModal({ initial, onClose, onSave }) {
+  const [form, setForm] = useState(
+    initial
+      ? {
+        commemorationStatus: initial.commemorationStatus || 'none',
+        itemName: initial.itemName || '',
+        contributorName: initial.contributorName || '',
+        commemoratedName: initial.commemoratedName || '',
+        amount: initial.amount != null ? String(initial.amount) : '',
+        imageUrl: normalizeImageUrl(initial.imageUrl || ''),
+        date: initial.date
+          ? new Date(initial.date).toISOString().split('T')[0]
+          : new Date().toISOString().split('T')[0],
+      }
+      : EMPTY_ADMIN_FORM
+  );
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  // ← האם הפריט "פנוי להנצחה" — עדיין אין מונצח/תורם בפועל
+  const isAvailable = form.commemorationStatus === 'none';
+
+  const handleStatusChange = (newStatus) => {
+    setForm((prev) => ({ ...prev, commemorationStatus: newStatus }));
+    setError('');
+  };
+
+  const handleSubmit = async () => {
+    if (!form.itemName.trim()) {
+      setError('שם הפריט הוא שדה חובה');
+      return;
+    }
+    // שדות אלה נדרשים רק כאשר הפריט אינו פנוי (כלומר כבר יש מונצח בפועל)
+    if (!isAvailable) {
+      if (!form.contributorName.trim() || !form.commemoratedName.trim()) {
+        setError('נא למלא שם תורם ושם מונצח (חובה כאשר הסטטוס אינו "פנוי להנצחה")');
+        return;
+      }
+      if (form.amount === '' || isNaN(Number(form.amount)) || Number(form.amount) < 0) {
+        setError('יש להזין סכום חוקי');
+        return;
+      }
+    }
+    setError('');
+    setSaving(true);
+    try {
+      await onSave({
+        ...form,
+        amount: form.amount === '' ? 0 : Number(form.amount),
+      });
+    } catch {
+      setError('שגיאה בשמירה — נסה שוב');
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div
+      style={{
+        position: 'fixed', inset: 0, background: 'rgba(13,35,64,.75)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        zIndex: 55, padding: '16px', backdropFilter: 'blur(2px)',
+      }}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div
+        dir="rtl"
+        style={{
+          background: '#f7f4e9', borderRadius: '16px', border: '2px solid #cfa756',
+          padding: '24px', width: '100%', maxWidth: '460px',
+          maxHeight: '90vh', overflowY: 'auto',
+        }}
+      >
+        <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#0d2340', marginBottom: '16px', borderBottom: '1px solid rgba(207,167,86,.4)', paddingBottom: '10px' }}>
+          {initial ? '✎ עריכת הנצחה' : '+ הוספת הנצחה חדשה'}
+        </h3>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+
+          {/* ← סטטוס בראש הטופס, כדי שיקבע מה נדרש בהמשך */}
+          <Field label="סטטוס הנצחה">
+            <select
+              style={inputStyle}
+              value={form.commemorationStatus}
+              onChange={(e) => handleStatusChange(e.target.value)}
+            >
+              {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
+                <option key={key} value={key}>{cfg.label}</option>
+              ))}
+            </select>
+            {isAvailable && (
+              <p style={{ fontSize: '11px', color: '#185fa5', marginTop: '4px' }}>
+                פריט פנוי — פרטי המונצח והתורם עדיין לא ידועים ואינם חובה.
+              </p>
+            )}
+          </Field>
+
+          <Field label="שם הפריט המונצח *">
+            <input
+              style={inputStyle}
+              value={form.itemName}
+              onChange={(e) => setForm({ ...form, itemName: e.target.value })}
+              placeholder="למשל: ספר תורה, עמוד תפילה..."
+            />
+          </Field>
+
+          {/* ← שדות אלה מוצגים תמיד אך מסומנים כחובה (*) רק כשלא "פנוי" */}
+          <Field label={`שם המונצח${isAvailable ? '' : ' *'}`}>
+            <input
+              style={inputStyle}
+              value={form.commemoratedName}
+              onChange={(e) => setForm({ ...form, commemoratedName: e.target.value })}
+              placeholder={isAvailable ? 'ימולא לאחר אישור בקשת הנצחה' : 'שם הנפטר לעילוי נשמתו'}
+            />
+          </Field>
+
+          <Field label={`שם התורם / המשפחה${isAvailable ? '' : ' *'}`}>
+            <input
+              style={inputStyle}
+              value={form.contributorName}
+              onChange={(e) => setForm({ ...form, contributorName: e.target.value })}
+              placeholder={isAvailable ? 'ימולא לאחר אישור בקשת הנצחה' : 'שם המשפחה או התורם'}
+            />
+          </Field>
+
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <Field label={`סכום (₪)${isAvailable ? '' : ' *'}`} style={{ flex: 1 }}>
+              <input
+                type="number" min="0" style={inputStyle}
+                value={form.amount}
+                onChange={(e) => setForm({ ...form, amount: e.target.value })}
+                placeholder="0"
+              />
+            </Field>
+            <Field label="תאריך" style={{ flex: 1 }}>
+              <input
+                type="date" style={inputStyle}
+                value={form.date}
+                onChange={(e) => setForm({ ...form, date: e.target.value })}
+              />
+            </Field>
+          </div>
+
+          <Field label="תמונה">
+            <ImageUploader
+              onUploaded={(url) => setForm((f) => ({ ...f, imageUrl: url }))}
+            />
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '10px 0' }}>
+              <div style={{ flex: 1, height: '1px', background: '#e5e7eb' }} />
+              <span style={{ fontSize: '11px', color: '#9ca3af' }}>או הדבק קישור</span>
+              <div style={{ flex: 1, height: '1px', background: '#e5e7eb' }} />
+            </div>
+
+            <input
+              type="url" dir="ltr" style={{ ...inputStyle, textAlign: 'left' }}
+              value={form.imageUrl}
+              onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
+              placeholder="https://... או קישור Google Drive"
+            />
+
+            {form.imageUrl && (
+              <div style={{ marginTop: '8px', height: '110px', borderRadius: '10px', overflow: 'hidden', background: '#f3f4f6', border: '1px solid #e5e7eb' }}>
+                <img
+                  src={normalizeImageUrl(form.imageUrl)}
+                  alt="תצוגה מקדימה"
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  onError={(e) => { e.target.style.display = 'none'; }}
+                />
+              </div>
+            )}
+          </Field>
+
+          {error && <p style={{ color: '#a32d2d', fontSize: '12px', fontWeight: 600 }}>{error}</p>}
+        </div>
+
+        <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '20px', paddingTop: '14px', borderTop: '1px solid rgba(207,167,86,.25)' }}>
+          <button onClick={onClose} style={cancelBtnStyle}>ביטול</button>
+          <button onClick={handleSubmit} disabled={saving} style={submitBtnStyle}>
+            {saving ? 'שומר...' : 'שמור'}
+          </button>
+        </div>
       </div>
     </div>
   );
 }
 
-export default function PortalItem() {
-  const { itemId } = useParams();
-  const navigate = useNavigate();
-  const [item, setItem] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [sending, setSending] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [formError, setFormError] = useState('');
+// ── מודאל בקשת הנצחה (ציבורי — ללא שינוי) ────────────────────────────────────
+function RequestModal({ item, onClose, onSuccess }) {
   const [form, setForm] = useState({
-    name: '', phone: '', email: '', dedicationType: 'לזכות', dedicationName: '', adminNote: '',
+    name: '', phone: '', email: '',
+    dedicationType: 'לזכות', dedicationName: '', adminNote: '',
   });
-
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const res = await fetchItemById(itemId);
-        setItem(res.data);
-      } catch { setError('שגיאה בטעינת הפריט'); }
-      finally { setLoading(false); }
-    };
-    load();
-  }, [itemId]);
+  const [sending, setSending] = useState(false);
+  const [formError, setFormError] = useState('');
 
   const handleSubmit = async () => {
     setFormError('');
     if (!form.name.trim() || !form.phone.trim() || !form.email.trim()) {
-      setFormError('נא למלא את כל השדות המסומנים');
+      setFormError('נא למלא את כל השדות המסומנים *');
       return;
     }
     setSending(true);
     try {
-      await submitSponsorshipRequest({
+      await submitCommemorationRequest({
         ...form,
-        itemId,
-        categoryId: item.categoryId?._id || item.categoryId,
+        itemName: item.itemName,
+        commemorationId: item._id,
       });
-      setSuccess(true);
-      setForm({ name: '', phone: '', email: '', dedicationType: 'לזכות', dedicationName: '', adminNote: '' });
-    } catch { setFormError('שגיאה בשליחה — נסה שוב'); }
-    finally { setSending(false); }
+      onSuccess();
+    } catch {
+      setFormError('שגיאה בשליחה — נסה שוב');
+    } finally {
+      setSending(false);
+    }
   };
 
-  if (loading) return <div dir="rtl" className="text-center py-20">טוען...</div>;
-  if (error) return <div dir="rtl" className="text-center py-20 text-red-600">{error}</div>;
-  if (!item) return null;
-
-  const categoryId = item.categoryId?._id || item.categoryId;
-
   return (
-    <div dir="rtl" className="min-h-screen bg-[#f7f4e9]">
-      <div className="bg-gradient-to-b from-[#0d2340] to-[#1a365d] py-10 px-6">
-        <div className="max-w-2xl mx-auto">
-          <button onClick={() => navigate(ROUTES.PORTAL_CATEGORY.replace(':categoryId', categoryId))}
-            className="text-[#cfa756] text-sm mb-4 flex items-center gap-1 hover:underline">
-            → חזרה לרשימה
-          </button>
-          <h1 className="text-3xl font-bold text-[#cfa756]">{item.title}</h1>
-          {item.date && <p className="text-[#f7f4e9]/70 mt-1">📅 {item.date}</p>}
+    <div
+      style={{
+        position: 'fixed', inset: 0, background: 'rgba(13,35,64,.72)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        zIndex: 50, padding: '16px',
+      }}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div
+        dir="rtl"
+        style={{
+          background: '#fff', borderRadius: '16px',
+          border: '1.5px solid rgba(207,167,86,.4)',
+          padding: '28px', width: '100%', maxWidth: '440px',
+          maxHeight: '90vh', overflowY: 'auto',
+        }}
+      >
+        <div style={{ marginBottom: '20px', paddingBottom: '14px', borderBottom: '1px solid rgba(207,167,86,.25)' }}>
+          <h3 style={{ fontSize: '17px', fontWeight: 700, color: '#0d2340', marginBottom: '4px' }}>
+            📝 בקשת הנצחה
+          </h3>
+          <p style={{ fontSize: '12px', color: '#6b7280' }}>
+            פריט: <strong style={{ color: '#0d2340' }}>{item.itemName}</strong>
+          </p>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <Field label="שם מלא *">
+            <input
+              style={inputStyle}
+              placeholder="ישראל ישראלי"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+            />
+          </Field>
+
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <Field label="טלפון *" style={{ flex: 1 }}>
+              <input
+                style={{ ...inputStyle, direction: 'ltr' }}
+                placeholder="050-0000000"
+                value={form.phone}
+                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              />
+            </Field>
+            <Field label="אימייל *" style={{ flex: 1 }}>
+              <input
+                type="email"
+                style={{ ...inputStyle, direction: 'ltr' }}
+                placeholder="email@example.com"
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+              />
+            </Field>
+          </div>
+
+          <Field label="סוג ההנצחה">
+            <select
+              style={inputStyle}
+              value={form.dedicationType}
+              onChange={(e) => setForm({ ...form, dedicationType: e.target.value })}
+            >
+              {DEDICATION_TYPES.map((t) => <option key={t}>{t}</option>)}
+            </select>
+          </Field>
+
+          <Field label="שם לציון בהנצחה">
+            <input
+              style={inputStyle}
+              placeholder="לדוג׳: חנה בת רות"
+              value={form.dedicationName}
+              onChange={(e) => setForm({ ...form, dedicationName: e.target.value })}
+            />
+          </Field>
+
+          <Field label="הערה לגבאי">
+            <textarea
+              style={{ ...inputStyle, minHeight: '72px', resize: 'vertical' }}
+              placeholder="פרטים נוספים, בקשות מיוחדות..."
+              value={form.adminNote}
+              onChange={(e) => setForm({ ...form, adminNote: e.target.value })}
+            />
+          </Field>
+
+          {formError && (
+            <p style={{ color: '#a32d2d', fontSize: '12px', fontWeight: 600 }}>{formError}</p>
+          )}
+
+          <CommunityPaymentButton />
+          <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '4px' }}>
+            <button onClick={onClose} style={cancelBtnStyle}>ביטול</button>
+            <button onClick={handleSubmit} disabled={sending} style={submitBtnStyle}>
+              {sending ? '⏳ שולח...' : '📤 שלח בקשה'}
+            </button>
+          </div>
         </div>
       </div>
-
-      <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
-        <div className="bg-white rounded-xl shadow border border-[#cfa756]/30 p-6">
-          <div className="h-1 -mt-6 -mx-6 mb-5 bg-gradient-to-r from-[#0d2340] via-[#cfa756] to-[#0d2340] rounded-t-xl" />
-          {item.description && <p className="text-gray-700 leading-relaxed whitespace-pre-wrap mb-4">{item.description}</p>}
-          {item.price > 0 && (
-            <div className="flex items-center gap-2 mt-4">
-              <span className="text-sm text-gray-500">סכום תמיכה מומלץ:</span>
-              <span className="text-lg font-bold text-[#0d2340] bg-[#cfa756]/15 border border-[#cfa756] px-3 py-0.5 rounded-full">
-                ₪{item.price}
-              </span>
-            </div>
-          )}
-          {!item.available && item.sponsorshipStatus === 'sponsored' && (
-            <p className="mt-4 text-sm text-green-600 font-medium">
-              ✡ פריט זה הוקדש {item.dedicationType ? `${item.dedicationType} ` : ''}
-              <span className="font-bold">{item.dedicatedName}</span>
-            </p>
-          )}
-          {!item.available && item.sponsorshipStatus !== 'sponsored' && (
-            <p className="mt-4 text-sm text-red-500 font-medium">⚠️ פריט זה אינו זמין כרגע לתמיכה</p>
-          )}        </div>
-
-        {item.available && (
-          <div className="bg-white rounded-xl shadow border border-[#cfa756]/30 p-6">
-            <div className="h-1 -mt-6 -mx-6 mb-5 bg-gradient-to-r from-[#cfa756] via-[#0d2340] to-[#cfa756] rounded-t-xl" />
-            <h2 className="text-xl font-bold text-[#0d2340] mb-5">📝 טופס הקדשה / תמיכה</h2>
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm font-medium text-[#0d2340]">שם מלא *</label>
-                <input className="mt-1 w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-[#cfa756] outline-none"
-                  value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="ישראל ישראלי" />
-              </div>
-              <div className="flex gap-3">
-                <div className="flex-1">
-                  <label className="text-sm font-medium text-[#0d2340]">טלפון *</label>
-                  <input type="tel" dir="ltr"
-                    className="mt-1 w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-[#cfa756] outline-none"
-                    value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="050-0000000" />
-                </div>
-                <div className="flex-1">
-                  <label className="text-sm font-medium text-[#0d2340]">אימייל *</label>
-                  <input type="email" dir="ltr"
-                    className="mt-1 w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-[#cfa756] outline-none"
-                    value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="email@example.com" />
-                </div>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-[#0d2340]">סוג ההנצחה</label>
-                <select className="mt-1 w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-[#cfa756] outline-none bg-white"
-                  value={form.dedicationType} onChange={(e) => setForm({ ...form, dedicationType: e.target.value })}>
-                  {DEDICATION_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-[#0d2340]">שם לציון בהנצחה</label>
-                <input className="mt-1 w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-[#cfa756] outline-none"
-                  value={form.dedicationName} onChange={(e) => setForm({ ...form, dedicationName: e.target.value })} placeholder="לדוג': חנה בת רות" />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-[#0d2340]">הערה לגבאי</label>
-                <textarea className="mt-1 w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-[#cfa756] outline-none"
-                  rows={3} value={form.adminNote} onChange={(e) => setForm({ ...form, adminNote: e.target.value })}
-                  placeholder="פרטים נוספים, בקשות מיוחדות..." />
-              </div>
-              <CommunityPaymentButton />
-              {formError && <p className="text-red-600 text-sm font-medium">{formError}</p>}
-              <button onClick={handleSubmit} disabled={sending}
-                className="w-full bg-[#0d2340] text-[#cfa756] font-bold py-3 rounded-lg hover:bg-[#1a365d] disabled:opacity-50 shadow-md text-base">
-                {sending ? '⏳ שולח...' : '📤 שלח בקשת הנצחה'}
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-      {success && <SuccessBanner onClose={() => navigate(ROUTES.PORTAL)} />}
     </div>
   );
 }
-</file>
 
-<file path="client/src/services/portalService.js">
-import API from './api';
+// ── באנר הצלחה ────────────────────────────────────────────────────────────────
+function SuccessBanner({ onClose }) {
+  return (
+    <div
+      style={{
+        position: 'fixed', inset: 0, background: 'rgba(13,35,64,.72)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        zIndex: 60, padding: '16px',
+      }}
+    >
+      <div
+        dir="rtl"
+        style={{
+          background: '#fff', borderRadius: '16px',
+          border: '2px solid #cfa756',
+          padding: '36px 28px', maxWidth: '360px', width: '100%', textAlign: 'center',
+        }}
+      >
+        <div style={{ fontSize: '52px', marginBottom: '12px' }}>✅</div>
+        <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#0d2340', marginBottom: '8px' }}>
+          בקשתך נשלחה!
+        </h3>
+        <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '24px' }}>
+          הגבאי יצור עמך קשר בהקדם לאישור הבקשה. תודה רבה!
+        </p>
+        <button onClick={onClose} style={submitBtnStyle}>סגור</button>
+      </div>
+    </div>
+  );
+}
 
-export const fetchCategories      = ()           => API.get('/categories');
-export const createCategory       = (data)       => API.post('/categories', data);
-export const updateCategory       = (id, data)   => API.put(`/categories/${id}`, data);
-export const deleteCategory       = (id)         => API.delete(`/categories/${id}`);
+// ── כרטיס הנצחה ───────────────────────────────────────────────────────────────
+function CommemorationCard({ item, onRequest, isAdmin, onEdit, onDelete, onImageClick }) {
+  const cfg = STATUS_CONFIG[item.commemorationStatus] || STATUS_CONFIG.none;
+  const isCommemoratedAlready = item.commemorationStatus === 'commemorated';
+  const isPending = item.commemorationStatus === 'pending';
 
-export const fetchItemsByCategory = (catId)      => API.get(`/portal-items/category/${catId}`);
-export const fetchItemById        = (id)         => API.get(`/portal-items/${id}`);
-export const createItem           = (data)       => API.post('/portal-items', data);
-export const updateItem           = (id, data)   => API.put(`/portal-items/${id}`, data);
-export const deleteItem           = (id)         => API.delete(`/portal-items/${id}`);
+  const formattedDate = item.date
+    ? new Date(item.date).toLocaleDateString('he-IL', { year: 'numeric', month: 'long', day: 'numeric' })
+    : null;
 
-export const submitSponsorshipRequest = (data)   => API.post('/sponsorships', data);
-export const fetchAllSponsorships     = ()       => API.get('/sponsorships');
-export const updateSponsorshipStatus  = (id, status) => API.patch(`/sponsorships/${id}/status`, { status });
-export const submitCommemorationRequest = (data) =>
-    API.post('/sponsorships/from-commemoration', data);
+  const formattedAmount = item.amount
+    ? new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS', minimumFractionDigits: 0 }).format(item.amount)
+    : null;
+
+  const imgSrc = item.imageUrl ? normalizeImageUrl(item.imageUrl) : null;
+
+  return (
+    <div
+      dir="rtl"
+      style={{
+        position: 'relative',
+        background: '#fff', borderRadius: '16px',
+        border: `1px solid ${isCommemoratedAlready ? 'rgba(97,196,89,.35)' : isPending ? 'rgba(239,159,39,.3)' : 'rgba(207,167,86,.2)'}`,
+        boxShadow: '0 2px 8px rgba(13,35,64,.06)',
+        overflow: 'hidden', display: 'flex', flexDirection: 'column',
+        transition: 'box-shadow .2s, transform .2s',
+      }}
+      onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 6px 24px rgba(13,35,64,.13)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+      onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 2px 8px rgba(13,35,64,.06)'; e.currentTarget.style.transform = 'translateY(0)'; }}
+    >
+      {/* כפתורי ניהול — למנהלים בלבד */}
+      {isAdmin && (
+        <div style={{ position: 'absolute', top: '8px', left: '8px', zIndex: 5, display: 'flex', gap: '4px' }}>
+          <button
+            onClick={(e) => { e.stopPropagation(); onEdit(item); }}
+            title="עריכה"
+            style={{
+              background: '#cfa756', color: '#0d2340', fontSize: '11px', fontWeight: 700,
+              padding: '4px 8px', borderRadius: '6px', border: 'none', cursor: 'pointer',
+              boxShadow: '0 1px 4px rgba(0,0,0,.2)',
+            }}
+          >✎</button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onDelete(item._id); }}
+            title="מחיקה"
+            style={{
+              background: '#a61b1b', color: '#fff', fontSize: '11px', fontWeight: 700,
+              padding: '4px 8px', borderRadius: '6px', border: 'none', cursor: 'pointer',
+              boxShadow: '0 1px 4px rgba(0,0,0,.2)',
+            }}
+          >✕</button>
+        </div>
+      )}
+
+      {/* תמונה / placeholder — לחיצה על תמונה קיימת פותחת Lightbox */}
+      {imgSrc ? (
+        <img
+          src={imgSrc}
+          alt={`הנצחת ${item.commemoratedName}`}
+          style={{ width: '100%', height: '140px', objectFit: 'cover', cursor: 'zoom-in' }}
+          onClick={() => onImageClick({ src: imgSrc, alt: item.commemoratedName || item.itemName })}
+          onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+        />
+      ) : null}
+      <div
+        style={{
+          display: imgSrc ? 'none' : 'flex',
+          width: '100%', height: '140px',
+          background: 'linear-gradient(135deg, #0d2340 0%, #1a365d 100%)',
+          alignItems: 'center', justifyContent: 'center',
+        }}
+      >
+        <HeartIcon />
+      </div>
+
+      {/* גוף */}
+      <div style={{ padding: '16px', flex: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+          <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#0d2340', lineHeight: 1.3, flex: 1 }}>
+            {item.itemName}
+          </h3>
+          <span
+            style={{
+              fontSize: '10px', fontWeight: 600, padding: '3px 8px', borderRadius: '12px', whiteSpace: 'nowrap',
+              background: cfg.bg, color: cfg.text, border: `1px solid ${cfg.border}`,
+            }}
+          >
+            {cfg.label}
+          </span>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', flex: 1 }}>
+          {item.commemoratedName && item.commemorationStatus !== 'none' && (
+            <Row label='מוקדש ל:' value={item.commemoratedName} bold />
+          )}
+          {item.contributorName && item.commemorationStatus !== 'none' && (
+            <Row label='נתרם ע"י:' value={item.contributorName} />
+          )}
+          {formattedAmount && <Row label="סכום:" value={formattedAmount} />}
+          {formattedDate && (
+            <p style={{ fontSize: '10px', color: '#9ca3af', marginTop: '6px', paddingTop: '8px', borderTop: '1px solid #f3f4f6' }}>
+              {formattedDate}
+            </p>
+          )}
+        </div>
+
+        {!isCommemoratedAlready && (
+          <button
+            onClick={() => onRequest(item)}
+            disabled={isPending}
+            style={{
+              marginTop: '4px', width: '100%', padding: '8px',
+              borderRadius: '8px', border: 'none', fontSize: '12px', fontWeight: 700,
+              cursor: isPending ? 'default' : 'pointer',
+              background: isPending ? '#f3f4f6' : '#0d2340',
+              color: isPending ? '#9ca3af' : '#cfa756',
+              transition: 'background .15s',
+            }}
+          >
+            {isPending ? '⏳ בקשה ממתינה לאישור' : '📤 בקש הנצחה'}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── עמוד ראשי ─────────────────────────────────────────────────────────────────
+export default function Commemorations() {
+  const { isAdmin } = useAuth();
+  const [commemorations, setCommemorations] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [activeFilter, setActiveFilter] = useState('all');
+  const [modalItem, setModalItem] = useState(null);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [adminModal, setAdminModal] = useState(null); // null | 'add' | { item }
+  const [actionError, setActionError] = useState('');
+  const [lightbox, setLightbox] = useState(null); // null | { src, alt }
+
+  const load = () => {
+    setLoading(true);
+    fetchCommemorations()
+      .then((res) => { setCommemorations(res.data); setError(null); })
+      .catch(() => setError('אירעה שגיאה בטעינת ההנצחות. אנא נסה שוב מאוחר יותר.'))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const counts = {
+    all: commemorations.length,
+    commemorated: commemorations.filter((i) => i.commemorationStatus === 'commemorated').length,
+    pending: commemorations.filter((i) => i.commemorationStatus === 'pending').length,
+    none: commemorations.filter((i) => i.commemorationStatus === 'none').length,
+  };
+
+  const filtered = activeFilter === 'all'
+    ? commemorations
+    : commemorations.filter((i) => i.commemorationStatus === activeFilter);
+
+  const FILTERS = [
+    { key: 'all', label: `הכל (${counts.all})` },
+    { key: 'commemorated', label: `הונצח (${counts.commemorated})` },
+    { key: 'pending', label: `ממתין לאישור (${counts.pending})` },
+    { key: 'none', label: `פנוי להנצחה (${counts.none})` },
+  ];
+
+  // ── פעולות ניהול (אדמין בלבד) ──────────────────────────────────────────────
+  const handleAdminSave = async (form) => {
+    setActionError('');
+    try {
+      if (adminModal === 'add') {
+        await createCommemoration(form);
+      } else {
+        await updateCommemoration(adminModal.item._id, form);
+      }
+      setAdminModal(null);
+      load();
+    } catch {
+      setActionError('שגיאה בשמירת ההנצחה');
+      throw new Error('save failed'); // כדי שהמודאל ידע להישאר פתוח ולהציג שגיאה
+    }
+  };
+
+  const handleAdminDelete = async (id) => {
+    if (!window.confirm('האם אתה בטוח שברצונך למחוק הנצחה זו?')) return;
+    try {
+      await deleteCommemoration(id);
+      setCommemorations((prev) => prev.filter((c) => c._id !== id));
+    } catch {
+      setActionError('שגיאה במחיקת ההנצחה');
+    }
+  };
+
+  const showAdminBar = isAdmin && isAdmin();
+
+  return (
+    <div dir="rtl" style={{ minHeight: '100vh', background: '#f7f4ee' }}>
+      <PageHeader
+        title="לוח הנצחות"
+        subtitle="הנצחות ותרומות לעילוי נשמת יקירינו"
+      />
+
+      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px 16px' }}>
+        {/* שורת ניהול — למנהלים בלבד */}
+        {showAdminBar && (
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
+            <button
+              onClick={() => setAdminModal('add')}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '6px',
+                background: '#0d2340', color: '#cfa756', fontWeight: 700,
+                padding: '9px 18px', borderRadius: '10px', border: 'none',
+                cursor: 'pointer', fontSize: '13px', boxShadow: '0 2px 6px rgba(13,35,64,.2)',
+              }}
+            >
+              <span style={{ fontSize: '15px' }}>+</span> הוסף הנצחה
+            </button>
+          </div>
+        )}
+
+        {actionError && (
+          <div style={{ marginBottom: '16px', background: '#fef2f2', border: '1px solid #fca5a5', color: '#b91c1c', borderRadius: '10px', padding: '10px 16px', fontSize: '13px', fontWeight: 600 }}>
+            {actionError}
+          </div>
+        )}
+
+        {!loading && !error && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '28px' }}>
+            {FILTERS.map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => setActiveFilter(key)}
+                style={{
+                  padding: '7px 18px', borderRadius: '24px', fontSize: '13px', fontWeight: 600,
+                  border: activeFilter === key ? '1.5px solid #0d2340' : '1.5px solid #d1d5db',
+                  background: activeFilter === key ? '#0d2340' : '#fff',
+                  color: activeFilter === key ? '#cfa756' : '#6b7280',
+                  cursor: 'pointer', transition: 'all .15s',
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {loading && <Spinner />}
+        {error && <ErrorBox msg={error} />}
+        {!loading && !error && filtered.length === 0 && (
+          <div style={{ textAlign: 'center', padding: '64px 0', color: '#9ca3af' }}>
+            <HeartIcon size={56} />
+            <p style={{ marginTop: '16px', fontSize: '16px' }}>אין הנצחות להצגה כרגע</p>
+          </div>
+        )}
+
+        {!loading && !error && filtered.length > 0 && (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
+            gap: '20px',
+          }}>
+            {filtered.map((item) => (
+              <CommemorationCard
+                key={item._id}
+                item={item}
+                onRequest={setModalItem}
+                isAdmin={showAdminBar}
+                onEdit={(it) => setAdminModal({ item: it })}
+                onDelete={handleAdminDelete}
+                onImageClick={setLightbox}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {modalItem && !showSuccess && (
+        <RequestModal
+          item={modalItem}
+          onClose={() => setModalItem(null)}
+          onSuccess={() => { setModalItem(null); setShowSuccess(true); }}
+        />
+      )}
+
+      {showSuccess && (
+        <SuccessBanner onClose={() => setShowSuccess(false)} />
+      )}
+
+      {adminModal && (
+        <AdminCommemorationModal
+          initial={adminModal !== 'add' ? adminModal.item : null}
+          onClose={() => setAdminModal(null)}
+          onSave={handleAdminSave}
+        />
+      )}
+
+      {lightbox && (
+        <ImageLightbox
+          src={lightbox.src}
+          alt={lightbox.alt}
+          onClose={() => setLightbox(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── קומפוננטות עזר ────────────────────────────────────────────────────────────
+function Field({ label, children, style }) {
+  return (
+    <div style={style}>
+      <label style={{ fontSize: '12px', fontWeight: 600, color: '#374151', marginBottom: '5px', display: 'block' }}>
+        {label}
+      </label>
+      {children}
+    </div>
+  );
+}
+
+function Row({ label, value, bold }) {
+  return (
+    <div style={{ display: 'flex', gap: '6px', fontSize: '12px' }}>
+      <span style={{ color: '#cfa756', fontWeight: 700, minWidth: '90px', flexShrink: 0 }}>{label}</span>
+      <span style={{ color: '#0d2340', fontWeight: bold ? 700 : 400 }}>{value}</span>
+    </div>
+  );
+}
+
+function HeartIcon({ size = 36 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="#cfa756" strokeWidth="1.2">
+      <path strokeLinecap="round" strokeLinejoin="round"
+        d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5
+           2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09
+           C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5
+           c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+    </svg>
+  );
+}
+
+function Spinner() {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'center', padding: '80px 0' }}>
+      <div style={{
+        width: '40px', height: '40px', borderRadius: '50%',
+        border: '3px solid #cfa756', borderTopColor: 'transparent',
+        animation: 'spin 0.8s linear infinite',
+      }} />
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
+}
+
+function ErrorBox({ msg }) {
+  return (
+    <div style={{
+      background: '#fef2f2', border: '1px solid #fca5a5', color: '#b91c1c',
+      borderRadius: '12px', padding: '20px', textAlign: 'center', maxWidth: '420px', margin: '0 auto',
+    }}>
+      <p style={{ fontWeight: 600 }}>{msg}</p>
+    </div>
+  );
+}
+
+// סגנונות משותפים
+const inputStyle = {
+  width: '100%', border: '1px solid #d1d5db', borderRadius: '8px',
+  padding: '9px 12px', fontSize: '13px', outline: 'none',
+  fontFamily: 'inherit', background: '#fff', color: '#111827',
+  transition: 'border-color .15s',
+};
+
+const cancelBtnStyle = {
+  padding: '9px 20px', border: '1px solid #d1d5db', borderRadius: '8px',
+  background: '#fff', color: '#6b7280', cursor: 'pointer', fontSize: '13px',
+};
+
+const submitBtnStyle = {
+  padding: '9px 24px', background: '#0d2340', color: '#cfa756',
+  border: 'none', borderRadius: '8px', fontSize: '13px',
+  fontWeight: 700, cursor: 'pointer',
+};
 </file>
 
 <file path="server/server.js">

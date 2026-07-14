@@ -4,7 +4,17 @@ import { useAuth } from '../components/context/authContext';
 import { fetchCategories, fetchItemsByCategory, createItem, updateItem, deleteItem } from '../services/portalService';
 import { ROUTES } from '../constants/routes';
 import PageHeader from '../components/common/PageHeader';
-
+// ── נירמול קישורי Google Drive (זהה ל-Portal.jsx / Commemorations.jsx) ─────
+const normalizeImageUrl = (url) => {
+  if (!url) return url;
+  if (url.includes('drive.google.com')) {
+    const fileId =
+      url.match(/\/d\/(.*?)\//)?.[1] ||
+      url.match(/id=(.*?)(?:&|$)/)?.[1];
+    if (fileId) return `https://lh3.googleusercontent.com/d/${fileId}`;
+  }
+  return url;
+};
 function ItemModal({ initial, categoryId, onClose, onSave }) {
   const [form, setForm] = useState(
     initial || { title: '', description: '', date: '', price: 0, available: true, order: 0, categoryId }
@@ -189,9 +199,22 @@ export default function PortalCategory() {
     await deleteItem(id);
     load();
   };
+  const bgImage = category?.imageUrl ? normalizeImageUrl(category.imageUrl) : null;
 
   return (
-    <div dir="rtl" className="min-h-screen bg-[#f7f4ee]">
+    <div
+      dir="rtl"
+      className="min-h-screen transition-all duration-500"
+      style={{
+        backgroundColor: '#f7f4ee',
+        backgroundImage: bgImage
+          ? `linear-gradient(rgba(247,244,238,.88), rgba(247,244,238,.88)), url(${bgImage})`
+          : undefined,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundAttachment: 'fixed',
+      }}
+    >
       <PageHeader
         title={category ? `${category.icon || ''} ${category.name}` : 'טוען...'}
         subtitle={category?.description}

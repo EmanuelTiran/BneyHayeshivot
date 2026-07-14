@@ -5,6 +5,7 @@ const categorySchema = new mongoose.Schema({
   description: { type: String, default: '' },
   icon:        { type: String, default: '' },
   color:       { type: String, default: '#cfa756' },
+  imageUrl:    { type: String, default: '', trim: true }, // ← חדש
   order:       { type: Number, default: 0 },
 }, { timestamps: true });
 
