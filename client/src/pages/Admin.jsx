@@ -1,12 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
-import {
+import { useCallback, useEffect, useRef, useState } from 'react';
+import api, {
   fetchContactMessages, updateContactMessageHandled,
   fetchAllUsers, addMailingListUser, updateMailingListUser,
   deleteMailingListUser, toggleUserNewsletter,
 } from '../services/api';
-import CommemorationForm from '../components/Admin/CommemorationForm';
 import { fetchAllSponsorships, updateSponsorshipStatus } from '../services/portalService';
 import PageHeader from '../components/common/PageHeader';
+import { useAdminAlerts } from '../hooks/useAdminAlerts';
 
 // ── וולידציית אימייל משותפת ────────────────────────────────────────────────
 const isValidEmail = (email) => {
@@ -21,7 +21,66 @@ const tabInStyle = `
     from { opacity: 0; transform: translateY(3px); }
     to   { opacity: 1; transform: translateY(0); }
   }
+
+  @keyframes adminGlowDot {
+    0%, 100% { opacity: .3; transform: scale(.75); }
+    50%      { opacity: 1; transform: scale(1.25); }
+  }
+
+  @keyframes adminGoldLine {
+    0%, 100% { opacity: .55; filter: drop-shadow(0 0 3px rgba(207,167,86,.35)); }
+    50%      { opacity: 1; filter: drop-shadow(0 0 9px rgba(247,217,138,.9)); }
+  }
 `;
+
+// ── כותרת אחידה לטאבים ──────────────────────────────────────────────────────
+function AdminTabHeader({ title, subtitle }) {
+  const dots = [
+    { top: '18%', right: '8%', delay: '0s' },
+    { top: '32%', right: '18%', delay: '.7s' },
+    { top: '20%', left: '11%', delay: '1.2s' },
+    { top: '62%', left: '20%', delay: '.35s' },
+    { top: '70%', right: '27%', delay: '1.7s' },
+  ];
+
+  return (
+    <header
+      className="relative overflow-hidden rounded-2xl px-5 py-6 mb-6 text-center border border-[#cfa756]/35"
+      style={{
+        background: 'linear-gradient(135deg, #0a192f 0%, #0d2340 52%, #122b4d 100%)',
+        boxShadow: '0 12px 30px rgba(13,35,64,.22), inset 0 0 32px rgba(207,167,86,.045)',
+      }}
+    >
+      {dots.map((dot, index) => (
+        <span
+          key={index}
+          aria-hidden="true"
+          className="absolute h-1.5 w-1.5 rounded-full bg-[#f7d98a] pointer-events-none"
+          style={{
+            ...dot,
+            boxShadow: '0 0 7px #f7d98a, 0 0 14px rgba(207,167,86,.8)',
+            animation: `adminGlowDot 2.4s ease-in-out ${dot.delay} infinite`,
+          }}
+        />
+      ))}
+
+      <div className="relative z-10">
+        <h2 className="text-2xl sm:text-3xl font-bold text-[#f7d98a] drop-shadow-[0_0_10px_rgba(207,167,86,.38)]">
+          {title}
+        </h2>
+        {subtitle && <p className="mt-2 text-sm text-[#f7f4e9]/70">{subtitle}</p>}
+        <div
+          aria-hidden="true"
+          className="mx-auto mt-4 h-[2px] w-32 rounded-full"
+          style={{
+            background: 'linear-gradient(90deg, transparent, #cfa756, #f7d98a, #cfa756, transparent)',
+            animation: 'adminGoldLine 2.2s ease-in-out infinite',
+          }}
+        />
+      </div>
+    </header>
+  );
+}
 
 // ── מודאל עריכת משתמש ─────────────────────────────────────────────────────
 function EditUserModal({ user, onClose, onSave }) {
@@ -72,9 +131,8 @@ function EditUserModal({ user, onClose, onSave }) {
             <input
               type="email"
               dir="ltr"
-              className={`mt-1 w-full rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-[#cfa756] border ${
-                emailInvalid ? 'border-red-500' : 'border-gray-300'
-              }`}
+              className={`mt-1 w-full rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-[#cfa756] border ${emailInvalid ? 'border-red-500' : 'border-gray-300'
+                }`}
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
             />
@@ -97,12 +155,13 @@ function EditUserModal({ user, onClose, onSave }) {
 }
 
 // ── טאב: הודעות צור קשר ──────────────────────────────────────────────────────
-function ContactMessages() {
+function ContactMessages({ onAlertsChange }) {
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
   const [updatingIds, setUpdatingIds] = useState([]);
+  const [deletingIds, setDeletingIds] = useState([]);
 
   useEffect(() => {
     const loadMessages = async () => {
@@ -133,10 +192,27 @@ function ContactMessages() {
             : item
         )
       );
+      await onAlertsChange?.();
     } catch {
       setError('עדכון סטטוס נכשל, נסה שוב');
     } finally {
       setUpdatingIds((prev) => prev.filter((itemId) => itemId !== id));
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!id || !window.confirm('למחוק את הודעת צור הקשר לצמיתות?')) return;
+
+    setDeletingIds((prev) => [...prev, id]);
+    setError('');
+    try {
+      await api.delete(`/contact/${id}`);
+      setMessages((prev) => prev.filter((item) => (item._id || item.id) !== id));
+      await onAlertsChange?.();
+    } catch {
+      setError('מחיקת ההודעה נכשלה. ודא שקיים בשרת נתיב DELETE /api/contact/:id');
+    } finally {
+      setDeletingIds((prev) => prev.filter((itemId) => itemId !== id));
     }
   };
 
@@ -154,6 +230,7 @@ function ContactMessages() {
 
   return (
     <section className="max-w-5xl mx-auto">
+      {/* <AdminTabHeader title="הודעות צור קשר" subtitle="צפייה, טיפול ומחיקה של הודעות שהתקבלו מהאתר" /> */}
       <FilterBar filters={FILTERS} active={activeFilter} onChange={setActiveFilter} />
 
       {isLoading && <p className="text-center py-6">טוען הודעות...</p>}
@@ -167,36 +244,179 @@ function ContactMessages() {
           {filteredMessages.map((item) => {
             const messageId = item._id || item.id;
             const isUpdating = messageId ? updatingIds.includes(messageId) : false;
+            const isDeleting = messageId ? deletingIds.includes(messageId) : false;
             return (
               <article
                 key={messageId || `${item.email}-${item.date}`}
-                className={`bg-white shadow rounded-lg p-4 border transition-colors ${item.handled ? 'border-green-300 bg-green-50/40' : 'border-gray-200'
-                  }`}
+                className="group relative overflow-hidden rounded-2xl transition-all duration-300 hover:-translate-y-1"
+                style={{
+                  background:
+                    "linear-gradient(180deg, rgba(18,32,56,.98) 0%, rgba(13,35,64,.97) 45%, rgba(10,25,47,.98) 100%)",
+
+                  border: item.handled
+                    ? "1px solid rgba(76,175,80,.45)"
+                    : "2px solid #a61b1b",
+
+                  boxShadow: item.handled
+                    ? "0 10px 30px rgba(76,175,80,.18)"
+                    : "0 10px 30px rgba(0,0,0,.35), 0 0 16px rgba(166,27,27,.35)",
+
+                  backdropFilter: "blur(18px)",
+                }}
               >
-                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 mb-2">
-                  <h2 className="text-lg font-semibold">{item.name || 'ללא שם'}</h2>
-                  <time className="text-sm text-gray-500">
-                    {item.date ? new Date(item.date).toLocaleString('he-IL') : 'ללא תאריך'}
-                  </time>
+                {/* Glow רקע */}
+                <div
+                  className="absolute inset-0 pointer-events-none"
+                  style={{
+                    background: `
+        radial-gradient(
+          circle at 15% 20%,
+          rgba(207,167,86,.08),
+          transparent 35%
+        ),
+        radial-gradient(
+          circle at 85% 15%,
+          rgba(207,167,86,.05),
+          transparent 40%
+        )
+      `,
+                  }}
+                />
+
+                <div className="relative z-10 p-5">
+                  {/* Header */}
+                  <div className="flex flex-col gap-3 mb-4 sm:flex-row sm:justify-between sm:items-start">
+                    <div>
+                      <h2
+                        className="text-xl font-bold"
+                        style={{
+                          color: "#f7d98a",
+                          textShadow: "0 0 10px rgba(207,167,86,.35)",
+                        }}
+                      >
+                        {item.name || "ללא שם"}
+                      </h2>
+
+                      <p
+                        className="mt-1 text-sm"
+                        style={{
+                          color: "rgba(247,244,233,.72)",
+                        }}
+                      >
+                        {item.email || "ללא אימייל"}
+                      </p>
+                    </div>
+
+                    <time
+                      className="text-sm whitespace-nowrap"
+                      style={{
+                        color: "rgba(247,244,233,.55)",
+                      }}
+                    >
+                      {item.date
+                        ? new Date(item.date).toLocaleString("he-IL")
+                        : "ללא תאריך"}
+                    </time>
+                  </div>
+
+                  {/* Divider */}
+                  <div
+                    className="mb-4"
+                    style={{
+                      height: "1px",
+                      background:
+                        "linear-gradient(90deg, transparent, rgba(207,167,86,.5), transparent)",
+                    }}
+                  />
+
+                  {/* Message */}
+                  <p
+                    className="whitespace-pre-wrap leading-8"
+                    style={{
+                      color: "#f7f4e9",
+                    }}
+                  >
+                    {item.message || "ללא תוכן הודעה"}
+                  </p>
+
+                  {/* Footer */}
+                  <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <label
+                      className="inline-flex items-center gap-3 cursor-pointer select-none px-4 py-2 rounded-full"
+                      style={{
+                        border: item.handled
+                          ? "1px solid rgba(76,175,80,.45)"
+                          : "1px solid rgba(166,27,27,.65)",
+
+                        background: item.handled
+                          ? "rgba(76,175,80,.12)"
+                          : "rgba(166,27,27,.10)",
+
+                        backdropFilter: "blur(10px)",
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={Boolean(item.handled)}
+                        disabled={!messageId || isUpdating}
+                        onChange={(e) =>
+                          handleToggleHandled(messageId, e.target.checked)
+                        }
+                        className="accent-[#cfa756]"
+                      />
+
+                      <span
+                        className="font-semibold"
+                        style={{
+                          color: item.handled ? "#7be495" : "#ff8b8b",
+                        }}
+                      >
+                        {item.handled ? "✓ טופל" : "ממתין לטיפול"}
+                      </span>
+                    </label>
+
+                    {item.handledAt && (
+                      <span
+                        className="text-sm"
+                        style={{
+                          color: "rgba(247,244,233,.55)",
+                        }}
+                      >
+                        טופל ב־
+                        {new Date(item.handledAt).toLocaleString("he-IL")}
+                      </span>
+                    )}
+
+                    <button
+                      type="button"
+                      disabled={!messageId || isDeleting}
+                      onClick={() => handleDelete(messageId)}
+                      className="px-4 py-2 rounded-full text-xs font-semibold transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{
+                        color: '#ff8b8b',
+                        border: '1px solid rgba(255,80,80,.5)',
+                        background: 'rgba(255,80,80,.1)',
+                      }}
+                    >
+                      {isDeleting ? 'מוחק...' : '🗑 מחק הודעה'}
+                    </button>
+                  </div>
                 </div>
-                <p className="text-sm text-gray-600 mb-2">{item.email || 'ללא אימייל'}</p>
-                <p className="text-gray-800 whitespace-pre-wrap">{item.message || 'ללא תוכן הודעה'}</p>
-                <div className="mt-3 flex items-center justify-between">
-                  <label className="inline-flex items-center gap-2 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={Boolean(item.handled)}
-                      disabled={!messageId || isUpdating}
-                      onChange={(e) => handleToggleHandled(messageId, e.target.checked)}
-                    />
-                    <span className="text-sm font-medium">{item.handled ? 'טופל' : 'סמן כטופל'}</span>
-                  </label>
-                  {item.handledAt && (
-                    <span className="text-xs text-gray-500">
-                      טופל ב־{new Date(item.handledAt).toLocaleString('he-IL')}
-                    </span>
-                  )}
-                </div>
+
+                {/* פס תחתון — ירוק אם טופל ואדום אם ממתין */}
+                <div
+                  style={{
+                    height: "2px",
+
+                    background: item.handled
+                      ? "linear-gradient(90deg, #276738, #4caf50, #7be495, #4caf50, #276738)"
+                      : "linear-gradient(90deg, #6f1010, #a61b1b, #ff8b8b, #a61b1b, #6f1010)",
+
+                    boxShadow: item.handled
+                      ? "0 0 12px rgba(76,175,80,.45)"
+                      : "0 0 12px rgba(166,27,27,.55)",
+                  }}
+                />
               </article>
             );
           })}
@@ -207,11 +427,13 @@ function ContactMessages() {
 }
 
 // ── טאב: בקשות הקדשה ─────────────────────────────────────────────────────────
-function SponsorshipRequests() {
+function SponsorshipRequests({ onAlertsChange }) {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
+  const [updatingIds, setUpdatingIds] = useState([]);
+  const [deletingIds, setDeletingIds] = useState([]);
 
   const load = async () => {
     try {
@@ -228,8 +450,35 @@ function SponsorshipRequests() {
   useEffect(() => { load(); }, []);
 
   const handleStatus = async (id, status) => {
-    await updateSponsorshipStatus(id, status);
-    load();
+    setUpdatingIds((prev) => [...prev, id]);
+    setError('');
+    try {
+      await updateSponsorshipStatus(id, status);
+      setRequests((prev) => prev.map((request) =>
+        request._id === id ? { ...request, status } : request
+      ));
+      await onAlertsChange?.();
+    } catch {
+      setError('עדכון סטטוס הבקשה נכשל');
+    } finally {
+      setUpdatingIds((prev) => prev.filter((requestId) => requestId !== id));
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!id || !window.confirm('למחוק את בקשת ההקדשה לצמיתות?')) return;
+
+    setDeletingIds((prev) => [...prev, id]);
+    setError('');
+    try {
+      await api.delete(`/sponsorships/${id}`);
+      setRequests((prev) => prev.filter((request) => request._id !== id));
+      await onAlertsChange?.();
+    } catch {
+      setError('מחיקת הבקשה נכשלה. ודא שקיים בשרת נתיב DELETE /api/sponsorships/:id');
+    } finally {
+      setDeletingIds((prev) => prev.filter((requestId) => requestId !== id));
+    }
   };
 
   const STATUS_LABELS = { pending: 'ממתין', approved: 'אושר', rejected: 'נדחה' };
@@ -250,6 +499,7 @@ function SponsorshipRequests() {
 
   return (
     <section className="max-w-5xl mx-auto">
+      {/* <AdminTabHeader title="בקשות הקדשה" subtitle="אישור, דחייה ומחיקה של בקשות ההקדשה" /> */}
       <FilterBar filters={FILTERS} active={activeFilter} onChange={setActiveFilter} />
 
       {loading && <p className="text-center py-6">טוען...</p>}
@@ -259,58 +509,236 @@ function SponsorshipRequests() {
       )}
 
       <div className="grid gap-4">
-        {filtered.map((r) => (
-          <article key={r._id} className="bg-white shadow rounded-lg p-4 border border-gray-200">
-            <div className="flex flex-wrap justify-between items-start gap-2 mb-2">
-              <div>
-                <h2 className="font-semibold text-[#0d2340]">{r.name}</h2>
-                <p className="text-xs text-gray-500">{r.email} | {r.phone}</p>
+        {filtered.map((r) => {
+          const isUpdating = updatingIds.includes(r._id);
+          const isDeleting = deletingIds.includes(r._id);
+
+          return (
+            <article
+              key={r._id}
+              className="group relative overflow-hidden rounded-2xl transition-all duration-300 hover:-translate-y-1"
+              style={{
+                background:
+                  "linear-gradient(180deg, rgba(18,32,56,.98) 0%, rgba(13,35,64,.97) 45%, rgba(10,25,47,.98) 100%)",
+
+                border:
+                  r.status === "pending"
+                    ? "2px solid #a61b1b"
+                    : "1px solid rgba(207,167,86,.35)",
+
+                boxShadow:
+                  r.status === "pending"
+                    ? "0 10px 30px rgba(0,0,0,.35), 0 0 16px rgba(166,27,27,.35)"
+                    : "0 10px 30px rgba(0,0,0,.35)",
+
+                backdropFilter: "blur(18px)",
+              }}
+            >
+              {/* Glow רקע */}
+              <div
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                  background: `
+                radial-gradient(circle at 15% 20%, rgba(207,167,86,.08), transparent 35%),
+                radial-gradient(circle at 85% 15%, rgba(207,167,86,.05), transparent 40%)
+              `,
+                }}
+              />
+
+              <div className="relative z-10 p-5">
+                {/* Header */}
+                <div className="flex flex-col gap-3 mb-4 sm:flex-row sm:justify-between sm:items-start">
+                  <div>
+                    <h2
+                      className="text-xl font-bold"
+                      style={{
+                        color: "#f7d98a",
+                        textShadow: "0 0 10px rgba(207,167,86,.35)",
+                      }}
+                    >
+                      {r.name || "ללא שם"}
+                    </h2>
+
+                    <p
+                      className="mt-1 text-sm"
+                      style={{
+                        color: "rgba(247,244,233,.72)",
+                      }}
+                    >
+                      {r.email || "ללא אימייל"}
+                      {r.phone && ` | ${r.phone}`}
+                    </p>
+                  </div>
+
+                  {/* סטטוס */}
+                  <span
+                    className="text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap"
+                    style={{
+                      color:
+                        r.status === "approved"
+                          ? "#7be495"
+                          : r.status === "rejected"
+                            ? "#ff8b8b"
+                            : "#f7d98a",
+
+                      border:
+                        r.status === "approved"
+                          ? "1px solid rgba(76,175,80,.45)"
+                          : r.status === "rejected"
+                            ? "1px solid rgba(255,80,80,.45)"
+                            : "1px solid rgba(207,167,86,.45)",
+
+                      background:
+                        r.status === "approved"
+                          ? "rgba(76,175,80,.12)"
+                          : r.status === "rejected"
+                            ? "rgba(255,80,80,.12)"
+                            : "rgba(207,167,86,.08)",
+                    }}
+                  >
+                    {STATUS_LABELS[r.status] || r.status}
+                  </span>
+                </div>
+
+                {/* Divider */}
+                <div
+                  className="mb-4"
+                  style={{
+                    height: "1px",
+                    background:
+                      "linear-gradient(90deg, transparent, rgba(207,167,86,.5), transparent)",
+                  }}
+                />
+
+                {/* Details */}
+                <div
+                  className="space-y-2 text-sm"
+                  style={{
+                    color: "#f7f4e9",
+                  }}
+                >
+                  <p>
+                    <span
+                      className="font-semibold"
+                      style={{
+                        color: "#f7d98a",
+                      }}
+                    >
+                      קטגוריה:
+                    </span>{" "}
+                    {r.categoryId?.name || "—"}
+                  </p>
+
+                  <p>
+                    <span
+                      className="font-semibold"
+                      style={{
+                        color: "#f7d98a",
+                      }}
+                    >
+                      פריט:
+                    </span>{" "}
+                    {r.itemId?.title || r.itemName || "—"}
+                  </p>
+
+                  <p>
+                    <span
+                      className="font-semibold"
+                      style={{
+                        color: "#f7d98a",
+                      }}
+                    >
+                      סוג הנצחה:
+                    </span>{" "}
+                    {r.dedicationType || "—"} — {r.dedicationName || "—"}
+                  </p>
+
+                  {r.adminNote && (
+                    <p>
+                      <span
+                        className="font-semibold"
+                        style={{
+                          color: "#f7d98a",
+                        }}
+                      >
+                        הערה:
+                      </span>{" "}
+                      {r.adminNote}
+                    </p>
+                  )}
+                </div>
+
+                {/* Actions */}
+                <div className="mt-6 flex flex-wrap gap-3 justify-end">
+                  {/* כפתור אישור */}
+                  {r.status !== "approved" && (
+                    <button
+                      type="button"
+                      disabled={isUpdating || isDeleting}
+                      onClick={() => handleStatus(r._id, "approved")}
+                      className="px-4 py-2 rounded-full text-xs font-semibold transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{
+                        color: "#7be495",
+                        border: "1px solid rgba(76,175,80,.45)",
+                        background: "rgba(76,175,80,.12)",
+                      }}
+                    >
+                      ✓ אשר
+                    </button>
+                  )}
+
+                  {/* כפתור דחייה */}
+                  {r.status !== "rejected" && (
+                    <button
+                      type="button"
+                      disabled={isUpdating || isDeleting}
+                      onClick={() => handleStatus(r._id, "rejected")}
+                      className="px-4 py-2 rounded-full text-xs font-semibold transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{
+                        color: "#ff8b8b",
+                        border: "1px solid rgba(255,80,80,.45)",
+                        background: "rgba(255,80,80,.12)",
+                      }}
+                    >
+                      ✕ דחה
+                    </button>
+                  )}
+
+                  {/* כפתור החזרה לממתין */}
+                  {r.status !== "pending" && (
+                    <button
+                      type="button"
+                      disabled={isUpdating || isDeleting}
+                      onClick={() => handleStatus(r._id, "pending")}
+                      className="px-4 py-2 rounded-full text-xs font-semibold transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{
+                        color: "#f7d98a",
+                        border: "1px solid rgba(207,167,86,.45)",
+                        background: "rgba(207,167,86,.08)",
+                      }}
+                    >
+                      ↻ החזר לממתין
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    disabled={isUpdating || isDeleting}
+                    onClick={() => handleDelete(r._id)}
+                    className="px-4 py-2 rounded-full text-xs font-semibold transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{
+                      color: '#ff8b8b',
+                      border: '1px solid rgba(255,80,80,.55)',
+                      background: 'rgba(255,80,80,.1)',
+                    }}
+                  >
+                    {isDeleting ? 'מוחק...' : '🗑 מחק'}
+                  </button>
+                </div>
               </div>
-              <span className={`text-xs font-bold border px-2 py-1 rounded-full ${STATUS_COLORS[r.status]}`}>
-                {STATUS_LABELS[r.status]}
-              </span>
-            </div>
-            <div className="text-sm text-gray-700 space-y-0.5 mb-3">
-              <p><span className="font-medium">קטגוריה:</span> {r.categoryId?.name || '—'}</p>
-              <p>
-                <span className="font-medium">פריט:</span>{' '}
-                {r.itemId?.title || r.itemName || '—'}
-              </p>
-              <p>
-                <span className="font-medium">קטגוריה:</span>{' '}
-                {r.categoryId?.name || (r.source === 'commemoration' ? 'הנצחות' : '—')}
-              </p>
-              <p><span className="font-medium">סוג הנצחה:</span> {r.dedicationType} — {r.dedicationName || '—'}</p>
-              {r.adminNote && <p><span className="font-medium">הערה:</span> {r.adminNote}</p>}
-            </div>
-            <div className="flex gap-2 justify-end">
-              {r.status !== 'approved' && (
-                <button
-                  onClick={() => handleStatus(r._id, 'approved')}
-                  className="text-xs bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700"
-                >
-                  ✓ אשר
-                </button>
-              )}
-              {r.status !== 'rejected' && (
-                <button
-                  onClick={() => handleStatus(r._id, 'rejected')}
-                  className="text-xs bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"
-                >
-                  ✕ דחה
-                </button>
-              )}
-              {r.status !== 'pending' && (
-                <button
-                  onClick={() => handleStatus(r._id, 'pending')}
-                  className="text-xs bg-gray-400 text-white px-3 py-1 rounded hover:bg-gray-500"
-                >
-                  ↩ ממתין
-                </button>
-              )}
-            </div>
-          </article>
-        ))}
+            </article>
+          );
+        })}
       </div>
     </section>
   );
@@ -438,6 +866,7 @@ function MailingListManagement() {
 
   return (
     <section className="max-w-3xl mx-auto">
+      {/* <AdminTabHeader title="ניהול רשימת תפוצה" subtitle="הוספה, עריכה וניהול של מקבלי עדכוני הקהילה" /> */}
       {/* טופס הוספה */}
       <div className="bg-white shadow rounded-lg p-5 border border-gray-200 mb-8">
         <h2 className="text-lg font-bold text-[#0d2340] mb-4">הוספת חבר קהילה לרשימת התפוצה</h2>
@@ -569,18 +998,26 @@ function MailingListManagement() {
 
 // ── הגדרת הטאבים ──────────────────────────────────────────────────────────────
 const TABS = [
+  { id: 'mailing', label: 'ניהול רשימת תפוצה' },
   { id: 'contact', label: 'הודעות צור קשר' },
-  { id: 'commemorations', label: 'ניהול הנצחות' },
   { id: 'sponsorships', label: 'בקשות הקדשה' },
-  { id: 'mailing', label: 'ניהול רשימת תפוצה' }, // ← חדש
-
 ];
 
 // ── Admin ראשי ────────────────────────────────────────────────────────────────
 export default function Admin() {
-  const [activeTab, setActiveTab] = useState('contact');
+  const [activeTab, setActiveTab] = useState('mailing');
   const [underlineStyle, setUnderlineStyle] = useState({ left: 0, width: 0 });
   const tabBarRef = useRef(null);
+  const { contact: contactAlertCount, sponsorships: sponsorAlertCount, refresh: refreshAlerts } =
+    useAdminAlerts(true);
+
+  const handleAlertsChange = useCallback(async () => {
+    try {
+      await refreshAlerts();
+    } finally {
+      window.dispatchEvent(new Event('admin-alerts-changed'));
+    }
+  }, [refreshAlerts]);
 
   // מיקום ראשוני של ה-underline אחרי render
   useEffect(() => {
@@ -608,55 +1045,74 @@ export default function Admin() {
     <div dir="rtl" className="min-h-screen bg-[#f7f4ee]">
       <PageHeader
         title="פאנל ניהול"
-        subtitle="ניהול הודעות, הנצחות, תמיכות ורשימת תפוצה"
+        subtitle="ניהול הודעות, בקשות הקדשה ורשימת תפוצה"
       />
 
       <div className="max-w-5xl mx-auto p-4">
-      {/* הזרקת keyframes לאנימציה */}
-      <style>{tabInStyle}</style>
+        {/* הזרקת keyframes לאנימציה */}
+        <style>{tabInStyle}</style>
 
-      {/* רצועת טאבים עם underline נע */}
-      <div
-        ref={tabBarRef}
-        className="flex border-b border-gray-200 mb-6 overflow-x-auto relative"
-      >
-        {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            data-tab={tab.id}
-            type="button"
-            onClick={() => handleTabChange(tab.id)}
-            className={`px-5 py-2.5 text-sm whitespace-nowrap transition-colors duration-200 focus:outline-none
-              ${activeTab === tab.id
-                ? 'text-[#0d2340] font-bold'
-                : 'text-gray-500 hover:text-[#0d2340] font-medium'
-              }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-
-        {/* underline שנע בצורה חלקה */}
+        {/* רצועת טאבים עם underline נע */}
         <div
-          className="absolute bottom-[-0.5px] h-[2px] bg-[#cfa756] rounded-sm pointer-events-none"
-          style={{
-            left: underlineStyle.left,
-            width: underlineStyle.width,
-            transition: 'left 0.4s cubic-bezier(.4,0,.2,1), width 0.4s cubic-bezier(.4,0,.2,1)',
-          }}
-        />
-      </div>
+          ref={tabBarRef}
+          className="flex border-b border-gray-200 mb-6  relative"
+        >
+          {TABS.map((tab) => {
+            const badgeCount =
+              tab.id === 'contact'
+                ? contactAlertCount
+                : tab.id === 'sponsorships'
+                  ? sponsorAlertCount
+                  : 0;
 
-      {/* תוכן הטאב הפעיל — key גורם ל-React להר mount מחדש ולהפעיל אנימציה */}
-      <div
-        key={activeTab}
-        style={{ animation: 'tabIn 0.8s ease-out both' }}
-      >
-        {activeTab === 'contact' && <ContactMessages />}
-        {activeTab === 'commemorations' && <CommemorationForm />}
-        {activeTab === 'sponsorships' && <SponsorshipRequests />}
-        {activeTab === 'mailing' && <MailingListManagement />}
-      </div>
+            return (
+              <button
+                key={tab.id}
+                data-tab={tab.id}
+                type="button"
+                onClick={() => handleTabChange(tab.id)}
+                className={`px-5 py-2.5 text-sm whitespace-nowrap transition-colors duration-200 focus:outline-none
+        ${activeTab === tab.id
+                    ? 'text-[#0d2340] font-bold'
+                    : 'text-gray-500 hover:text-[#0d2340] font-medium'
+                  }`}
+              >
+                {tab.label}
+
+                {badgeCount > 0 && (
+                  <span className="mr-1.5 inline-flex items-center justify-center bg-[#a61b1b] text-white text-[10px] font-bold rounded-full w-4 h-4">
+                    {badgeCount}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+
+          {/* underline שנע בצורה חלקה */}
+          <div
+            className="absolute bottom-[-0.5px] h-[2px] bg-[#cfa756] rounded-sm pointer-events-none"
+            style={{
+              left: underlineStyle.left,
+              width: underlineStyle.width,
+              transition: 'left 0.4s cubic-bezier(.4,0,.2,1), width 0.4s cubic-bezier(.4,0,.2,1)',
+            }}
+          />
+        </div>
+
+        {/* תוכן הטאב הפעיל — key גורם ל-React להר mount מחדש ולהפעיל אנימציה */}
+        <div
+          key={activeTab}
+          style={{ animation: 'tabIn 0.8s ease-out both' }}
+        >
+          {activeTab === 'contact' && (
+            <ContactMessages onAlertsChange={handleAlertsChange} />
+          )}
+
+          {activeTab === 'sponsorships' && (
+            <SponsorshipRequests onAlertsChange={handleAlertsChange} />
+          )}
+          {activeTab === 'mailing' && <MailingListManagement />}
+        </div>
       </div>
     </div>
   );

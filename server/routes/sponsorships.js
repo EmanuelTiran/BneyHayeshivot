@@ -7,5 +7,6 @@ router.post('/',                      ctrl.create);                    // פור
 router.post('/from-commemoration',    ctrl.createFromCommemoration);   // ← הנצחות — חדש
 router.get('/',          protect,     ctrl.getAll);
 router.patch('/:id/status', protect,  ctrl.updateStatus);
+router.delete('/:id', protect, ctrl.remove);
 
 module.exports = router;

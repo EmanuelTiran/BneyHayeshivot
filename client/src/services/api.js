@@ -117,7 +117,7 @@ export const updatePrayers = (prayers, prayerSectionTitle) =>
   API.put('/prayers', { prayers, prayerSectionTitle });
 
 export const sendContactMessage = (data) => API.post('/contact', data);
-export const fetchContactMessages = () => API.get('/contact');
+export const fetchContactMessages = (params) => API.get('/contact', { params });
 export const updateContactMessageHandled = (id, handled) =>
   API.patch(`/contact/${id}/handled`, { handled });
 

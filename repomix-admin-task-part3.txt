@@ -1,0 +1,3468 @@
+This file is a merged representation of a subset of the codebase, containing specifically included files, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of a subset of the repository's contents that is considered the most important context.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Only files matching these patterns are included: client/src/pages/Commemorations.jsx, client/src/components/Admin/CommemorationForm.jsx, client/src/services/api.js, server/server.js, server/models/Commemoration.js, server/routes/commemorations.js, server/controllers/commemorationController.js, server/services/commemorationService.js, client/src/pages/Admin.jsx, client/src/services/api.js, client/src/services/portalService.js, client/src/components/common/Header.jsx, client/src/layout/AdminLayout.jsx, client/src/constants/routes.js, client/src/App.jsx, server/controllers/contactController.js, server/controllers/sponsorshipController.js, server/routes/contact.js, server/routes/sponsorships.js, server/services/contactService.js, server/services/sponsorshipService.js, server/models/ContactMessage.js, server/models/SponsorshipRequest.js, server/middleware/authMiddleware.js
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+client/src/App.jsx
+client/src/components/Admin/CommemorationForm.jsx
+client/src/components/common/Header.jsx
+client/src/constants/routes.js
+client/src/layout/AdminLayout.jsx
+client/src/pages/Admin.jsx
+client/src/pages/Commemorations.jsx
+client/src/services/api.js
+client/src/services/portalService.js
+server/controllers/commemorationController.js
+server/controllers/contactController.js
+server/controllers/sponsorshipController.js
+server/middleware/authMiddleware.js
+server/models/Commemoration.js
+server/models/ContactMessage.js
+server/models/SponsorshipRequest.js
+server/routes/commemorations.js
+server/routes/contact.js
+server/routes/sponsorships.js
+server/server.js
+server/services/commemorationService.js
+server/services/contactService.js
+server/services/sponsorshipService.js
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="client/src/layout/AdminLayout.jsx">
+
+</file>
+
+<file path="server/controllers/commemorationController.js">
+const service = require('../services/commemorationService');
+
+/**
+ * GET /api/commemorations
+ * מחזיר את כל ההנצחות (פתוח לכולם)
+ */
+exports.getCommemorations = async (req, res) => {
+  try {
+    const data = await service.getAllCommemorations();
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+/**
+ * GET /api/commemorations/:id
+ * מחזיר הנצחה בודדת לפי מזהה
+ */
+exports.getCommemorationById = async (req, res) => {
+  try {
+    const item = await service.getCommemorationById(req.params.id);
+    if (!item) return res.status(404).json({ message: 'ההנצחה לא נמצאה' });
+    res.json(item);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+/**
+ * POST /api/commemorations
+ * יוצר הנצחה חדשה (מנהל בלבד)
+ */
+exports.createCommemoration = async (req, res) => {
+  try {
+    const created = await service.createCommemoration(req.body);
+    res.status(201).json(created);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+};
+
+/**
+ * PUT /api/commemorations/:id
+ * מעדכן הנצחה קיימת (מנהל בלבד)
+ */
+exports.updateCommemoration = async (req, res) => {
+  try {
+    const updated = await service.updateCommemoration(req.params.id, req.body);
+    if (!updated) return res.status(404).json({ message: 'ההנצחה לא נמצאה' });
+    res.json(updated);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+};
+
+/**
+ * DELETE /api/commemorations/:id
+ * מוחק הנצחה (מנהל בלבד)
+ */
+exports.deleteCommemoration = async (req, res) => {
+  try {
+    const deleted = await service.deleteCommemoration(req.params.id);
+    if (!deleted) return res.status(404).json({ message: 'ההנצחה לא נמצאה' });
+    res.json({ message: 'ההנצחה נמחקה בהצלחה' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+/**
+ * PATCH /api/commemorations/:id/status
+ * מעדכן רק את סטטוס ההנצחה (מנהל בלבד)
+ */
+exports.updateCommemorationStatus = async (req, res) => {
+  try {
+    const { commemorationStatus } = req.body;
+    const valid = ['commemorated', 'pending', 'none'];
+    if (!valid.includes(commemorationStatus)) {
+      return res.status(400).json({ message: 'סטטוס לא תקין' });
+    }
+    const updated = await service.updateCommemoration(req.params.id, { commemorationStatus });
+    if (!updated) return res.status(404).json({ message: 'ההנצחה לא נמצאה' });
+    res.json(updated);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+};
+</file>
+
+<file path="server/controllers/contactController.js">
+const contactService = require('../services/contactService');
+
+exports.getAll = async (req, res) => {
+  const filters = {};
+
+  if (req.query.handled === 'true') {
+    filters.handled = true;
+  } else if (req.query.handled === 'false') {
+    filters.handled = false;
+  }
+
+  const data = await contactService.getAllMessages(filters);
+  res.json(data);
+};
+
+exports.create = async (req, res) => {
+  const created = await contactService.createMessage(req.body);
+  res.status(201).json(created);
+};
+
+exports.updateHandledStatus = async (req, res) => {
+  const { handled } = req.body;
+
+  if (typeof handled !== 'boolean') {
+    return res.status(400).json({ error: 'handled חייב להיות boolean' });
+  }
+
+  const updated = await contactService.updateHandledStatus(req.params.id, handled);
+
+  if (!updated) {
+    return res.status(404).json({ error: 'הודעה לא נמצאה' });
+  }
+
+  return res.json(updated);
+};
+</file>
+
+<file path="server/controllers/sponsorshipController.js">
+const service           = require('../services/sponsorshipService');
+const portalItemService = require('../services/portalItemService');
+const categoryService   = require('../services/categoryService');
+
+exports.create = async (req, res) => {
+  try {
+    const { itemId, categoryId } = req.body;
+    const [item, category] = await Promise.all([
+      portalItemService.getById(itemId),
+      categoryService.getById(categoryId),
+    ]);
+    if (!item || !category) return res.status(404).json({ message: 'פריט או קטגוריה לא נמצאו' });
+    const request = await service.create(req.body, item.title, category.name);
+    res.status(201).json(request);
+  } catch (err) { res.status(400).json({ message: err.message }); }
+};
+
+exports.getAll = async (req, res) => {
+  try { res.json(await service.getAll()); }
+  catch (err) { res.status(500).json({ message: err.message }); }
+};
+
+exports.updateStatus = async (req, res) => {
+  try {
+    const updated = await service.updateStatus(req.params.id, req.body.status);
+    if (!updated) return res.status(404).json({ message: 'לא נמצא' });
+    res.json(updated);
+  } catch (err) { res.status(400).json({ message: err.message }); }
+};
+// ← חדש — בקשה מדף ההנצחות (ללא itemId/categoryId)
+exports.createFromCommemoration = async (req, res) => {
+  try {
+    const { itemName, commemorationId } = req.body;
+    if (!itemName) return res.status(400).json({ message: 'חסר שם פריט' });
+
+    const request = await service.create(
+      { ...req.body, source: 'commemoration' },
+      itemName,
+      'הנצחות'
+    );
+    res.status(201).json(request);
+  } catch (err) { res.status(400).json({ message: err.message }); }
+};
+</file>
+
+<file path="server/models/ContactMessage.js">
+const mongoose = require('mongoose');
+
+const contactSchema = new mongoose.Schema({
+  name: String,
+  email: String,
+  message: String,
+  date: { type: Date, default: Date.now },
+  handled: { type: Boolean, default: false },
+  handledAt: { type: Date, default: null }
+});
+
+module.exports = mongoose.model('ContactMessage', contactSchema);
+</file>
+
+<file path="server/models/SponsorshipRequest.js">
+const mongoose = require('mongoose');
+
+const sponsorshipRequestSchema = new mongoose.Schema({
+  // פורטל — אופציונלי כי הנצחות לא עובדות עם PortalItem
+  itemId:     { type: mongoose.Schema.Types.ObjectId, ref: 'PortalItem', default: null },
+  categoryId: { type: mongoose.Schema.Types.ObjectId, ref: 'Category',   default: null },
+
+  // הנצחות — שם חופשי כשאין PortalItem
+  itemName:        { type: String, default: '' },
+  commemorationId: { type: String, default: '' }, // ה-_id של ה-Commemoration
+  source:          { type: String, enum: ['portal', 'commemoration'], default: 'portal' },
+
+  name:           { type: String, required: true, trim: true },
+  phone:          { type: String, required: true, trim: true },
+  email:          { type: String, required: true, trim: true, lowercase: true },
+  dedicationType: {
+    type: String,
+    enum: ['לעילוי נשמת', 'לרפואת', 'לזכות', 'לעילוי נשמת ולהצלחת', 'אחר'],
+    default: 'לזכות',
+  },
+  dedicationName: { type: String, default: '' },
+  adminNote:      { type: String, default: '' },
+  status:         { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+}, { timestamps: true });
+
+module.exports = mongoose.model('SponsorshipRequest', sponsorshipRequestSchema);
+</file>
+
+<file path="server/routes/commemorations.js">
+const express = require('express');
+const router  = express.Router();
+
+const ctrl    = require('../controllers/commemorationController');
+const protect = require('../middleware/authMiddleware');
+
+// פתוח לכולם – קריאה
+router.get('/',    ctrl.getCommemorations);
+router.get('/:id', ctrl.getCommemorationById);
+
+// מוגן – כתיבה / עדכון / מחיקה (מנהל בלבד)
+router.post('/',     protect, ctrl.createCommemoration);
+router.put('/:id',  protect, ctrl.updateCommemoration);
+router.patch('/:id/status', protect, ctrl.updateCommemorationStatus); // ← חדש
+router.delete('/:id', protect, ctrl.deleteCommemoration);
+
+module.exports = router;
+</file>
+
+<file path="server/routes/contact.js">
+const express = require('express');
+const router = express.Router();
+const controller = require('../controllers/contactController');
+
+router.get('/', controller.getAll);
+router.post('/', controller.create);
+router.patch('/:id/handled', controller.updateHandledStatus);
+router.patch('/:id', controller.updateHandledStatus);
+router.put('/:id/handled', controller.updateHandledStatus);
+
+module.exports = router;
+</file>
+
+<file path="server/routes/sponsorships.js">
+const express = require('express');
+const router  = express.Router();
+const ctrl    = require('../controllers/sponsorshipController');
+const protect = require('../middleware/authMiddleware');
+
+router.post('/',                      ctrl.create);                    // פורטל — קיים
+router.post('/from-commemoration',    ctrl.createFromCommemoration);   // ← הנצחות — חדש
+router.get('/',          protect,     ctrl.getAll);
+router.patch('/:id/status', protect,  ctrl.updateStatus);
+
+module.exports = router;
+</file>
+
+<file path="server/services/commemorationService.js">
+const Commemoration = require('../models/Commemoration');
+
+/**
+ * מחזיר את כל ההנצחות, מסודרות מהחדשה לישנה
+ */
+exports.getAllCommemorations = async () => {
+  return Commemoration.find().sort({ date: -1 });
+};
+
+/**
+ * יוצר הנצחה חדשה
+ * @param {Object} data - הנתונים של ההנצחה החדשה
+ */
+exports.createCommemoration = async (data) => {
+  const commemoration = new Commemoration(data);
+  return commemoration.save();
+};
+
+/**
+ * מעדכן הנצחה קיימת לפי מזהה
+ * @param {string} id - מזהה ההנצחה
+ * @param {Object} data - הנתונים המעודכנים
+ */
+exports.updateCommemoration = async (id, data) => {
+  const doc = await Commemoration.findById(id);
+  if (!doc) return null;
+
+  Object.assign(doc, data);
+  return doc.save(); // כאן this בתוך הולידטורים המותאמים אישית יצביע נכון על המסמך
+};
+
+/**
+ * מוחק הנצחה לפי מזהה
+ * @param {string} id - מזהה ההנצחה
+ */
+exports.deleteCommemoration = async (id) => {
+  return Commemoration.findByIdAndDelete(id);
+};
+
+/**
+ * מחזיר הנצחה בודדת לפי מזהה
+ * @param {string} id - מזהה ההנצחה
+ */
+exports.getCommemorationById = async (id) => {
+  return Commemoration.findById(id);
+};
+</file>
+
+<file path="server/services/contactService.js">
+const ContactMessage = require('../models/ContactMessage');
+
+/**
+ * יוצר הודעת צור קשר חדשה במסד הנתונים
+ * @param {Object} data - אובייקט שכולל name, email, message
+ * @returns {Promise<Object>} - ההודעה החדשה שנשמרה
+ */
+exports.createMessage = async (data) => {
+  const contactMessage = new ContactMessage(data);
+  return await contactMessage.save();
+};
+
+/**
+ * מחזיר את כל הודעות צור קשר - לשימוש גבאים
+ * @returns {Promise<Array>} - רשימת ההודעות בסדר כרונולוגי יורד
+ */
+exports.getAllMessages = async (filters = {}) => {
+  return await ContactMessage.find(filters).sort({ date: -1 });
+};
+
+/**
+ * מוחק הודעת צור קשר לפי מזהה
+ * @param {string} id - מזהה ההודעה למחיקה
+ * @returns {Promise<Object|null>} - ההודעה שנמחקה או null אם לא נמצאה
+ */
+exports.deleteMessageById = async (id) => {
+  return await ContactMessage.findByIdAndDelete(id);
+};
+
+/**
+ * מעדכן סטטוס טיפול בהודעה
+ * @param {string} id - מזהה ההודעה
+ * @param {boolean} handled - האם ההודעה טופלה
+ * @returns {Promise<Object|null>} - ההודעה המעודכנת
+ */
+exports.updateHandledStatus = async (id, handled) => {
+  const handledAt = handled ? new Date() : null;
+  return await ContactMessage.findByIdAndUpdate(
+    id,
+    { handled, handledAt },
+    { new: true }
+  );
+};
+</file>
+
+<file path="server/services/sponsorshipService.js">
+const SponsorshipRequest = require('../models/SponsorshipRequest');
+const PortalItem         = require('../models/PortalItem'); // ← חדש
+const nodemailer         = require('nodemailer');
+
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
+
+const create = async (data, itemTitle, categoryName) => {
+  const request = await SponsorshipRequest.create(data);
+
+  const mailOptions = {
+    from:    process.env.EMAIL_USER,
+    to:      process.env.ADMIN_EMAIL,
+    subject: `🕍 בקשת הנצחה חדשה — ${categoryName} | ${itemTitle}`,
+    html: `
+      <div dir="rtl" style="font-family: Arial, sans-serif; max-width: 600px; margin: auto;
+           border: 2px solid #cfa756; border-radius: 8px; padding: 24px; background: #f7f4e9;">
+        <h2 style="color: #0d2340; border-bottom: 2px solid #cfa756; padding-bottom: 8px;">
+          בקשת הנצחה חדשה
+        </h2>
+        <table style="width:100%; border-collapse: collapse; margin-top: 16px;">
+          <tr><td style="padding:6px; font-weight:bold; color:#0d2340;">שם:</td><td>${data.name}</td></tr>
+          <tr><td style="padding:6px; font-weight:bold; color:#0d2340;">טלפון:</td><td>${data.phone}</td></tr>
+          <tr><td style="padding:6px; font-weight:bold; color:#0d2340;">אימייל:</td><td>${data.email}</td></tr>
+          <tr><td style="padding:6px; font-weight:bold; color:#0d2340;">קטגוריה:</td><td>${categoryName}</td></tr>
+          <tr><td style="padding:6px; font-weight:bold; color:#0d2340;">פריט:</td><td>${itemTitle}</td></tr>
+          <tr><td style="padding:6px; font-weight:bold; color:#0d2340;">סוג הנצחה:</td><td>${data.dedicationType}</td></tr>
+          <tr><td style="padding:6px; font-weight:bold; color:#0d2340;">שם להנצחה:</td><td>${data.dedicationName || '—'}</td></tr>
+          <tr><td style="padding:6px; font-weight:bold; color:#0d2340;">הערה לגבאי:</td><td>${data.adminNote || '—'}</td></tr>
+        </table>
+        <p style="margin-top:16px; color:#666; font-size:12px;">
+          נשלח מהאתר — ${new Date().toLocaleString('he-IL')}
+        </p>
+      </div>
+    `,
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+  } catch (emailErr) {
+    console.error('שגיאה בשליחת אימייל:', emailErr.message);
+  }
+
+  return request;
+};
+
+const getAll = () => SponsorshipRequest.find().populate('itemId categoryId').sort({ createdAt: -1 });
+
+// ← חדש: מסנכרן את מצב ה-PortalItem בהתאם לסטטוס הבקשה
+const updateStatus = async (id, status) => {
+  const request = await SponsorshipRequest.findByIdAndUpdate(id, { status }, { new: true });
+  if (!request) return null;
+
+  // הסנכרון רלוונטי רק לבקשות מהפורטל שמקושרות לפריט אמיתי
+  if (request.source === 'portal' && request.itemId) {
+    if (status === 'approved') {
+      await PortalItem.findByIdAndUpdate(request.itemId, {
+        available:          false,
+        sponsorshipStatus:  'sponsored',
+        dedicatedName:       request.dedicationName || request.name,
+        dedicationType:      request.dedicationType,
+      });
+    } else {
+      // status === 'pending' או 'rejected' → משחררים את הפריט בחזרה לזמינות
+      await PortalItem.findByIdAndUpdate(request.itemId, {
+        available:          true,
+        sponsorshipStatus:  status === 'pending' ? 'pending' : 'available',
+        dedicatedName:       '',
+        dedicationType:      '',
+      });
+    }
+  }
+
+  return request;
+};
+
+module.exports = { create, getAll, updateStatus };
+</file>
+
+<file path="client/src/components/Admin/CommemorationForm.jsx">
+import { useState, useRef, useCallback } from 'react';
+import {
+  createCommemoration,
+  updateCommemoration,
+  deleteCommemoration,
+  fetchCommemorations,
+  updateCommemorationStatus,
+} from '../../services/api';
+
+// ─── Drive URL normalization ───────────────────────────────────────────────
+const normalizeImageUrl = (url) => {
+  if (!url) return url;
+  if (url.includes('drive.google.com')) {
+    const fileId =
+      url.match(/\/d\/(.*?)\//)?.[1] ||
+      url.match(/id=(.*?)(?:&|$)/)?.[1];
+    if (fileId) return `https://lh3.googleusercontent.com/d/${fileId}`;
+  }
+  return url;
+};
+
+const EMPTY_FORM = {
+  itemName: '',
+  contributorName: '',
+  commemoratedName: '',
+  amount: '',
+  imageUrl: '',
+  date: new Date().toISOString().split('T')[0],
+};
+
+const STATUS_CONFIG = {
+  commemorated: { label: 'הונצח', bg: '#eaf3de', color: '#3b6d11', border: '#97c459' },
+  pending: { label: 'ממתין לאישור', bg: '#faeeda', color: '#854f0b', border: '#ef9f27' },
+  none: { label: 'פנוי', bg: '#e6f1fb', color: '#185fa5', border: '#85b7eb' },
+};
+
+function Field({ label, id, error, children }) {
+  return (
+    <div>
+      <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-1">
+        {label}
+      </label>
+      {children}
+      {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+    </div>
+  );
+}
+
+// ── קומפוננטת הכנסת תמונה מ-URL בלבד ────────────────────────────────────────
+function ImageUploader({ value, onChange }) {
+  const [urlInput, setUrlInput] = useState('');
+
+  const handleConfirm = () => {
+    console.log('urlInput at confirm:', urlInput); // ← מה מודפס?
+
+    if (urlInput.trim()) {
+      const normalized = normalizeImageUrl(urlInput.trim());
+      console.log('ImageUploader → normalized:', normalized); // ← הוסף
+      onChange(normalized);
+      setUrlInput('');
+    }
+  };
+
+  const handleClear = () => {
+    onChange('');
+    setUrlInput('');
+  };
+
+  return (
+    <div className="space-y-3">
+      {/* תצוגה מקדימה — מוצגת כאשר יש URL תקין */}
+      {value && (
+        <div className="relative w-full h-40 rounded-xl overflow-hidden border border-gray-200 bg-gray-50">
+          <img
+            src={value}
+            alt="תצוגה מקדימה"
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              e.target.style.display = 'none';
+            }}
+          />
+          <button
+            type="button"
+            onClick={handleClear}
+            className="absolute top-2 left-2 bg-black/60 hover:bg-black/80 text-white rounded-full w-7 h-7 flex items-center justify-center text-xs transition-colors"
+            title="הסר תמונה"
+          >
+            ✕
+          </button>
+          <div className="absolute bottom-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded-md">
+            תצוגה מקדימה
+          </div>
+          {/* כפתור להחלפת קישור בעת עריכה */}
+          <button
+            type="button"
+            onClick={handleClear}
+            className="absolute bottom-2 left-2 bg-[#0d2340]/70 hover:bg-[#0d2340]/90 text-white text-xs px-2 py-1 rounded-md transition-colors"
+          >
+            החלף תמונה
+          </button>
+        </div>
+      )}
+
+      {/* קלט URL — מוצג כאשר אין תמונה */}
+      {!value && (
+        <div className="space-y-2">
+          <div className="flex gap-2">
+            <input
+              type="url"
+              value={urlInput}
+              onChange={(e) => setUrlInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleConfirm()}
+              placeholder="https://... או קישור Google Drive"
+              className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#cfa756] text-left"
+              dir="ltr"
+            />
+            <button
+              type="button"
+              onClick={handleConfirm}
+              disabled={!urlInput.trim()}
+              className="bg-[#0d2340] hover:bg-[#1a365d] disabled:opacity-40 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            >
+              אישור
+            </button>
+          </div>
+          <p className="text-xs text-gray-400">
+            הדבק קישור לתמונה או קישור Google Drive ולחץ אישור / Enter
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── מודאל שינוי סטטוס ────────────────────────────────────────────────────────
+function StatusModal({ item, onClose, onSave }) {
+  const [selected, setSelected] = useState(item.commemorationStatus || 'none');
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    setSaving(true);
+    await onSave(item._id, selected);
+    setSaving(false);
+    onClose();
+  };
+
+  return (
+    <div
+      className="fixed inset-0 bg-[#0d2340]/70 flex items-center justify-center z-50 p-4"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div dir="rtl" className="bg-white rounded-2xl border-2 border-[#cfa756]/40 shadow-xl p-6 w-full max-w-sm">
+        <h3 className="text-base font-bold text-[#0d2340] mb-1">שינוי סטטוס הנצחה</h3>
+        <p className="text-xs text-gray-500 mb-5 border-b border-gray-100 pb-3">{item.itemName}</p>
+
+        <div className="flex flex-col gap-3 mb-6">
+          {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
+            <label
+              key={key}
+              className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${selected === key ? 'border-[#0d2340] bg-[#0d2340]/5' : 'border-gray-200 hover:border-gray-300'
+                }`}
+            >
+              <input
+                type="radio"
+                name="status"
+                value={key}
+                checked={selected === key}
+                onChange={() => setSelected(key)}
+                className="accent-[#0d2340]"
+              />
+              <span
+                className="text-xs font-semibold px-2 py-0.5 rounded-full border"
+                style={{ background: cfg.bg, color: cfg.color, borderColor: cfg.border }}
+              >
+                {cfg.label}
+              </span>
+            </label>
+          ))}
+        </div>
+
+        <div className="flex gap-3 justify-end">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50"
+          >
+            ביטול
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="px-4 py-2 bg-[#0d2340] text-[#cfa756] font-bold rounded-lg text-sm hover:bg-[#1a365d] disabled:opacity-50"
+          >
+            {saving ? 'שומר...' : 'שמור סטטוס'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── CommemorationForm ────────────────────────────────────────────────────────
+export default function CommemorationForm() {
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [errors, setErrors] = useState({});
+  const [commemorations, setCommemorations] = useState([]);
+  const [editingId, setEditingId] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [loadingList, setLoadingList] = useState(false);
+  const [feedback, setFeedback] = useState(null);
+  const [listLoaded, setListLoaded] = useState(false);
+  const [activeFilter, setActiveFilter] = useState('all');
+  const [statusModal, setStatusModal] = useState(null);
+
+  const validate = () => {
+    const e = {};
+    if (!form.itemName.trim()) e.itemName = 'שם הפריט הוא שדה חובה';
+    if (!form.contributorName.trim()) e.contributorName = 'שם התורם הוא שדה חובה';
+    if (!form.commemoratedName.trim()) e.commemoratedName = 'שם המונצח הוא שדה חובה';
+    if (!form.amount || isNaN(Number(form.amount)) || Number(form.amount) < 0)
+      e.amount = 'יש להזין סכום חוקי';
+    return e;
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+    setErrors((prev) => ({ ...prev, [name]: undefined }));
+  };
+
+  // normalizeImageUrl כבר מופעל בתוך ImageUploader לפני קריאה ל-onChange,
+  // אז כאן פשוט שומרים את הערך כמות שהוא
+  const handleImageChange = (val) => {
+    console.log('handleImageChange called with:', val); // ← הוסף
+    setForm((prev) => ({ ...prev, imageUrl: val }));
+  };
+  const handleSubmit = async () => {
+    const validationErrors = validate();
+    if (Object.keys(validationErrors).length > 0) { setErrors(validationErrors); return; }
+    setLoading(true);
+    setFeedback(null);
+    const payload = { ...form, amount: Number(form.amount) };
+    console.log('payload before send:', payload); // ← הוסף
+
+    try {
+      if (editingId) {
+        await updateCommemoration(editingId, payload);
+        setFeedback({ type: 'success', message: 'ההנצחה עודכנה בהצלחה!' });
+      } else {
+        await createCommemoration(payload);
+        setFeedback({ type: 'success', message: 'ההנצחה נוספה בהצלחה!' });
+      }
+      setForm(EMPTY_FORM);
+      setEditingId(null);
+      if (listLoaded) loadList();
+    } catch (err) {
+      setFeedback({ type: 'error', message: err?.response?.data?.message || 'אירעה שגיאה. אנא נסה שוב.' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setForm(EMPTY_FORM);
+    setEditingId(null);
+    setErrors({});
+    setFeedback(null);
+  };
+
+  const loadList = async () => {
+    setLoadingList(true);
+    try {
+      const res = await fetchCommemorations();
+      setCommemorations(res.data);
+      setListLoaded(true);
+    } catch {
+      setFeedback({ type: 'error', message: 'שגיאה בטעינת הרשימה' });
+    } finally {
+      setLoadingList(false);
+    }
+  };
+
+  const handleEdit = (item) => {
+    console.log('item.imageUrl from server:', item.imageUrl);
+    const normalized = normalizeImageUrl(item.imageUrl || '');
+    console.log('normalized:', normalized);
+    setEditingId(item._id);
+    setForm({
+      itemName: item.itemName,
+      contributorName: item.contributorName,
+      commemoratedName: item.commemoratedName,
+      amount: String(item.amount),
+      // normalizeImageUrl מוודא שקישורי Drive ישנים גם יוצגו נכון בתצוגה המקדימה
+      imageUrl: normalized,
+      date: new Date(item.date).toISOString().split('T')[0],
+    });
+    setErrors({});
+    setFeedback(null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('האם אתה בטוח שברצונך למחוק הנצחה זו?')) return;
+    try {
+      await deleteCommemoration(id);
+      setCommemorations((prev) => prev.filter((c) => c._id !== id));
+      setFeedback({ type: 'success', message: 'ההנצחה נמחקה בהצלחה' });
+    } catch {
+      setFeedback({ type: 'error', message: 'שגיאה במחיקת ההנצחה' });
+    }
+  };
+
+  const handleStatusSave = async (id, newStatus) => {
+    await updateCommemorationStatus(id, newStatus);
+    setCommemorations((prev) =>
+      prev.map((c) => (c._id === id ? { ...c, commemorationStatus: newStatus } : c))
+    );
+  };
+
+  const inputClass = (field) =>
+    `w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#cfa756] transition ${errors[field] ? 'border-red-400 bg-red-50' : 'border-gray-300'
+    }`;
+
+  const counts = {
+    all: commemorations.length,
+    commemorated: commemorations.filter((c) => c.commemorationStatus === 'commemorated').length,
+    pending: commemorations.filter((c) => c.commemorationStatus === 'pending').length,
+    none: commemorations.filter((c) => !c.commemorationStatus || c.commemorationStatus === 'none').length,
+  };
+
+  const FILTERS = [
+    { key: 'all', label: `הכל (${counts.all})` },
+    { key: 'commemorated', label: `הונצח (${counts.commemorated})` },
+    { key: 'pending', label: `ממתין (${counts.pending})` },
+    { key: 'none', label: `פנוי (${counts.none})` },
+  ];
+
+  const filteredList =
+    activeFilter === 'all'
+      ? commemorations
+      : commemorations.filter((c) => {
+        if (activeFilter === 'none') return !c.commemorationStatus || c.commemorationStatus === 'none';
+        return c.commemorationStatus === activeFilter;
+      });
+
+  return (
+    <div dir="rtl" className="max-w-2xl mx-auto">
+      <h2 className="text-2xl font-bold text-[#0d2340] mb-6 flex items-center gap-2">
+        <span className="text-[#cfa756]">✦</span>
+        {editingId ? 'עריכת הנצחה' : 'הוספת הנצחה חדשה'}
+      </h2>
+
+      {feedback && (
+        <div
+          className={`mb-5 rounded-lg px-4 py-3 text-sm font-medium ${feedback.type === 'success'
+              ? 'bg-green-50 border border-green-200 text-green-700'
+              : 'bg-red-50 border border-red-200 text-red-700'
+            }`}
+        >
+          {feedback.message}
+        </div>
+      )}
+
+      {/* טופס */}
+      <div className="bg-white rounded-2xl shadow-md p-6 space-y-5 border border-gray-100">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <Field label="שם הפריט המונצח *" id="itemName" error={errors.itemName}>
+            <input
+              id="itemName" name="itemName" value={form.itemName} onChange={handleChange}
+              placeholder="למשל: ספר תורה, עמוד תפילה..."
+              className={inputClass('itemName')}
+            />
+          </Field>
+
+          <Field label="שם המונצח *" id="commemoratedName" error={errors.commemoratedName}>
+            <input
+              id="commemoratedName" name="commemoratedName" value={form.commemoratedName}
+              onChange={handleChange} placeholder="שם הנפטר לעילוי נשמתו"
+              className={inputClass('commemoratedName')}
+            />
+          </Field>
+
+          <Field label="שם התורם / המשפחה *" id="contributorName" error={errors.contributorName}>
+            <input
+              id="contributorName" name="contributorName" value={form.contributorName}
+              onChange={handleChange} placeholder="שם המשפחה או התורם"
+              className={inputClass('contributorName')}
+            />
+          </Field>
+
+          <Field label="סכום התרומה (₪) *" id="amount" error={errors.amount}>
+            <input
+              id="amount" name="amount" type="number" min="0" value={form.amount}
+              onChange={handleChange} placeholder="0"
+              className={inputClass('amount')}
+            />
+          </Field>
+
+          <Field label="תאריך" id="date" error={errors.date}>
+            <input
+              id="date" name="date" type="date" value={form.date}
+              onChange={handleChange}
+              className={inputClass('date')}
+            />
+          </Field>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">תמונה (אופציונלי)</label>
+          <ImageUploader value={form.imageUrl} onChange={handleImageChange} />
+        </div>
+
+        <div className="flex gap-3 pt-2">
+          <button
+            onClick={handleSubmit} disabled={loading}
+            className="flex-1 bg-[#cfa756] hover:bg-[#b8860b] disabled:opacity-50 text-[#0d2340] font-bold px-6 py-2.5 rounded-lg transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-[#cfa756]"
+          >
+            {loading ? 'שומר...' : editingId ? 'עדכן הנצחה' : 'הוסף הנצחה'}
+          </button>
+          {editingId && (
+            <button
+              onClick={handleCancel}
+              className="px-6 py-2.5 border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors focus:outline-none"
+            >
+              ביטול
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* רשימה קיימת */}
+      <div className="mt-8">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold text-[#0d2340]">הנצחות קיימות</h3>
+          <button
+            onClick={loadList} disabled={loadingList}
+            className="text-sm text-[#cfa756] hover:underline disabled:opacity-50 focus:outline-none"
+          >
+            {loadingList ? 'טוען...' : listLoaded ? 'רענן רשימה' : 'טען רשימה'}
+          </button>
+        </div>
+
+        {listLoaded && commemorations.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-4">
+            {FILTERS.map(({ key, label }) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setActiveFilter(key)}
+                className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${activeFilter === key
+                    ? 'bg-[#0d2340] text-[#cfa756] border-[#0d2340]'
+                    : 'bg-white text-gray-600 border-gray-300 hover:border-[#0d2340] hover:text-[#0d2340]'
+                  }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {listLoaded && commemorations.length === 0 && (
+          <p className="text-gray-400 text-sm text-center py-6">אין הנצחות במערכת</p>
+        )}
+
+        {listLoaded && filteredList.length === 0 && commemorations.length > 0 && (
+          <p className="text-gray-400 text-sm text-center py-6">אין הנצחות בסטטוס זה</p>
+        )}
+
+        <div className="space-y-3">
+          {filteredList.map((item) => {
+            const cfg = STATUS_CONFIG[item.commemorationStatus] || STATUS_CONFIG.none;
+            return (
+              <div
+                key={item._id}
+                className="bg-white border border-gray-100 rounded-xl shadow-sm p-4 flex items-center gap-4"
+              >
+                {item.imageUrl && (
+                  <img
+                    src={normalizeImageUrl(item.imageUrl)}
+                    alt=""
+                    className="w-12 h-12 rounded-lg object-cover flex-shrink-0 border border-gray-100"
+                  />
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <p className="font-semibold text-[#0d2340] truncate">{item.itemName}</p>
+                    <span
+                      className="text-[10px] font-semibold px-2 py-0.5 rounded-full border flex-shrink-0"
+                      style={{ background: cfg.bg, color: cfg.color, borderColor: cfg.border }}
+                    >
+                      {cfg.label}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-500 truncate">
+                    לעילוי נשמת <span className="text-[#0d2340] font-medium">{item.commemoratedName}</span>
+                    {' · '}{item.contributorName}
+                  </p>
+                </div>
+
+                <div className="flex gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => setStatusModal(item)}
+                    className="text-xs bg-[#cfa756]/15 text-[#854f0b] border border-[#cfa756]/40 px-3 py-1.5 rounded-lg hover:bg-[#cfa756]/30 transition-colors focus:outline-none whitespace-nowrap"
+                    title="שנה סטטוס הנצחה"
+                  >
+                    🏷 סטטוס
+                  </button>
+                  <button
+                    onClick={() => handleEdit(item)}
+                    className="text-xs bg-[#0d2340] text-white px-3 py-1.5 rounded-lg hover:bg-[#1a365d] transition-colors focus:outline-none"
+                  >
+                    עריכה
+                  </button>
+                  <button
+                    onClick={() => handleDelete(item._id)}
+                    className="text-xs bg-red-600 text-white px-3 py-1.5 rounded-lg hover:bg-red-700 transition-colors focus:outline-none"
+                  >
+                    מחיקה
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {statusModal && (
+        <StatusModal
+          item={statusModal}
+          onClose={() => setStatusModal(null)}
+          onSave={handleStatusSave}
+        />
+      )}
+    </div>
+  );
+}
+</file>
+
+<file path="server/middleware/authMiddleware.js">
+// middleware/authMiddleware.js
+const jwt = require('jsonwebtoken');
+
+module.exports = (req, res, next) => {
+  // Get token from header
+  const token = req.header('Authorization')?.replace('Bearer ', '');
+
+  // Check if no token
+  if (!token) {
+    return res.status(401).json({ message: 'גישה נדחתה, אין טוקן' });
+  }
+
+  // Verify token
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (err) {
+    res.status(401).json({ message: 'הטוקן אינו תקף' });
+  }
+};
+</file>
+
+<file path="server/models/Commemoration.js">
+const mongoose = require('mongoose');
+
+const commemorationSchema = new mongoose.Schema({
+  itemName: {
+    type: String,
+    required: [true, 'שם הפריט הוא שדה חובה'],
+    trim: true,
+  },
+  commemorationStatus: {
+    type: String,
+    enum: ['commemorated', 'pending', 'none'],
+    default: 'none',
+  },
+  // ← חובה רק כאשר הפריט אינו "פנוי להנצחה" (כלומר כבר יש מונצח/תורם בפועל)
+  contributorName: {
+    type: String,
+    trim: true,
+    default: '',
+    required: [
+      function () { return this.commemorationStatus !== 'none'; },
+      'שם התורם הוא שדה חובה כאשר ההנצחה אינה פנויה',
+    ],
+  },
+  commemoratedName: {
+    type: String,
+    trim: true,
+    default: '',
+    required: [
+      function () { return this.commemorationStatus !== 'none'; },
+      'שם המונצח הוא שדה חובה כאשר ההנצחה אינה פנויה',
+    ],
+  },
+  amount: {
+    type: Number,
+    default: 0,
+    min: [0, 'הסכום לא יכול להיות שלילי'],
+    required: [
+      function () { return this.commemorationStatus !== 'none'; },
+      'סכום התרומה הוא שדה חובה כאשר ההנצחה אינה פנויה',
+    ],
+  },
+  imageUrl: {
+    type: String,
+    trim: true,
+    default: '',
+  },
+  date: {
+    type: Date,
+    default: Date.now,
+  },
+});
+
+module.exports = mongoose.model('Commemoration', commemorationSchema);
+</file>
+
+<file path="client/src/services/portalService.js">
+import API from './api';
+
+export const fetchCategories      = ()           => API.get('/categories');
+export const createCategory       = (data)       => API.post('/categories', data);
+export const updateCategory       = (id, data)   => API.put(`/categories/${id}`, data);
+export const deleteCategory       = (id)         => API.delete(`/categories/${id}`);
+
+export const fetchItemsByCategory = (catId)      => API.get(`/portal-items/category/${catId}`);
+export const fetchItemById        = (id)         => API.get(`/portal-items/${id}`);
+export const createItem           = (data)       => API.post('/portal-items', data);
+export const updateItem           = (id, data)   => API.put(`/portal-items/${id}`, data);
+export const deleteItem           = (id)         => API.delete(`/portal-items/${id}`);
+
+export const submitSponsorshipRequest = (data)   => API.post('/sponsorships', data);
+export const fetchAllSponsorships     = ()       => API.get('/sponsorships');
+export const updateSponsorshipStatus  = (id, status) => API.patch(`/sponsorships/${id}/status`, { status });
+export const submitCommemorationRequest = (data) =>
+    API.post('/sponsorships/from-commemoration', data);
+</file>
+
+<file path="client/src/constants/routes.js">
+//client\src\constants\routes.js
+export const ROUTES = {
+  HOME: '/',
+  // PRAYERS:      '/prayers',
+  // ANNOUNCEMENTS:'/announcements',
+  CONTACT: '/contact',
+  ADMIN: '/admin',
+  LOGIN: '/login',
+  REGISTER: '/register',
+  HEBCAL: '/hebcal',
+  PAYMENTS: '/payments',
+  COMMEMORATIONS: '/commemorations',
+  GALLERY: '/gallery',
+  PORTAL: '/portal',
+  PORTAL_CATEGORY: '/portal/:categoryId',
+  PORTAL_ITEM: '/portal/item/:itemId',
+};
+
+export const NAVIGATION_ITEMS = [
+  { path: ROUTES.HOME, label: 'דף הבית' },
+  { path: ROUTES.GALLERY, label: 'הודעות' },
+  { path: ROUTES.PORTAL, label: 'הקדשות' },
+  { path: ROUTES.COMMEMORATIONS, label: 'הנצחות' },
+  { path: ROUTES.PAYMENTS, label: 'תשלומים' },
+  { path: ROUTES.CONTACT, label: 'צור קשר' },
+];
+</file>
+
+<file path="client/src/pages/Admin.jsx">
+import { useEffect, useRef, useState } from 'react';
+import {
+  fetchContactMessages, updateContactMessageHandled,
+  fetchAllUsers, addMailingListUser, updateMailingListUser,
+  deleteMailingListUser, toggleUserNewsletter,
+} from '../services/api';
+import CommemorationForm from '../components/Admin/CommemorationForm';
+import { fetchAllSponsorships, updateSponsorshipStatus } from '../services/portalService';
+import PageHeader from '../components/common/PageHeader';
+
+// ── וולידציית אימייל משותפת ────────────────────────────────────────────────
+const isValidEmail = (email) => {
+  const regex =
+    /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)+$/;
+  return regex.test((email || '').trim());
+};
+
+// ── אנימציית כניסה לטאב ───────────────────────────────────────────────────────
+const tabInStyle = `
+  @keyframes tabIn {
+    from { opacity: 0; transform: translateY(3px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+`;
+
+// ── מודאל עריכת משתמש ─────────────────────────────────────────────────────
+function EditUserModal({ user, onClose, onSave }) {
+  const [form, setForm] = useState({ name: user.name, email: user.email });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const emailInvalid = form.email.trim() !== '' && !isValidEmail(form.email);
+  const canSubmit = form.name.trim() && form.email.trim() && !emailInvalid && !saving;
+
+  const handleSubmit = async () => {
+    setError('');
+    if (!form.name.trim() || !form.email.trim()) {
+      setError('נא למלא שם ואימייל');
+      return;
+    }
+    if (!isValidEmail(form.email)) {
+      setError('כתובת האימייל אינה תקינה');
+      return;
+    }
+    setSaving(true);
+    try {
+      await onSave(form);
+    } catch (err) {
+      setError(err.response?.data?.message || 'שגיאה בשמירה');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-[#0d2340]/75 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+      <div className="bg-[#f7f4e9] rounded-xl shadow-2xl border-2 border-[#cfa756] p-6 w-full max-w-md" dir="rtl">
+        <h3 className="text-xl font-bold text-[#0d2340] mb-4 border-b border-[#cfa756]/40 pb-2">
+          עריכת פרטי משתמש
+        </h3>
+        <div className="space-y-3">
+          <div>
+            <label className="text-sm font-medium text-[#0d2340]">שם מלא *</label>
+            <input
+              className="mt-1 w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-[#cfa756] outline-none"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-[#0d2340]">אימייל *</label>
+            <input
+              type="email"
+              dir="ltr"
+              className={`mt-1 w-full rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-[#cfa756] border ${
+                emailInvalid ? 'border-red-500' : 'border-gray-300'
+              }`}
+              value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+            />
+          </div>
+          {emailInvalid && (
+            <p className="text-red-600 text-sm font-medium">כתובת האימייל אינה תקינה</p>
+          )}
+          {error && <p className="text-red-600 text-sm font-medium">{error}</p>}
+        </div>
+        <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-200">
+          <button onClick={onClose} className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50">ביטול</button>
+          <button onClick={handleSubmit} disabled={!canSubmit}
+            className="px-4 py-2 bg-[#0d2340] text-[#cfa756] font-bold rounded-md hover:bg-[#1a365d] disabled:opacity-50">
+            {saving ? 'שומר...' : 'שמור'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── טאב: הודעות צור קשר ──────────────────────────────────────────────────────
+function ContactMessages() {
+  const [messages, setMessages] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [activeFilter, setActiveFilter] = useState('all');
+  const [updatingIds, setUpdatingIds] = useState([]);
+
+  useEffect(() => {
+    const loadMessages = async () => {
+      try {
+        setIsLoading(true);
+        const response = await fetchContactMessages();
+        const rawData = Array.isArray(response.data) ? response.data : [];
+        setMessages(rawData.sort((a, b) => new Date(b.date) - new Date(a.date)));
+      } catch {
+        setError('לא ניתן לטעון הודעות כרגע');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadMessages();
+  }, []);
+
+  const handleToggleHandled = async (id, nextHandled) => {
+    if (!id) { setError('לא ניתן לעדכן הודעה ללא מזהה תקין'); return; }
+    setUpdatingIds((prev) => [...prev, id]);
+    setError('');
+    try {
+      await updateContactMessageHandled(id, nextHandled);
+      setMessages((prev) =>
+        prev.map((item) =>
+          item._id === id
+            ? { ...item, handled: nextHandled, handledAt: nextHandled ? new Date().toISOString() : null }
+            : item
+        )
+      );
+    } catch {
+      setError('עדכון סטטוס נכשל, נסה שוב');
+    } finally {
+      setUpdatingIds((prev) => prev.filter((itemId) => itemId !== id));
+    }
+  };
+
+  const filteredMessages = messages.filter((item) => {
+    if (activeFilter === 'handled') return Boolean(item.handled);
+    if (activeFilter === 'unhandled') return !item.handled;
+    return true;
+  });
+
+  const FILTERS = [
+    { key: 'all', label: `הכל (${messages.length})` },
+    { key: 'unhandled', label: `לא טופל (${messages.filter((i) => !i.handled).length})` },
+    { key: 'handled', label: `טופל (${messages.filter((i) => i.handled).length})` },
+  ];
+
+  return (
+    <section className="max-w-5xl mx-auto">
+      <FilterBar filters={FILTERS} active={activeFilter} onChange={setActiveFilter} />
+
+      {isLoading && <p className="text-center py-6">טוען הודעות...</p>}
+      {error && <p className="text-center text-red-600 py-4">{error}</p>}
+      {!isLoading && !error && filteredMessages.length === 0 && (
+        <p className="text-center text-gray-500 py-10">אין הודעות להצגה כרגע</p>
+      )}
+
+      {!isLoading && !error && filteredMessages.length > 0 && (
+        <div className="grid gap-4">
+          {filteredMessages.map((item) => {
+            const messageId = item._id || item.id;
+            const isUpdating = messageId ? updatingIds.includes(messageId) : false;
+            return (
+              <article
+                key={messageId || `${item.email}-${item.date}`}
+                className={`bg-white shadow rounded-lg p-4 border transition-colors ${item.handled ? 'border-green-300 bg-green-50/40' : 'border-gray-200'
+                  }`}
+              >
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 mb-2">
+                  <h2 className="text-lg font-semibold">{item.name || 'ללא שם'}</h2>
+                  <time className="text-sm text-gray-500">
+                    {item.date ? new Date(item.date).toLocaleString('he-IL') : 'ללא תאריך'}
+                  </time>
+                </div>
+                <p className="text-sm text-gray-600 mb-2">{item.email || 'ללא אימייל'}</p>
+                <p className="text-gray-800 whitespace-pre-wrap">{item.message || 'ללא תוכן הודעה'}</p>
+                <div className="mt-3 flex items-center justify-between">
+                  <label className="inline-flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(item.handled)}
+                      disabled={!messageId || isUpdating}
+                      onChange={(e) => handleToggleHandled(messageId, e.target.checked)}
+                    />
+                    <span className="text-sm font-medium">{item.handled ? 'טופל' : 'סמן כטופל'}</span>
+                  </label>
+                  {item.handledAt && (
+                    <span className="text-xs text-gray-500">
+                      טופל ב־{new Date(item.handledAt).toLocaleString('he-IL')}
+                    </span>
+                  )}
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}
+
+// ── טאב: בקשות הקדשה ─────────────────────────────────────────────────────────
+function SponsorshipRequests() {
+  const [requests, setRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [activeFilter, setActiveFilter] = useState('all');
+
+  const load = async () => {
+    try {
+      setLoading(true);
+      const res = await fetchAllSponsorships();
+      setRequests(Array.isArray(res.data) ? res.data : []);
+    } catch {
+      setError('שגיאה בטעינת הבקשות');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const handleStatus = async (id, status) => {
+    await updateSponsorshipStatus(id, status);
+    load();
+  };
+
+  const STATUS_LABELS = { pending: 'ממתין', approved: 'אושר', rejected: 'נדחה' };
+  const STATUS_COLORS = {
+    pending: 'bg-yellow-100 text-yellow-800 border-yellow-300',
+    approved: 'bg-green-100  text-green-800  border-green-300',
+    rejected: 'bg-red-100    text-red-800    border-red-300',
+  };
+
+  const FILTERS = [
+    { key: 'all', label: `הכל (${requests.length})` },
+    { key: 'pending', label: `ממתין (${requests.filter((r) => r.status === 'pending').length})` },
+    { key: 'approved', label: `אושר (${requests.filter((r) => r.status === 'approved').length})` },
+    { key: 'rejected', label: `נדחה (${requests.filter((r) => r.status === 'rejected').length})` },
+  ];
+
+  const filtered = activeFilter === 'all' ? requests : requests.filter((r) => r.status === activeFilter);
+
+  return (
+    <section className="max-w-5xl mx-auto">
+      <FilterBar filters={FILTERS} active={activeFilter} onChange={setActiveFilter} />
+
+      {loading && <p className="text-center py-6">טוען...</p>}
+      {error && <p className="text-center text-red-600 py-4">{error}</p>}
+      {!loading && !error && filtered.length === 0 && (
+        <p className="text-center text-gray-500 py-10">אין בקשות להצגה</p>
+      )}
+
+      <div className="grid gap-4">
+        {filtered.map((r) => (
+          <article key={r._id} className="bg-white shadow rounded-lg p-4 border border-gray-200">
+            <div className="flex flex-wrap justify-between items-start gap-2 mb-2">
+              <div>
+                <h2 className="font-semibold text-[#0d2340]">{r.name}</h2>
+                <p className="text-xs text-gray-500">{r.email} | {r.phone}</p>
+              </div>
+              <span className={`text-xs font-bold border px-2 py-1 rounded-full ${STATUS_COLORS[r.status]}`}>
+                {STATUS_LABELS[r.status]}
+              </span>
+            </div>
+            <div className="text-sm text-gray-700 space-y-0.5 mb-3">
+              <p><span className="font-medium">קטגוריה:</span> {r.categoryId?.name || '—'}</p>
+              <p>
+                <span className="font-medium">פריט:</span>{' '}
+                {r.itemId?.title || r.itemName || '—'}
+              </p>
+              <p>
+                <span className="font-medium">קטגוריה:</span>{' '}
+                {r.categoryId?.name || (r.source === 'commemoration' ? 'הנצחות' : '—')}
+              </p>
+              <p><span className="font-medium">סוג הנצחה:</span> {r.dedicationType} — {r.dedicationName || '—'}</p>
+              {r.adminNote && <p><span className="font-medium">הערה:</span> {r.adminNote}</p>}
+            </div>
+            <div className="flex gap-2 justify-end">
+              {r.status !== 'approved' && (
+                <button
+                  onClick={() => handleStatus(r._id, 'approved')}
+                  className="text-xs bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700"
+                >
+                  ✓ אשר
+                </button>
+              )}
+              {r.status !== 'rejected' && (
+                <button
+                  onClick={() => handleStatus(r._id, 'rejected')}
+                  className="text-xs bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"
+                >
+                  ✕ דחה
+                </button>
+              )}
+              {r.status !== 'pending' && (
+                <button
+                  onClick={() => handleStatus(r._id, 'pending')}
+                  className="text-xs bg-gray-400 text-white px-3 py-1 rounded hover:bg-gray-500"
+                >
+                  ↩ ממתין
+                </button>
+              )}
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+// ── קומפוננטת פילטר משותפת ────────────────────────────────────────────────────
+function FilterBar({ filters, active, onChange }) {
+  return (
+    <div className="flex flex-wrap gap-2 justify-center mb-5">
+      {filters.map(({ key, label }) => (
+        <button
+          key={key}
+          type="button"
+          onClick={() => onChange(key)}
+          className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors ${active === key
+            ? 'bg-[#0d2340] text-[#cfa756] border-[#0d2340]'
+            : 'bg-white text-gray-600 border-gray-300 hover:border-[#0d2340] hover:text-[#0d2340]'
+            }`}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ── טאב: ניהול רשימת תפוצה ────────────────────────────────────────────────
+function MailingListManagement() {
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [form, setForm] = useState({ name: '', email: '' });
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState('');
+  const [formSuccess, setFormSuccess] = useState('');
+
+  const [search, setSearch] = useState('');
+  const [sortDir, setSortDir] = useState('asc');
+  const [editingUser, setEditingUser] = useState(null);
+  const [togglingIds, setTogglingIds] = useState([]);
+
+  const emailInvalid = form.email.trim() !== '' && !isValidEmail(form.email);
+  const canSubmit = form.name.trim() && form.email.trim() && !emailInvalid && !submitting;
+
+  const load = async () => {
+    try {
+      setLoading(true);
+      const res = await fetchAllUsers();
+      setUsers(Array.isArray(res.data) ? res.data : []);
+    } catch {
+      setError('שגיאה בטעינת המשתמשים');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { load(); }, []);
+
+  // ── הוספת משתמש ────────────────────────────────────────────────────────
+  const handleSubmit = async () => {
+    setFormError('');
+    setFormSuccess('');
+    if (!form.name.trim() || !form.email.trim()) {
+      setFormError('נא למלא שם ואימייל');
+      return;
+    }
+    if (!isValidEmail(form.email)) {
+      setFormError('כתובת האימייל אינה תקינה');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await addMailingListUser(form);
+      setFormSuccess(`${form.name} נוסף/ה בהצלחה לרשימת התפוצה`);
+      setForm({ name: '', email: '' });
+      load();
+    } catch (err) {
+      setFormError(err.response?.data?.message || 'שגיאה בהוספת המשתמש');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // ── עריכה ──────────────────────────────────────────────────────────────
+  const handleEditSave = async (formData) => {
+    const res = await updateMailingListUser(editingUser._id, formData);
+    setUsers((prev) => prev.map((u) => (u._id === editingUser._id ? res.data : u)));
+    setEditingUser(null);
+  };
+
+  // ── מחיקה ──────────────────────────────────────────────────────────────
+  const handleDelete = async (user) => {
+    if (!window.confirm(`למחוק את ${user.name} לצמיתות?`)) return;
+    try {
+      await deleteMailingListUser(user._id);
+      setUsers((prev) => prev.filter((u) => u._id !== user._id));
+    } catch (err) {
+      alert(err.response?.data?.message || 'שגיאה במחיקת המשתמש');
+    }
+  };
+
+  // ── צ'קבוקס קבלת עדכוני מייל ──────────────────────────────────────────
+  const handleToggleNewsletter = async (user, checked) => {
+    setTogglingIds((prev) => [...prev, user._id]);
+    setUsers((prev) => prev.map((u) => (u._id === user._id ? { ...u, receivesNewsletter: checked } : u)));
+    try {
+      await toggleUserNewsletter(user._id, checked);
+    } catch {
+      setUsers((prev) => prev.map((u) => (u._id === user._id ? { ...u, receivesNewsletter: !checked } : u)));
+      alert('שגיאה בעדכון סטטוס העדכונים');
+    } finally {
+      setTogglingIds((prev) => prev.filter((id) => id !== user._id));
+    }
+  };
+
+  // ── סינון + מיון ──────────────────────────────────────────────────────
+  const displayedUsers = users
+    .filter((u) => (u.name || '').toLowerCase().includes(search.trim().toLowerCase()))
+    .sort((a, b) => {
+      const cmp = (a.name || '').localeCompare(b.name || '', 'he');
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+
+  const newsletterCount = users.filter((u) => u.receivesNewsletter !== false).length;
+
+  return (
+    <section className="max-w-3xl mx-auto">
+      {/* טופס הוספה */}
+      <div className="bg-white shadow rounded-lg p-5 border border-gray-200 mb-8">
+        <h2 className="text-lg font-bold text-[#0d2340] mb-4">הוספת חבר קהילה לרשימת התפוצה</h2>
+        <div className="space-y-3">
+          <div>
+            <label className="text-sm font-medium text-[#0d2340]">שם מלא *</label>
+            <input
+              className="mt-1 w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-[#cfa756] outline-none"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              placeholder="ישראל ישראלי"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-[#0d2340]">אימייל *</label>
+            <input
+              type="email"
+              dir="ltr"
+              className={`mt-1 w-full rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-[#cfa756]
+                ${emailInvalid ? 'border-red-500' : 'border-gray-300'} border`}
+              value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+              placeholder="email@example.com"
+            />
+          </div>
+          {emailInvalid && (
+            <p className="text-red-600 text-sm font-medium">כתובת האימייל אינה תקינה</p>
+          )}
+          {formError && <p className="text-red-600 text-sm font-medium">{formError}</p>}
+          {formSuccess && <p className="text-green-600 text-sm font-medium">{formSuccess}</p>}
+          <button
+            onClick={handleSubmit}
+            disabled={!canSubmit}
+            className="bg-[#0d2340] text-[#cfa756] font-bold px-5 py-2.5 rounded-lg hover:bg-[#1a365d] disabled:opacity-50 shadow-md"
+          >
+            {submitting ? 'מוסיף...' : '+ הוסף לרשימת תפוצה'}
+          </button>
+        </div>
+      </div>
+
+      {/* חיפוש + מיון */}
+      <div className="flex flex-wrap gap-3 items-center justify-between mb-4">
+        <h3 className="text-md font-bold text-[#0d2340]">
+          חברי קהילה ({displayedUsers.length}/{users.length}) — {newsletterCount} מנויים לעדכונים
+        </h3>
+        <div className="flex gap-2 flex-wrap">
+          <input
+            className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-[#cfa756] outline-none"
+            placeholder="חיפוש לפי שם..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <button
+            onClick={() => setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))}
+            className="text-sm font-medium bg-white border border-gray-300 rounded-md px-3 py-1.5 hover:border-[#cfa756] hover:text-[#0d2340]"
+          >
+            מיון לפי שם {sortDir === 'asc' ? '↓ א-ת' : '↑ ת-א'}
+          </button>
+        </div>
+      </div>
+
+      {loading && <p className="text-center py-6">טוען...</p>}
+      {error && <p className="text-center text-red-600 py-4">{error}</p>}
+      {!loading && !error && displayedUsers.length === 0 && (
+        <p className="text-center text-gray-500 py-10">לא נמצאו משתמשים תואמים</p>
+      )}
+
+      {!loading && !error && displayedUsers.length > 0 && (
+        <div className="grid gap-2">
+          {displayedUsers.map((u) => (
+            <div
+              key={u._id}
+              className="bg-white border border-gray-200 rounded-lg px-4 py-3 flex flex-wrap justify-between items-center gap-3"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <input
+                  type="checkbox"
+                  title="קבלת עדכוני מייל"
+                  checked={u.receivesNewsletter !== false}
+                  disabled={togglingIds.includes(u._id)}
+                  onChange={(e) => handleToggleNewsletter(u, e.target.checked)}
+                  className="w-4 h-4 shrink-0"
+                />
+                <div className="min-w-0">
+                  <p className="font-medium text-[#0d2340] truncate">{u.name}</p>
+                  <p className="text-xs text-gray-500 truncate" dir="ltr">{u.email}</p>
+                </div>
+                <span className={`text-xs font-bold px-2 py-1 rounded-full border whitespace-nowrap ${u.isFullyRegistered === false
+                  ? 'bg-yellow-100 text-yellow-800 border-yellow-300'
+                  : 'bg-green-100 text-green-800 border-green-300'
+                  }`}>
+                  {u.isFullyRegistered === false ? 'רשימת תפוצה בלבד' : 'משתמש רשום'}
+                </span>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setEditingUser(u)}
+                  className="text-xs bg-[#cfa756] text-[#0d2340] font-bold px-3 py-1.5 rounded hover:bg-[#b8860b]"
+                >
+                  ✎ עריכה
+                </button>
+                <button
+                  onClick={() => handleDelete(u)}
+                  className="text-xs bg-[#a61b1b] text-white font-bold px-3 py-1.5 rounded hover:bg-red-800"
+                >
+                  ✕ מחיקה
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <p className="text-xs text-gray-400 mt-4 leading-relaxed">
+        הצ'קבוקס קובע האם המשתמש יקבל את עדכון המייל הבא (זמני תפילה והודעות).
+        ביטול הסימון אינו מוחק את המשתמש — רק חוסם ממנו את שליחת המיילים.
+      </p>
+
+      {editingUser && (
+        <EditUserModal
+          user={editingUser}
+          onClose={() => setEditingUser(null)}
+          onSave={handleEditSave}
+        />
+      )}
+    </section>
+  );
+}
+
+// ── הגדרת הטאבים ──────────────────────────────────────────────────────────────
+const TABS = [
+  { id: 'contact', label: 'הודעות צור קשר' },
+  { id: 'commemorations', label: 'ניהול הנצחות' },
+  { id: 'sponsorships', label: 'בקשות הקדשה' },
+  { id: 'mailing', label: 'ניהול רשימת תפוצה' }, // ← חדש
+
+];
+
+// ── Admin ראשי ────────────────────────────────────────────────────────────────
+export default function Admin() {
+  const [activeTab, setActiveTab] = useState('contact');
+  const [underlineStyle, setUnderlineStyle] = useState({ left: 0, width: 0 });
+  const tabBarRef = useRef(null);
+
+  // מיקום ראשוני של ה-underline אחרי render
+  useEffect(() => {
+    const btn = tabBarRef.current?.querySelector(`[data-tab="${activeTab}"]`);
+    if (btn) setUnderlineStyle({ left: btn.offsetLeft, width: btn.offsetWidth });
+  }, []);
+
+  // עדכן underline בשינוי גודל חלון
+  useEffect(() => {
+    const handleResize = () => {
+      const btn = tabBarRef.current?.querySelector(`[data-tab="${activeTab}"]`);
+      if (btn) setUnderlineStyle({ left: btn.offsetLeft, width: btn.offsetWidth });
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [activeTab]);
+
+  const handleTabChange = (id) => {
+    setActiveTab(id);
+    const btn = tabBarRef.current?.querySelector(`[data-tab="${id}"]`);
+    if (btn) setUnderlineStyle({ left: btn.offsetLeft, width: btn.offsetWidth });
+  };
+
+  return (
+    <div dir="rtl" className="min-h-screen bg-[#f7f4ee]">
+      <PageHeader
+        title="פאנל ניהול"
+        subtitle="ניהול הודעות, הנצחות, תמיכות ורשימת תפוצה"
+      />
+
+      <div className="max-w-5xl mx-auto p-4">
+      {/* הזרקת keyframes לאנימציה */}
+      <style>{tabInStyle}</style>
+
+      {/* רצועת טאבים עם underline נע */}
+      <div
+        ref={tabBarRef}
+        className="flex border-b border-gray-200 mb-6 overflow-x-auto relative"
+      >
+        {TABS.map((tab) => (
+          <button
+            key={tab.id}
+            data-tab={tab.id}
+            type="button"
+            onClick={() => handleTabChange(tab.id)}
+            className={`px-5 py-2.5 text-sm whitespace-nowrap transition-colors duration-200 focus:outline-none
+              ${activeTab === tab.id
+                ? 'text-[#0d2340] font-bold'
+                : 'text-gray-500 hover:text-[#0d2340] font-medium'
+              }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+
+        {/* underline שנע בצורה חלקה */}
+        <div
+          className="absolute bottom-[-0.5px] h-[2px] bg-[#cfa756] rounded-sm pointer-events-none"
+          style={{
+            left: underlineStyle.left,
+            width: underlineStyle.width,
+            transition: 'left 0.4s cubic-bezier(.4,0,.2,1), width 0.4s cubic-bezier(.4,0,.2,1)',
+          }}
+        />
+      </div>
+
+      {/* תוכן הטאב הפעיל — key גורם ל-React להר mount מחדש ולהפעיל אנימציה */}
+      <div
+        key={activeTab}
+        style={{ animation: 'tabIn 0.8s ease-out both' }}
+      >
+        {activeTab === 'contact' && <ContactMessages />}
+        {activeTab === 'commemorations' && <CommemorationForm />}
+        {activeTab === 'sponsorships' && <SponsorshipRequests />}
+        {activeTab === 'mailing' && <MailingListManagement />}
+      </div>
+      </div>
+    </div>
+  );
+}
+</file>
+
+<file path="client/src/pages/Commemorations.jsx">
+import { useEffect, useState } from 'react';
+import {
+  fetchCommemorations,
+  createCommemoration,
+  updateCommemoration,
+  deleteCommemoration,
+} from '../services/api';
+import { submitCommemorationRequest } from '../services/portalService';
+import CommunityPaymentButton from '../components/CommunityPaymentButton';
+import { useAuth } from '../components/context/authContext';
+import ImageUploader from '../components/ImageUploader';
+import PageHeader from '../components/common/PageHeader';
+
+const DEDICATION_TYPES = ['לזכות', 'לעילוי נשמת', 'לרפואת', 'לעילוי נשמת ולהצלחת', 'אחר'];
+
+// סטטוס הנצחה — ערכים: 'commemorated' | 'pending' | 'none'
+const STATUS_CONFIG = {
+  commemorated: { label: 'הונצח', dot: '#3b6d11', bg: '#eaf3de', text: '#3b6d11', border: '#97c459' },
+  pending: { label: 'ממתין לאישור', dot: '#854f0b', bg: '#faeeda', text: '#854f0b', border: '#ef9f27' },
+  none: { label: 'פנוי להנצחה', dot: '#185fa5', bg: '#e6f1fb', text: '#185fa5', border: '#85b7eb' },
+};
+
+// ── נירמול קישורי תמונה מ-Google Drive (זהה ל-CommemorationForm) ────────────
+const normalizeImageUrl = (url) => {
+  if (!url) return url;
+  if (url.includes('drive.google.com')) {
+    const fileId =
+      url.match(/\/d\/(.*?)\//)?.[1] ||
+      url.match(/id=(.*?)(?:&|$)/)?.[1];
+    if (fileId) return `https://lh3.googleusercontent.com/d/${fileId}`;
+  }
+  return url;
+};
+
+// ── Lightbox – תצוגת תמונה מלאה בלחיצה ───────────────────────────────────────
+function ImageLightbox({ src, alt, onClose }) {
+  useEffect(() => {
+    const handleKey = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [onClose]);
+
+  if (!src) return null;
+
+  return (
+    <div
+      style={{
+        position: 'fixed', inset: 0, background: 'rgba(13,35,64,.92)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        zIndex: 80, padding: '20px', cursor: 'zoom-out',
+        animation: 'fadeIn .2s ease',
+      }}
+      onClick={onClose}
+    >
+      <button
+        onClick={onClose}
+        aria-label="סגור"
+        style={{
+          position: 'absolute', top: '18px', left: '18px',
+          width: '38px', height: '38px', borderRadius: '50%',
+          background: 'rgba(255,255,255,.12)', border: '1px solid rgba(255,255,255,.25)',
+          color: '#fff', fontSize: '18px', cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 81,
+        }}
+      >
+        ✕
+      </button>
+      <img
+        src={src}
+        alt={alt}
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          maxWidth: '92vw', maxHeight: '90vh', objectFit: 'contain',
+          borderRadius: '12px', boxShadow: '0 24px 64px rgba(0,0,0,.6)',
+          cursor: 'default',
+        }}
+        draggable={false}
+      />
+      <style>{`@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }`}</style>
+    </div>
+  );
+}
+
+// ── מודאל ניהול (הוספה/עריכה) — למנהלים בלבד ────────────────────────────────
+const EMPTY_ADMIN_FORM = {
+  commemorationStatus: 'none',
+  itemName: '',
+  contributorName: '',
+  commemoratedName: '',
+  amount: '',
+  imageUrl: '',
+  date: new Date().toISOString().split('T')[0],
+};
+
+function AdminCommemorationModal({ initial, onClose, onSave }) {
+  const [form, setForm] = useState(
+    initial
+      ? {
+        commemorationStatus: initial.commemorationStatus || 'none',
+        itemName: initial.itemName || '',
+        contributorName: initial.contributorName || '',
+        commemoratedName: initial.commemoratedName || '',
+        amount: initial.amount != null ? String(initial.amount) : '',
+        imageUrl: normalizeImageUrl(initial.imageUrl || ''),
+        date: initial.date
+          ? new Date(initial.date).toISOString().split('T')[0]
+          : new Date().toISOString().split('T')[0],
+      }
+      : EMPTY_ADMIN_FORM
+  );
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  // ← האם הפריט "פנוי להנצחה" — עדיין אין מונצח/תורם בפועל
+  const isAvailable = form.commemorationStatus === 'none';
+
+  const handleStatusChange = (newStatus) => {
+    setForm((prev) => ({ ...prev, commemorationStatus: newStatus }));
+    setError('');
+  };
+
+  const handleSubmit = async () => {
+    if (!form.itemName.trim()) {
+      setError('שם הפריט הוא שדה חובה');
+      return;
+    }
+    // שדות אלה נדרשים רק כאשר הפריט אינו פנוי (כלומר כבר יש מונצח בפועל)
+    if (!isAvailable) {
+      if (!form.contributorName.trim() || !form.commemoratedName.trim()) {
+        setError('נא למלא שם תורם ושם מונצח (חובה כאשר הסטטוס אינו "פנוי להנצחה")');
+        return;
+      }
+      if (form.amount === '' || isNaN(Number(form.amount)) || Number(form.amount) < 0) {
+        setError('יש להזין סכום חוקי');
+        return;
+      }
+    }
+    setError('');
+    setSaving(true);
+    try {
+      await onSave({
+        ...form,
+        amount: form.amount === '' ? 0 : Number(form.amount),
+      });
+    } catch {
+      setError('שגיאה בשמירה — נסה שוב');
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div
+      style={{
+        position: 'fixed', inset: 0, background: 'rgba(13,35,64,.75)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        zIndex: 55, padding: '16px', backdropFilter: 'blur(2px)',
+      }}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div
+        dir="rtl"
+        style={{
+          background: '#f7f4e9', borderRadius: '16px', border: '2px solid #cfa756',
+          padding: '24px', width: '100%', maxWidth: '460px',
+          maxHeight: '90vh', overflowY: 'auto',
+        }}
+      >
+        <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#0d2340', marginBottom: '16px', borderBottom: '1px solid rgba(207,167,86,.4)', paddingBottom: '10px' }}>
+          {initial ? '✎ עריכת הנצחה' : '+ הוספת הנצחה חדשה'}
+        </h3>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+
+          {/* ← סטטוס בראש הטופס, כדי שיקבע מה נדרש בהמשך */}
+          <Field label="סטטוס הנצחה">
+            <select
+              style={inputStyle}
+              value={form.commemorationStatus}
+              onChange={(e) => handleStatusChange(e.target.value)}
+            >
+              {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
+                <option key={key} value={key}>{cfg.label}</option>
+              ))}
+            </select>
+            {isAvailable && (
+              <p style={{ fontSize: '11px', color: '#185fa5', marginTop: '4px' }}>
+                פריט פנוי — פרטי המונצח והתורם עדיין לא ידועים ואינם חובה.
+              </p>
+            )}
+          </Field>
+
+          <Field label="שם הפריט המונצח *">
+            <input
+              style={inputStyle}
+              value={form.itemName}
+              onChange={(e) => setForm({ ...form, itemName: e.target.value })}
+              placeholder="למשל: ספר תורה, עמוד תפילה..."
+            />
+          </Field>
+
+          {/* ← שדות אלה מוצגים תמיד אך מסומנים כחובה (*) רק כשלא "פנוי" */}
+          <Field label={`שם המונצח${isAvailable ? '' : ' *'}`}>
+            <input
+              style={inputStyle}
+              value={form.commemoratedName}
+              onChange={(e) => setForm({ ...form, commemoratedName: e.target.value })}
+              placeholder={isAvailable ? 'ימולא לאחר אישור בקשת הנצחה' : 'שם הנפטר לעילוי נשמתו'}
+            />
+          </Field>
+
+          <Field label={`שם התורם / המשפחה${isAvailable ? '' : ' *'}`}>
+            <input
+              style={inputStyle}
+              value={form.contributorName}
+              onChange={(e) => setForm({ ...form, contributorName: e.target.value })}
+              placeholder={isAvailable ? 'ימולא לאחר אישור בקשת הנצחה' : 'שם המשפחה או התורם'}
+            />
+          </Field>
+
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <Field label={`סכום (₪)${isAvailable ? '' : ' *'}`} style={{ flex: 1 }}>
+              <input
+                type="number" min="0" style={inputStyle}
+                value={form.amount}
+                onChange={(e) => setForm({ ...form, amount: e.target.value })}
+                placeholder="0"
+              />
+            </Field>
+            <Field label="תאריך" style={{ flex: 1 }}>
+              <input
+                type="date" style={inputStyle}
+                value={form.date}
+                onChange={(e) => setForm({ ...form, date: e.target.value })}
+              />
+            </Field>
+          </div>
+
+          <Field label="תמונה">
+            <ImageUploader
+              onUploaded={(url) => setForm((f) => ({ ...f, imageUrl: url }))}
+            />
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '10px 0' }}>
+              <div style={{ flex: 1, height: '1px', background: '#e5e7eb' }} />
+              <span style={{ fontSize: '11px', color: '#9ca3af' }}>או הדבק קישור</span>
+              <div style={{ flex: 1, height: '1px', background: '#e5e7eb' }} />
+            </div>
+
+            <input
+              type="url" dir="ltr" style={{ ...inputStyle, textAlign: 'left' }}
+              value={form.imageUrl}
+              onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
+              placeholder="https://... או קישור Google Drive"
+            />
+
+            {form.imageUrl && (
+              <div style={{ marginTop: '8px', height: '110px', borderRadius: '10px', overflow: 'hidden', background: '#f3f4f6', border: '1px solid #e5e7eb' }}>
+                <img
+                  src={normalizeImageUrl(form.imageUrl)}
+                  alt="תצוגה מקדימה"
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  onError={(e) => { e.target.style.display = 'none'; }}
+                />
+              </div>
+            )}
+          </Field>
+
+          {error && <p style={{ color: '#a32d2d', fontSize: '12px', fontWeight: 600 }}>{error}</p>}
+        </div>
+
+        <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '20px', paddingTop: '14px', borderTop: '1px solid rgba(207,167,86,.25)' }}>
+          <button onClick={onClose} style={cancelBtnStyle}>ביטול</button>
+          <button onClick={handleSubmit} disabled={saving} style={submitBtnStyle}>
+            {saving ? 'שומר...' : 'שמור'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── מודאל בקשת הנצחה (ציבורי — ללא שינוי) ────────────────────────────────────
+function RequestModal({ item, onClose, onSuccess }) {
+  const [form, setForm] = useState({
+    name: '', phone: '', email: '',
+    dedicationType: 'לזכות', dedicationName: '', adminNote: '',
+  });
+  const [sending, setSending] = useState(false);
+  const [formError, setFormError] = useState('');
+
+  const handleSubmit = async () => {
+    setFormError('');
+    if (!form.name.trim() || !form.phone.trim() || !form.email.trim()) {
+      setFormError('נא למלא את כל השדות המסומנים *');
+      return;
+    }
+    setSending(true);
+    try {
+      await submitCommemorationRequest({
+        ...form,
+        itemName: item.itemName,
+        commemorationId: item._id,
+      });
+      onSuccess();
+    } catch {
+      setFormError('שגיאה בשליחה — נסה שוב');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div
+      style={{
+        position: 'fixed', inset: 0, background: 'rgba(13,35,64,.72)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        zIndex: 50, padding: '16px',
+      }}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div
+        dir="rtl"
+        style={{
+          background: '#fff', borderRadius: '16px',
+          border: '1.5px solid rgba(207,167,86,.4)',
+          padding: '28px', width: '100%', maxWidth: '440px',
+          maxHeight: '90vh', overflowY: 'auto',
+        }}
+      >
+        <div style={{ marginBottom: '20px', paddingBottom: '14px', borderBottom: '1px solid rgba(207,167,86,.25)' }}>
+          <h3 style={{ fontSize: '17px', fontWeight: 700, color: '#0d2340', marginBottom: '4px' }}>
+            📝 בקשת הנצחה
+          </h3>
+          <p style={{ fontSize: '12px', color: '#6b7280' }}>
+            פריט: <strong style={{ color: '#0d2340' }}>{item.itemName}</strong>
+          </p>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <Field label="שם מלא *">
+            <input
+              style={inputStyle}
+              placeholder="ישראל ישראלי"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+            />
+          </Field>
+
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <Field label="טלפון *" style={{ flex: 1 }}>
+              <input
+                style={{ ...inputStyle, direction: 'ltr' }}
+                placeholder="050-0000000"
+                value={form.phone}
+                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              />
+            </Field>
+            <Field label="אימייל *" style={{ flex: 1 }}>
+              <input
+                type="email"
+                style={{ ...inputStyle, direction: 'ltr' }}
+                placeholder="email@example.com"
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+              />
+            </Field>
+          </div>
+
+          <Field label="סוג ההנצחה">
+            <select
+              style={inputStyle}
+              value={form.dedicationType}
+              onChange={(e) => setForm({ ...form, dedicationType: e.target.value })}
+            >
+              {DEDICATION_TYPES.map((t) => <option key={t}>{t}</option>)}
+            </select>
+          </Field>
+
+          <Field label="שם לציון בהנצחה">
+            <input
+              style={inputStyle}
+              placeholder="לדוג׳: חנה בת רות"
+              value={form.dedicationName}
+              onChange={(e) => setForm({ ...form, dedicationName: e.target.value })}
+            />
+          </Field>
+
+          <Field label="הערה לגבאי">
+            <textarea
+              style={{ ...inputStyle, minHeight: '72px', resize: 'vertical' }}
+              placeholder="פרטים נוספים, בקשות מיוחדות..."
+              value={form.adminNote}
+              onChange={(e) => setForm({ ...form, adminNote: e.target.value })}
+            />
+          </Field>
+
+          {formError && (
+            <p style={{ color: '#a32d2d', fontSize: '12px', fontWeight: 600 }}>{formError}</p>
+          )}
+
+          <CommunityPaymentButton />
+          <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '4px' }}>
+            <button onClick={onClose} style={cancelBtnStyle}>ביטול</button>
+            <button onClick={handleSubmit} disabled={sending} style={submitBtnStyle}>
+              {sending ? '⏳ שולח...' : '📤 שלח בקשה'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── באנר הצלחה ────────────────────────────────────────────────────────────────
+function SuccessBanner({ onClose }) {
+  return (
+    <div
+      style={{
+        position: 'fixed', inset: 0, background: 'rgba(13,35,64,.72)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        zIndex: 60, padding: '16px',
+      }}
+    >
+      <div
+        dir="rtl"
+        style={{
+          background: '#fff', borderRadius: '16px',
+          border: '2px solid #cfa756',
+          padding: '36px 28px', maxWidth: '360px', width: '100%', textAlign: 'center',
+        }}
+      >
+        <div style={{ fontSize: '52px', marginBottom: '12px' }}>✅</div>
+        <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#0d2340', marginBottom: '8px' }}>
+          בקשתך נשלחה!
+        </h3>
+        <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '24px' }}>
+          הגבאי יצור עמך קשר בהקדם לאישור הבקשה. תודה רבה!
+        </p>
+        <button onClick={onClose} style={submitBtnStyle}>סגור</button>
+      </div>
+    </div>
+  );
+}
+
+// ── כרטיס הנצחה ───────────────────────────────────────────────────────────────
+function CommemorationCard({ item, onRequest, isAdmin, onEdit, onDelete, onImageClick }) {
+  const cfg = STATUS_CONFIG[item.commemorationStatus] || STATUS_CONFIG.none;
+  const isCommemoratedAlready = item.commemorationStatus === 'commemorated';
+  const isPending = item.commemorationStatus === 'pending';
+
+  const formattedDate = item.date
+    ? new Date(item.date).toLocaleDateString('he-IL', { year: 'numeric', month: 'long', day: 'numeric' })
+    : null;
+
+  const formattedAmount = item.amount
+    ? new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS', minimumFractionDigits: 0 }).format(item.amount)
+    : null;
+
+  const imgSrc = item.imageUrl ? normalizeImageUrl(item.imageUrl) : null;
+
+  return (
+    <div
+      dir="rtl"
+      style={{
+        position: 'relative',
+        background: '#fff', borderRadius: '16px',
+        border: `1px solid ${isCommemoratedAlready ? 'rgba(97,196,89,.35)' : isPending ? 'rgba(239,159,39,.3)' : 'rgba(207,167,86,.2)'}`,
+        boxShadow: '0 2px 8px rgba(13,35,64,.06)',
+        overflow: 'hidden', display: 'flex', flexDirection: 'column',
+        transition: 'box-shadow .2s, transform .2s',
+      }}
+      onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 6px 24px rgba(13,35,64,.13)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+      onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 2px 8px rgba(13,35,64,.06)'; e.currentTarget.style.transform = 'translateY(0)'; }}
+    >
+      {/* כפתורי ניהול — למנהלים בלבד */}
+      {isAdmin && (
+        <div style={{ position: 'absolute', top: '8px', left: '8px', zIndex: 5, display: 'flex', gap: '4px' }}>
+          <button
+            onClick={(e) => { e.stopPropagation(); onEdit(item); }}
+            title="עריכה"
+            style={{
+              background: '#cfa756', color: '#0d2340', fontSize: '11px', fontWeight: 700,
+              padding: '4px 8px', borderRadius: '6px', border: 'none', cursor: 'pointer',
+              boxShadow: '0 1px 4px rgba(0,0,0,.2)',
+            }}
+          >✎</button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onDelete(item._id); }}
+            title="מחיקה"
+            style={{
+              background: '#a61b1b', color: '#fff', fontSize: '11px', fontWeight: 700,
+              padding: '4px 8px', borderRadius: '6px', border: 'none', cursor: 'pointer',
+              boxShadow: '0 1px 4px rgba(0,0,0,.2)',
+            }}
+          >✕</button>
+        </div>
+      )}
+
+      {/* תמונה / placeholder — לחיצה על תמונה קיימת פותחת Lightbox */}
+      {imgSrc ? (
+        <img
+          src={imgSrc}
+          alt={`הנצחת ${item.commemoratedName}`}
+          style={{ width: '100%', height: '140px', objectFit: 'cover', cursor: 'zoom-in' }}
+          onClick={() => onImageClick({ src: imgSrc, alt: item.commemoratedName || item.itemName })}
+          onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+        />
+      ) : null}
+      <div
+        style={{
+          display: imgSrc ? 'none' : 'flex',
+          width: '100%', height: '140px',
+          background: 'linear-gradient(135deg, #0d2340 0%, #1a365d 100%)',
+          alignItems: 'center', justifyContent: 'center',
+        }}
+      >
+        <HeartIcon />
+      </div>
+
+      {/* גוף */}
+      <div style={{ padding: '16px', flex: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+          <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#0d2340', lineHeight: 1.3, flex: 1 }}>
+            {item.itemName}
+          </h3>
+          <span
+            style={{
+              fontSize: '10px', fontWeight: 600, padding: '3px 8px', borderRadius: '12px', whiteSpace: 'nowrap',
+              background: cfg.bg, color: cfg.text, border: `1px solid ${cfg.border}`,
+            }}
+          >
+            {cfg.label}
+          </span>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', flex: 1 }}>
+          {item.commemoratedName && item.commemorationStatus !== 'none' && (
+            <Row label='מוקדש ל:' value={item.commemoratedName} bold />
+          )}
+          {item.contributorName && item.commemorationStatus !== 'none' && (
+            <Row label='נתרם ע"י:' value={item.contributorName} />
+          )}
+          {formattedAmount && <Row label="סכום:" value={formattedAmount} />}
+          {formattedDate && (
+            <p style={{ fontSize: '10px', color: '#9ca3af', marginTop: '6px', paddingTop: '8px', borderTop: '1px solid #f3f4f6' }}>
+              {formattedDate}
+            </p>
+          )}
+        </div>
+
+        {!isCommemoratedAlready && (
+          <button
+            onClick={() => onRequest(item)}
+            disabled={isPending}
+            style={{
+              marginTop: '4px', width: '100%', padding: '8px',
+              borderRadius: '8px', border: 'none', fontSize: '12px', fontWeight: 700,
+              cursor: isPending ? 'default' : 'pointer',
+              background: isPending ? '#f3f4f6' : '#0d2340',
+              color: isPending ? '#9ca3af' : '#cfa756',
+              transition: 'background .15s',
+            }}
+          >
+            {isPending ? '⏳ בקשה ממתינה לאישור' : '📤 בקש הנצחה'}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── עמוד ראשי ─────────────────────────────────────────────────────────────────
+export default function Commemorations() {
+  const { isAdmin } = useAuth();
+  const [commemorations, setCommemorations] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [activeFilter, setActiveFilter] = useState('all');
+  const [modalItem, setModalItem] = useState(null);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [adminModal, setAdminModal] = useState(null); // null | 'add' | { item }
+  const [actionError, setActionError] = useState('');
+  const [lightbox, setLightbox] = useState(null); // null | { src, alt }
+
+  const load = () => {
+    setLoading(true);
+    fetchCommemorations()
+      .then((res) => { setCommemorations(res.data); setError(null); })
+      .catch(() => setError('אירעה שגיאה בטעינת ההנצחות. אנא נסה שוב מאוחר יותר.'))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const counts = {
+    all: commemorations.length,
+    commemorated: commemorations.filter((i) => i.commemorationStatus === 'commemorated').length,
+    pending: commemorations.filter((i) => i.commemorationStatus === 'pending').length,
+    none: commemorations.filter((i) => i.commemorationStatus === 'none').length,
+  };
+
+  const filtered = activeFilter === 'all'
+    ? commemorations
+    : commemorations.filter((i) => i.commemorationStatus === activeFilter);
+
+  const FILTERS = [
+    { key: 'all', label: `הכל (${counts.all})` },
+    { key: 'commemorated', label: `הונצח (${counts.commemorated})` },
+    { key: 'pending', label: `ממתין לאישור (${counts.pending})` },
+    { key: 'none', label: `פנוי להנצחה (${counts.none})` },
+  ];
+
+  // ── פעולות ניהול (אדמין בלבד) ──────────────────────────────────────────────
+  const handleAdminSave = async (form) => {
+    setActionError('');
+    try {
+      if (adminModal === 'add') {
+        await createCommemoration(form);
+      } else {
+        await updateCommemoration(adminModal.item._id, form);
+      }
+      setAdminModal(null);
+      load();
+    } catch {
+      setActionError('שגיאה בשמירת ההנצחה');
+      throw new Error('save failed'); // כדי שהמודאל ידע להישאר פתוח ולהציג שגיאה
+    }
+  };
+
+  const handleAdminDelete = async (id) => {
+    if (!window.confirm('האם אתה בטוח שברצונך למחוק הנצחה זו?')) return;
+    try {
+      await deleteCommemoration(id);
+      setCommemorations((prev) => prev.filter((c) => c._id !== id));
+    } catch {
+      setActionError('שגיאה במחיקת ההנצחה');
+    }
+  };
+
+  const showAdminBar = isAdmin && isAdmin();
+
+  return (
+    <div dir="rtl" style={{ minHeight: '100vh', background: '#f7f4ee' }}>
+      <PageHeader
+        title="לוח הנצחות"
+        subtitle="הנצחות ותרומות לעילוי נשמת יקירינו"
+      />
+
+      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px 16px' }}>
+        {/* שורת ניהול — למנהלים בלבד */}
+        {showAdminBar && (
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
+            <button
+              onClick={() => setAdminModal('add')}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '6px',
+                background: '#0d2340', color: '#cfa756', fontWeight: 700,
+                padding: '9px 18px', borderRadius: '10px', border: 'none',
+                cursor: 'pointer', fontSize: '13px', boxShadow: '0 2px 6px rgba(13,35,64,.2)',
+              }}
+            >
+              <span style={{ fontSize: '15px' }}>+</span> הוסף הנצחה
+            </button>
+          </div>
+        )}
+
+        {actionError && (
+          <div style={{ marginBottom: '16px', background: '#fef2f2', border: '1px solid #fca5a5', color: '#b91c1c', borderRadius: '10px', padding: '10px 16px', fontSize: '13px', fontWeight: 600 }}>
+            {actionError}
+          </div>
+        )}
+
+        {!loading && !error && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '28px' }}>
+            {FILTERS.map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => setActiveFilter(key)}
+                style={{
+                  padding: '7px 18px', borderRadius: '24px', fontSize: '13px', fontWeight: 600,
+                  border: activeFilter === key ? '1.5px solid #0d2340' : '1.5px solid #d1d5db',
+                  background: activeFilter === key ? '#0d2340' : '#fff',
+                  color: activeFilter === key ? '#cfa756' : '#6b7280',
+                  cursor: 'pointer', transition: 'all .15s',
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {loading && <Spinner />}
+        {error && <ErrorBox msg={error} />}
+        {!loading && !error && filtered.length === 0 && (
+          <div style={{ textAlign: 'center', padding: '64px 0', color: '#9ca3af' }}>
+            <HeartIcon size={56} />
+            <p style={{ marginTop: '16px', fontSize: '16px' }}>אין הנצחות להצגה כרגע</p>
+          </div>
+        )}
+
+        {!loading && !error && filtered.length > 0 && (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
+            gap: '20px',
+          }}>
+            {filtered.map((item) => (
+              <CommemorationCard
+                key={item._id}
+                item={item}
+                onRequest={setModalItem}
+                isAdmin={showAdminBar}
+                onEdit={(it) => setAdminModal({ item: it })}
+                onDelete={handleAdminDelete}
+                onImageClick={setLightbox}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {modalItem && !showSuccess && (
+        <RequestModal
+          item={modalItem}
+          onClose={() => setModalItem(null)}
+          onSuccess={() => { setModalItem(null); setShowSuccess(true); }}
+        />
+      )}
+
+      {showSuccess && (
+        <SuccessBanner onClose={() => setShowSuccess(false)} />
+      )}
+
+      {adminModal && (
+        <AdminCommemorationModal
+          initial={adminModal !== 'add' ? adminModal.item : null}
+          onClose={() => setAdminModal(null)}
+          onSave={handleAdminSave}
+        />
+      )}
+
+      {lightbox && (
+        <ImageLightbox
+          src={lightbox.src}
+          alt={lightbox.alt}
+          onClose={() => setLightbox(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── קומפוננטות עזר ────────────────────────────────────────────────────────────
+function Field({ label, children, style }) {
+  return (
+    <div style={style}>
+      <label style={{ fontSize: '12px', fontWeight: 600, color: '#374151', marginBottom: '5px', display: 'block' }}>
+        {label}
+      </label>
+      {children}
+    </div>
+  );
+}
+
+function Row({ label, value, bold }) {
+  return (
+    <div style={{ display: 'flex', gap: '6px', fontSize: '12px' }}>
+      <span style={{ color: '#cfa756', fontWeight: 700, minWidth: '90px', flexShrink: 0 }}>{label}</span>
+      <span style={{ color: '#0d2340', fontWeight: bold ? 700 : 400 }}>{value}</span>
+    </div>
+  );
+}
+
+function HeartIcon({ size = 36 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="#cfa756" strokeWidth="1.2">
+      <path strokeLinecap="round" strokeLinejoin="round"
+        d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5
+           2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09
+           C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5
+           c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+    </svg>
+  );
+}
+
+function Spinner() {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'center', padding: '80px 0' }}>
+      <div style={{
+        width: '40px', height: '40px', borderRadius: '50%',
+        border: '3px solid #cfa756', borderTopColor: 'transparent',
+        animation: 'spin 0.8s linear infinite',
+      }} />
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
+}
+
+function ErrorBox({ msg }) {
+  return (
+    <div style={{
+      background: '#fef2f2', border: '1px solid #fca5a5', color: '#b91c1c',
+      borderRadius: '12px', padding: '20px', textAlign: 'center', maxWidth: '420px', margin: '0 auto',
+    }}>
+      <p style={{ fontWeight: 600 }}>{msg}</p>
+    </div>
+  );
+}
+
+// סגנונות משותפים
+const inputStyle = {
+  width: '100%', border: '1px solid #d1d5db', borderRadius: '8px',
+  padding: '9px 12px', fontSize: '13px', outline: 'none',
+  fontFamily: 'inherit', background: '#fff', color: '#111827',
+  transition: 'border-color .15s',
+};
+
+const cancelBtnStyle = {
+  padding: '9px 20px', border: '1px solid #d1d5db', borderRadius: '8px',
+  background: '#fff', color: '#6b7280', cursor: 'pointer', fontSize: '13px',
+};
+
+const submitBtnStyle = {
+  padding: '9px 24px', background: '#0d2340', color: '#cfa756',
+  border: 'none', borderRadius: '8px', fontSize: '13px',
+  fontWeight: 700, cursor: 'pointer',
+};
+</file>
+
+<file path="client/src/App.jsx">
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { useEffect, useRef } from 'react';
+import { AuthProvider } from './components/context/authContext';
+import Header from './components/common/Header';
+import Home from './pages/Home';
+import Prayers from './pages/Prayers';
+import Announcements from './pages/Announcements';
+import Commemorations from './pages/Commemorations';
+import Contact from './pages/Contact';
+import Admin from './pages/Admin';
+import Login from './components/auth/Login';
+import Register from './components/auth/Register';
+import Footer from './components/common/Footer';
+import HalachicTimes from './components/HalachicTimes';
+import { ROUTES } from './constants/routes';
+import Payments from './pages/Payments';
+import PortalItem from './pages/PortalItem';
+import PortalCategory from './pages/PortalCategory';
+import Portal from './pages/Portal';
+import Gallery from './pages/Gallery';
+
+const tabInStyle = `
+  @keyframes tabIn {
+    from { opacity: 0; transform: translateY(3px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+`;
+
+function AnimatedRoutes() {
+  const location = useLocation();
+  const mainRef = useRef(null);
+
+  useEffect(() => {
+    if (mainRef.current) {
+      mainRef.current.style.animation = 'none';
+      mainRef.current.offsetHeight; // reflow
+      mainRef.current.style.animation = 'tabIn 0.8s ease forwards';
+    }
+  }, [location.pathname]);
+
+  return (
+    <main ref={mainRef} className="flex-1 p-4">
+      <Routes location={location}>
+        <Route path={ROUTES.HOME} element={<Home />} />
+        <Route path={ROUTES.PRAYERS} element={<Prayers />} />
+        <Route path={ROUTES.ANNOUNCEMENTS} element={<Announcements />} />
+        <Route path={ROUTES.COMMEMORATIONS} element={<Commemorations />} />
+        <Route path={ROUTES.CONTACT} element={<Contact />} />
+        <Route path={`${ROUTES.ADMIN}/*`} element={<Admin />} />
+        <Route path={ROUTES.LOGIN} element={<Login />} />
+        <Route path={ROUTES.REGISTER} element={<Register />} />
+        <Route path={ROUTES.HEBCAL} element={<HalachicTimes />} />
+        <Route path={ROUTES.PAYMENTS} element={<Payments />} />
+        <Route path="/portal/item/:itemId" element={<PortalItem />} />
+        <Route path="/portal/:categoryId" element={<PortalCategory />} />
+        <Route path={ROUTES.PORTAL} element={<Portal />} />
+        <Route path={ROUTES.GALLERY} element={<Gallery />} />
+        <Route path="*" element={<div className="text-center text-xl">hamud lo nimtsa ein lecha ma lechapes po</div>} />
+      </Routes>
+    </main>
+  );
+}
+
+function App() {
+  return (
+    <Router>
+      <AuthProvider>
+        <style>{tabInStyle}</style>
+        <div className="flex flex-col min-h-screen">
+          <Header />
+          <AnimatedRoutes />
+          <Footer />
+        </div>
+      </AuthProvider>
+    </Router>
+  );
+}
+
+export default App;
+</file>
+
+<file path="client/src/components/common/Header.jsx">
+// components/common/Header.jsx
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { NAVIGATION_ITEMS, ROUTES } from '../../constants/routes';
+import { useAuth } from '../context/authContext';
+import GoldParticles from './GoldParticles';
+import LightSweep from './LightSweep';
+
+/* ─────────────────────────────────────────────
+   Header – משודרג
+   ───────────────────────────────────────────── */
+function Header() {
+  const { user, isAuthenticated, isAdmin, logout } = useAuth();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const [underlineStyle, setUnderlineStyle] = useState({ left: 0, width: 0, opacity: 0 });
+  const [crownLeft, setCrownLeft] = useState(0);
+  const navRef = useRef(null);
+  const location = useLocation();
+
+  const navItems = useMemo(() => {
+    const items = [...NAVIGATION_ITEMS];
+    if (isAuthenticated && isAdmin()) items.push({ path: ROUTES.ADMIN, label: 'ניהול' });
+    return items;
+  }, [isAuthenticated, isAdmin]);
+
+  useEffect(() => {
+    setIsMenuOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const moveUnderline = useCallback((path) => {
+    const btn = navRef.current?.querySelector(`[data-path="${path}"]`);
+    if (btn) {
+      const centerLeft = btn.offsetLeft + btn.offsetWidth / 2 - 7;
+      setUnderlineStyle({ left: btn.offsetLeft, width: btn.offsetWidth, opacity: 1 });
+      setCrownLeft(centerLeft);
+    }
+  }, []);
+
+  useEffect(() => {
+    const navEl = navRef.current;
+    if (!navEl) return;
+    let cancelled = false;
+
+    moveUnderline(location.pathname);
+
+    const observer = new ResizeObserver(() => moveUnderline(location.pathname));
+    observer.observe(navEl);
+    navEl.querySelectorAll('[data-path]').forEach((el) => observer.observe(el));
+
+    document.fonts?.ready?.then(() => {
+      if (!cancelled) moveUnderline(location.pathname);
+    });
+
+    return () => {
+      cancelled = true;
+      observer.disconnect();
+    };
+  }, [location.pathname, navItems, moveUnderline]);
+
+  const toggleMenu = useCallback(() => setIsMenuOpen((prev) => !prev), []);
+
+  const AuthButtons = useMemo(() => {
+    if (isAuthenticated) {
+      return (
+        <div className="flex items-center gap-3">
+          {/* משתמש מחובר – תגית יוקרתית */}
+          <div
+            className="flex items-center gap-2.5 px-4 py-2 rounded-full border border-[#cfa756]/40"
+            style={{
+              background: 'linear-gradient(135deg, rgba(207,167,86,0.08) 0%, rgba(184,134,11,0.04) 100%)',
+              backdropFilter: 'blur(8px)',
+              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06), 0 0 12px rgba(207,167,86,0.08)',
+            }}
+          >
+            <div
+              className="w-2.5 h-2.5 rounded-full"
+              style={{
+                background: 'radial-gradient(circle, #ffe9a0 0%, #cfa756 70%)',
+                boxShadow: '0 0 6px rgba(207,167,86,0.8), 0 0 14px rgba(247,217,138,0.5)',
+                animation: 'pulse 2s ease-in-out infinite',
+              }}
+            />
+            <span
+              className="text-[16px] font-semibold tracking-wide"
+              style={{
+                color: '#f7f4e9',
+                textShadow: '0 0 8px rgba(207,167,86,0.35)',
+              }}
+            >
+              {user?.name || 'משתמש'}
+            </span>
+          </div>
+          {/* כפתור התנתקות */}
+          <button
+            onClick={logout}
+            className="px-5 py-2 rounded-full text-[15px] font-semibold tracking-wide transition-all duration-300"
+            style={{
+              border: '1px solid rgba(166,27,27,0.55)',
+              background: 'linear-gradient(135deg, rgba(166,27,27,0.12) 0%, rgba(166,27,27,0.04) 100%)',
+              color: '#f7f4e9',
+              backdropFilter: 'blur(6px)',
+              textShadow: '0 0 6px rgba(166,27,27,0.3)',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'linear-gradient(135deg, #a61b1b 0%, #7a1010 100%)';
+              e.currentTarget.style.color = '#ffffff';
+              e.currentTarget.style.boxShadow = '0 0 20px rgba(166,27,27,0.5), 0 0 40px rgba(166,27,27,0.2)';
+              e.currentTarget.style.borderColor = '#c0392b';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'linear-gradient(135deg, rgba(166,27,27,0.12) 0%, rgba(166,27,27,0.04) 100%)';
+              e.currentTarget.style.color = '#f7f4e9';
+              e.currentTarget.style.boxShadow = 'none';
+              e.currentTarget.style.borderColor = 'rgba(166,27,27,0.55)';
+            }}
+          >
+            התנתק
+          </button>
+        </div>
+      );
+    }
+    return (
+      <div className="flex items-center gap-3">
+        {/* התחבר */}
+        <Link
+          to={ROUTES.LOGIN}
+          className="px-5 py-2 rounded-full text-[15px] font-semibold tracking-wide transition-all duration-300"
+          style={{
+            border: '1px solid rgba(207,167,86,0.55)',
+            color: '#cfa756',
+            background: 'transparent',
+            backdropFilter: 'blur(6px)',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'rgba(207,167,86,0.12)';
+            e.currentTarget.style.boxShadow = '0 0 18px rgba(207,167,86,0.25), 0 0 36px rgba(207,167,86,0.1)';
+            e.currentTarget.style.borderColor = '#f7d98a';
+            e.currentTarget.style.color = '#f7d98a';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'transparent';
+            e.currentTarget.style.boxShadow = 'none';
+            e.currentTarget.style.borderColor = 'rgba(207,167,86,0.55)';
+            e.currentTarget.style.color = '#cfa756';
+          }}
+        >
+          התחבר
+        </Link>
+        {/* הירשם */}
+        <Link
+          to={ROUTES.REGISTER}
+          className="px-6 py-2 rounded-full text-[15px] font-bold tracking-wide transition-all duration-300"
+          style={{
+            background: 'linear-gradient(135deg, #cfa756 0%, #b8860b 50%, #8b6914 100%)',
+            color: '#0d2340',
+            boxShadow: '0 4px 20px rgba(207,167,86,0.35), 0 0 40px rgba(207,167,86,0.15)',
+            border: '1px solid rgba(255,233,160,0.4)',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'scale(1.06)';
+            e.currentTarget.style.boxShadow = '0 6px 28px rgba(247,217,138,0.55), 0 0 50px rgba(207,167,86,0.3)';
+            e.currentTarget.style.borderColor = '#ffe9a0';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'scale(1)';
+            e.currentTarget.style.boxShadow = '0 4px 20px rgba(207,167,86,0.35), 0 0 40px rgba(207,167,86,0.15)';
+            e.currentTarget.style.borderColor = 'rgba(255,233,160,0.4)';
+          }}
+        >
+          הירשם
+        </Link>
+      </div>
+    );
+  }, [isAuthenticated, user?.name, logout]);
+
+  /* ── SVG כתר (בשימוש חוזר) ── */
+  const CrownSVG = ({ id, size = 14 }) => (
+    <svg className="crown-icon" width={size} height={(size * 11) / 14} viewBox="0 0 20 16" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id={id} x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="#ffe9a0">
+            <animate attributeName="stop-color" values="#ffe9a0;#f7d98a;#cfa756;#f7d98a;#ffe9a0" dur="2.2s" repeatCount="indefinite" />
+          </stop>
+          <stop offset="100%" stopColor="#b8860b">
+            <animate attributeName="stop-color" values="#b8860b;#cfa756;#f7d98a;#cfa756;#b8860b" dur="2.2s" repeatCount="indefinite" />
+          </stop>
+        </linearGradient>
+        {/* גלואו לכתר */}
+        <filter id={`glow-${id}`} x="-40%" y="-40%" width="180%" height="180%">
+          <feGaussianBlur stdDeviation="0.8" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+      </defs>
+      <g filter={`url(#glow-${id})`}>
+        <polygon points="1,14 1,7 5,11 10,2 15,11 19,7 19,14" fill={`url(#${id})`} stroke="#b8860b" strokeWidth="0.6" strokeLinejoin="round" />
+        <rect x="1" y="13" width="18" height="2.5" rx="1" fill={`url(#${id})`} stroke="#b8860b" strokeWidth="0.5" />
+        <circle cx="10" cy="2.5" r="1.2" fill="#fff8e0">
+          <animate attributeName="r" values="1.2;1.5;1.2" dur="2.2s" repeatCount="indefinite" />
+        </circle>
+        <circle cx="1.2" cy="7.2" r="1" fill="#fff8e0" />
+        <circle cx="18.8" cy="7.2" r="1" fill="#fff8e0" />
+      </g>
+    </svg>
+  );
+
+  return (
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&display=swap');
+
+        .header-font {
+          font-family: 'Assistant', sans-serif;
+          font-weight: 600;
+        }
+
+        @keyframes crownGlow {
+          0%, 100% { filter: drop-shadow(0 0 3px rgba(207,167,86,0.6)) drop-shadow(0 0 8px rgba(207,167,86,0.3)); }
+          50%      { filter: drop-shadow(0 0 7px rgba(247,217,138,1)) drop-shadow(0 0 16px rgba(207,167,86,0.65)); }
+        }
+
+        .crown-icon {
+          animation: crownGlow 2.2s ease-in-out infinite;
+          display: block;
+        }
+
+        @keyframes pulse {
+          0%, 100% { opacity: 0.7; }
+          50%      { opacity: 1; }
+        }
+
+        @keyframes mobileMenuIn {
+          from { opacity: 0; transform: translateY(-10px) scale(0.97); }
+          to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        @keyframes mobileLinkIn {
+          from { opacity: 0; transform: translateX(16px); }
+          to   { opacity: 1; transform: translateX(0); }
+        }
+
+        @keyframes logoShine {
+          0%   { background-position: -200% center; }
+          100% { background-position: 200% center; }
+        }
+
+        /* ── Glass משודרג ── */
+        .glass-dark {
+          background: linear-gradient(180deg, rgba(18,32,56,.98) 0%, rgba(13,35,64,.96) 100%);
+          backdrop-filter: blur(20px);
+          -webkit-backdrop-filter: blur(20px);
+          border-bottom: 1px solid rgba(207,167,86,.2);
+          position: relative;
+        }
+
+        .mobile-menu-enter {
+          animation: mobileMenuIn 0.25s cubic-bezier(.4,0,.2,1) both;
+        }
+
+        .mobile-link-enter {
+          animation: mobileLinkIn 0.22s cubic-bezier(.4,0,.2,1) both;
+        }
+
+        /* hover-underline מורחב עם גלואו */
+        .nav-link-hover:hover {
+          text-shadow: 0 0 14px rgba(207,167,86,0.55), 0 0 28px rgba(207,167,86,0.2);
+        }
+      `}</style>
+
+      <header
+        className="header-font fixed top-0 left-0 right-0 z-50 glass-dark"
+        style={{ direction: 'rtl' }}
+      >
+        {/* חלקיקי זהב */}
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <GoldParticles />
+        </div>
+
+        {/* קו תחתון עם קרן אור */}
+        <div style={{ position: 'relative', zIndex: 2 }}>
+          <LightSweep />
+        </div>
+
+        <div className="container mx-auto px-6 py-3 relative z-10">
+          <div className="flex items-center justify-between">
+
+            {/* ── Logo עם אפקט shine ── */}
+            <Link
+              to={ROUTES.HOME}
+              className="relative group"
+              style={{
+                filter: 'drop-shadow(0 0 10px rgba(207,167,86,0.35))',
+                transition: 'filter 0.4s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.filter = 'drop-shadow(0 0 22px rgba(247,217,138,0.7)) drop-shadow(0 0 40px rgba(207,167,86,0.4))';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.filter = 'drop-shadow(0 0 10px rgba(207,167,86,0.35))';
+              }}
+            >
+              {/* shine overlay על הלוגו */}
+              <div className="relative inline-block">
+                <img src="/logo.png" className="h-16 relative z-10" alt="לוגו" />
+                <div
+                  className="absolute inset-0 z-20 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                  style={{
+                    background: 'linear-gradient(105deg, transparent 35%, rgba(255,255,255,0.3) 45%, rgba(255,255,255,0.5) 50%, rgba(255,255,255,0.3) 55%, transparent 65%)',
+                    backgroundSize: '200% 100%',
+                    animation: 'logoShine 1.5s ease-in-out infinite',
+                  }}
+                />
+              </div>
+            </Link>
+
+            {/* ── Desktop Nav ── */}
+            <nav
+              ref={navRef}
+              className="notranslate hidden lg:flex items-center justify-center flex-1 gap-10 relative"
+            >
+              {navItems.map(({ path, label }, i) => {
+                const isActive = location.pathname === path;
+                return (
+                  <Link
+                    key={path}
+                    to={path}
+                    data-path={path}
+                    className={`nav-link-hover relative text-[18px] tracking-widest uppercase font-bold transition-all duration-300 pb-2 ${
+                      isActive
+                        ? 'text-[#cfa756]'
+                        : 'text-[#f7f4e9]/80 hover:text-[#cfa756]'
+                    }`}
+                    style={{
+                      animationDelay: `${i * 80}ms`,
+                      textShadow: isActive
+                        ? '0 0 16px rgba(207,167,86,0.55), 0 0 32px rgba(207,167,86,0.2)'
+                        : 'none',
+                    }}
+                  >
+                    {/* רקע hover עדין */}
+                    <span
+                      className="absolute inset-0 rounded-lg -mx-2 -my-1 opacity-0 transition-opacity duration-300 pointer-events-none"
+                      style={{
+                        background: 'radial-gradient(ellipse at center, rgba(207,167,86,0.08) 0%, transparent 70%)',
+                      }}
+                    />
+                    <span className="relative z-10">{label}</span>
+                  </Link>
+                );
+              })}
+
+              {/* underline מוזהב נע */}
+              <span
+                className="absolute bottom-0 pointer-events-none z-20"
+                style={{
+                  left: underlineStyle.left,
+                  width: underlineStyle.width,
+                  opacity: underlineStyle.opacity,
+                  height: '2px',
+                  background: 'linear-gradient(90deg, #cfa756, #f7d98a 40%, #ffe9a0 50%, #f7d98a 60%, #cfa756)',
+                  borderRadius: '2px',
+                  boxShadow: '0 0 10px rgba(247,217,138,0.7), 0 0 22px rgba(207,167,86,0.4)',
+                  transition: 'left 0.3s cubic-bezier(.4,0,.2,1), width 0.3s cubic-bezier(.4,0,.2,1), opacity 0.25s',
+                }}
+              />
+
+              {/* כתר נע */}
+              <span
+                className="absolute pointer-events-none z-20"
+                style={{
+                  top: '-18px',
+                  left: crownLeft,
+                  opacity: underlineStyle.opacity,
+                  transition: 'left 0.3s cubic-bezier(.4,0,.2,1), opacity 0.25s',
+                }}
+              >
+                <CrownSVG id="crownGrad" size={14} />
+              </span>
+            </nav>
+
+            {/* ── Auth ── */}
+            <div className="hidden lg:flex items-center">
+              {AuthButtons}
+            </div>
+
+            {/* ── Mobile burger ── */}
+            <button
+              onClick={toggleMenu}
+              className="lg:hidden text-[#cfa756] text-2xl focus:outline-none transition-transform duration-300 hover:scale-110"
+              style={{
+                textShadow: '0 0 10px rgba(207,167,86,0.5)',
+              }}
+              aria-label={isMenuOpen ? 'סגור תפריט' : 'פתח תפריט'}
+            >
+              {isMenuOpen ? '✕' : '☰'}
+            </button>
+          </div>
+
+          {/* ── Mobile menu ── */}
+          {isMenuOpen && (
+            <div
+              className="mobile-menu-enter lg:hidden mt-4 pb-4 flex flex-col"
+              style={{
+                borderTop: '1px solid rgba(207,167,86,0.25)',
+                background: 'linear-gradient(180deg, rgba(13,35,64,0.6) 0%, rgba(10,25,47,0.5) 100%)',
+                backdropFilter: 'blur(16px)',
+                borderRadius: '0 0 16px 16px',
+              }}
+            >
+              {navItems.map(({ path, label }, i) => {
+                const isActive = location.pathname === path;
+                return (
+                  <Link
+                    key={path}
+                    to={path}
+                    onClick={() => setIsMenuOpen(false)}
+                    className={`mobile-link-enter px-4 py-3.5 text-[17px] font-bold tracking-wide transition-all duration-300 flex items-center gap-3 ${
+                      isActive
+                        ? 'text-[#cfa756]'
+                        : 'text-[#f7f4e9]/80 hover:text-[#cfa756]'
+                    }`}
+                    style={{
+                      animationDelay: `${i * 55}ms`,
+                      borderBottom: '1px solid rgba(207,167,86,0.08)',
+                      textShadow: isActive ? '0 0 10px rgba(207,167,86,0.4)' : 'none',
+                      background: isActive
+                        ? 'linear-gradient(90deg, rgba(207,167,86,0.08) 0%, transparent 100%)'
+                        : 'transparent',
+                    }}
+                  >
+                    {isActive && (
+                      <span className="inline-block flex-shrink-0">
+                        <CrownSVG id="crownGradMobile" size={12} />
+                      </span>
+                    )}
+                    <span>{label}</span>
+                  </Link>
+                );
+              })}
+
+              <div
+                className="mobile-link-enter mt-4 px-4 flex flex-col gap-3"
+                style={{ animationDelay: `${navItems.length * 55}ms` }}
+              >
+                {AuthButtons}
+              </div>
+            </div>
+          )}
+        </div>
+      </header>
+
+      {/* spacer */}
+      {/* <div className="h-[72px]" /> */}
+    </>
+  );
+}
+
+export default Header;
+</file>
+
+<file path="server/server.js">
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const cookieParser = require('cookie-parser');
+const connectDB = require('./config/db');
+const errorHandler = require('./middleware/errorHandler');
+const helmet = require("helmet");
+
+const app = express();
+connectDB();
+
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'https://bneyhayeshivot-1.onrender.com',
+  process.env.CLIENT_URL,
+].filter(Boolean); // מסנן undefined/null
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // מאפשר בקשות ללא origin (כמו Postman) ו-origins מהרשימה
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error(`CORS blocked: ${origin}`));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+}));
+
+app.use(
+  helmet({
+    crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
+    crossOriginEmbedderPolicy: false,
+  })
+);
+
+app.use(cookieParser());
+app.use(express.json());
+
+app.use('/api/prayers', require('./routes/prayers'));
+app.use('/api/announcements', require('./routes/announcements'));
+app.use('/api/contact', require('./routes/contact'));
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/payments', require('./routes/payments'));
+app.use('/api/users', require('./routes/users'));
+app.use('/api/commemorations', require('./routes/commemorations'));
+app.use('/api/gallery', require('./routes/gallery'));
+
+app.use('/api/categories', require('./routes/categories'));
+app.use('/api/portal-items', require('./routes/portalItems'));
+app.use('/api/sponsorships', require('./routes/sponsorships'));
+app.get('/api/health', (_req, res) => res.status(200).json({ status: 'ok' }));
+app.use(errorHandler);
+
+
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+</file>
+
+<file path="client/src/services/api.js">
+import axios from 'axios';
+import { API_URL } from '../config';
+
+const API = axios.create({
+  baseURL: `${API_URL}/api`,
+  withCredentials: true, // ← חובה! שולח את cookie עם כל בקשה
+});
+
+// ── משתנה פנימי למנוע קריאות refresh מקביליות ───────────────────────────────
+let isRefreshing = false;
+let failedQueue = [];  // תור בקשות שנכשלו בזמן הרענון
+
+const processQueue = (error, token = null) => {
+  failedQueue.forEach(({ resolve, reject }) => {
+    error ? reject(error) : resolve(token);
+  });
+  failedQueue = [];
+};
+
+// ── Interceptor: צרף Access Token לכל בקשה ──────────────────────────────────
+API.interceptors.request.use((req) => {
+  const token = localStorage.getItem('token');
+  if (token) req.headers.Authorization = `Bearer ${token}`;
+  return req;
+});
+
+// ── Interceptor: טיפול ב-401 / רענון אוטומטי ────────────────────────────────
+API.interceptors.response.use(
+  (response) => response, // הצלחה — העבר הלאה
+
+  async (error) => {
+    const originalRequest = error.config;
+
+    const is401 = error.response?.status === 401;
+    const alreadyRetried = originalRequest._retry;
+    const isRefreshCall = originalRequest.url?.includes('/auth/refresh');
+    const isLoginCall = originalRequest.url?.includes('/auth/login');
+
+    // אם זו שגיאת 401 על בקשה שעוד לא ניסינו לרענן
+    if (is401 && !alreadyRetried && !isRefreshCall && !isLoginCall) {
+      originalRequest._retry = true;
+
+      if (isRefreshing) {
+        // הרענון כבר בתהליך — הוסף לתור והמתן
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        })
+          .then((token) => {
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+            return API(originalRequest);
+          })
+          .catch((err) => Promise.reject(err));
+      }
+
+      isRefreshing = true;
+
+      try {
+        // נסה לרענן — ה-refresh token מגיע מה-cookie אוטומטית
+        const { data } = await API.post('/auth/refresh');
+        const newToken = data.token;
+
+        localStorage.setItem('token', newToken);
+        API.defaults.headers.common.Authorization = `Bearer ${newToken}`;
+        originalRequest.headers.Authorization = `Bearer ${newToken}`;
+
+        processQueue(null, newToken);
+        return API(originalRequest); // חזור על הבקשה המקורית
+
+      } catch (refreshError) {
+        // הרענון נכשל — הפעל logout גלובלי
+        processQueue(refreshError, null);
+        handleSessionExpired();
+        return Promise.reject(refreshError);
+
+      } finally {
+        isRefreshing = false;
+      }
+    }
+
+    return Promise.reject(error);
+  }
+);
+
+// ── פונקציה גלובלית לטיפול בפקיעת session ────────────────────────────────────
+// authContext רושם את עצמו כאן כדי ש-api.js לא ייבא ממנו (circular import)
+let _onSessionExpired = null;
+
+export const registerSessionExpiredHandler = (handler) => {
+  _onSessionExpired = handler;
+};
+
+const handleSessionExpired = () => {
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+  if (_onSessionExpired) {
+    _onSessionExpired();
+  } else {
+    // fallback אם ה-handler לא נרשם עדיין
+    window.location.href = '/login?reason=session_expired';
+  }
+};
+
+// ── ייצוא פונקציות API ────────────────────────────────────────────────────────
+
+export const login = (credentials) => API.post('/auth/login', credentials);
+export const register = (userData) => API.post('/auth/register', userData);
+export const logout = () => API.post('/auth/logout');
+
+export const fetchAnnouncements = () => API.get('/announcements');
+export const createAnnouncement = (data) => API.post('/announcements', data);
+export const updateAnnouncement = (id, data) => API.put(`/announcements/${id}`, data);
+export const deleteAnnouncement = (id) => API.delete(`/announcements/${id}`);
+
+export const fetchPrayers = () => API.get('/prayers');
+export const createPrayer = (data) => API.post('/prayers', data);
+export const updatePrayers = (prayers, prayerSectionTitle) =>
+  API.put('/prayers', { prayers, prayerSectionTitle });
+
+export const sendContactMessage = (data) => API.post('/contact', data);
+export const fetchContactMessages = () => API.get('/contact');
+export const updateContactMessageHandled = (id, handled) =>
+  API.patch(`/contact/${id}/handled`, { handled });
+
+export const fetchMyPayments = () => API.get('/payments/me');
+export const addMyDebt = (data) => API.post('/payments/me/debts', data);
+export const markMyDebtPaid = (debtId, isPaid) => API.patch(`/payments/me/debts/${debtId}`, { isPaid });
+export const setMyStandingOrder = (data) => API.post('/payments/me/standing-order', data);
+export const cancelMyStandingOrder = () => API.delete('/payments/me/standing-order');
+export const addMyDonation = (data) => API.post('/payments/me/donations', data);
+
+export const fetchAllPayments = () => API.get('/payments');
+export const fetchUserPayments = (userId) => API.get(`/payments/${userId}`);
+export const addUserDebt = (userId, data) => API.post(`/payments/${userId}/debts`, data);
+export const markUserDebtPaid = (userId, debtId, isPaid) => API.patch(`/payments/${userId}/debts/${debtId}`, { isPaid });
+export const deleteUserDebt = (userId, debtId) => API.delete(`/payments/${userId}/debts/${debtId}`);
+export const setUserStandingOrder = (userId, data) => API.post(`/payments/${userId}/standing-order`, data);
+export const cancelUserStandingOrder = (userId) => API.delete(`/payments/${userId}/standing-order`);
+export const addUserDonation = (userId, data) => API.post(`/payments/${userId}/donations`, data);
+export const deleteUserDonation = (userId, donationId) => API.delete(`/payments/${userId}/donations/${donationId}`);
+export const updateUserNotes = (userId, notes) => API.patch(`/payments/${userId}/notes`, { notes });
+
+export const fetchAllUsers = () => API.get('/users');
+export const addMailingListUser = (data) => API.post('/users', data);
+
+export const updateMailingListUser = (id, data) => API.put(`/users/${id}`, data);
+export const deleteMailingListUser = (id) => API.delete(`/users/${id}`);
+export const toggleUserNewsletter = (id, receivesNewsletter) =>
+  API.patch(`/users/${id}/newsletter`, { receivesNewsletter });
+
+export const fetchCommemorations = () => API.get('/commemorations');
+export const fetchCommemorationById = (id) => API.get(`/commemorations/${id}`);
+export const createCommemoration = (data) => API.post('/commemorations', data);
+export const updateCommemoration = (id, data) => API.put(`/commemorations/${id}`, data);
+export const deleteCommemoration = (id) => API.delete(`/commemorations/${id}`);
+export const updateCommemorationStatus = (id, status) =>
+  API.patch(`/commemorations/${id}/status`, { commemorationStatus: status });
+
+export const fetchGalleryImages = () => API.get('/gallery');
+export const createGalleryImage = (data) => API.post('/gallery', data);
+export const updateGalleryImage = (id, data) => API.put(`/gallery/${id}`, data);
+export const deleteGalleryImage = (id) => API.delete(`/gallery/${id}`);
+
+export default API;
+</file>
+
+</files>

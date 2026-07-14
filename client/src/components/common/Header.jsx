@@ -5,12 +5,43 @@ import { NAVIGATION_ITEMS, ROUTES } from '../../constants/routes';
 import { useAuth } from '../context/authContext';
 import GoldParticles from './GoldParticles';
 import LightSweep from './LightSweep';
-
+import { useAdminAlerts } from '../../hooks/useAdminAlerts';
 /* ─────────────────────────────────────────────
    Header – משודרג
    ───────────────────────────────────────────── */
+
+function NotificationBadge({ count }) {
+  if (!count) return null;
+  return (
+    <span
+      style={{
+        position: 'absolute',
+        top: '-6px',
+        left: '-10px',
+        minWidth: '18px',
+        height: '18px',
+        padding: '0 4px',
+        borderRadius: '999px',
+        background: '#a61b1b',
+        color: '#fff',
+        fontSize: '11px',
+        fontWeight: 700,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        boxShadow: '0 0 0 2px rgba(13,35,64,0.9)',
+        lineHeight: 1,
+      }}
+    >
+      {count > 99 ? '99+' : count}
+    </span>
+  );
+}
+
 function Header() {
   const { user, isAuthenticated, isAdmin, logout } = useAuth();
+  const adminEnabled = isAuthenticated && isAdmin();
+  const { total: adminAlertCount, refresh: refreshAdminAlerts } = useAdminAlerts(adminEnabled);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [underlineStyle, setUnderlineStyle] = useState({ left: 0, width: 0, opacity: 0 });
@@ -27,7 +58,20 @@ function Header() {
   useEffect(() => {
     setIsMenuOpen(false);
   }, [location.pathname]);
+  useEffect(() => {
+    if (!adminEnabled) return undefined;
 
+    const handleAdminAlertsChanged = () => {
+      refreshAdminAlerts();
+    };
+
+    window.addEventListener('admin-alerts-changed', handleAdminAlertsChanged);
+
+    return () => {
+      window.removeEventListener('admin-alerts-changed', handleAdminAlertsChanged);
+    };
+  }, [adminEnabled, refreshAdminAlerts]);
+  
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener('scroll', handleScroll, { passive: true });
@@ -334,26 +378,32 @@ function Header() {
                     key={path}
                     to={path}
                     data-path={path}
-                    className={`nav-link-hover relative text-[18px] tracking-widest uppercase font-bold transition-all duration-300 pb-2 ${
-                      isActive
-                        ? 'text-[#cfa756]'
-                        : 'text-[#f7f4e9]/80 hover:text-[#cfa756]'
-                    }`}
+                    className={`nav-link-hover relative text-[18px] tracking-widest uppercase font-bold transition-all duration-300 pb-2 ${isActive
+                      ? 'text-[#cfa756]'
+                      : 'text-[#f7f4e9]/80 hover:text-[#cfa756]'
+                      }`}
                     style={{
                       animationDelay: `${i * 80}ms`,
                       textShadow: isActive
                         ? '0 0 16px rgba(207,167,86,0.55), 0 0 32px rgba(207,167,86,0.2)'
                         : 'none',
+                      position: 'relative',
                     }}
                   >
                     {/* רקע hover עדין */}
                     <span
                       className="absolute inset-0 rounded-lg -mx-2 -my-1 opacity-0 transition-opacity duration-300 pointer-events-none"
                       style={{
-                        background: 'radial-gradient(ellipse at center, rgba(207,167,86,0.08) 0%, transparent 70%)',
+                        background:
+                          'radial-gradient(ellipse at center, rgba(207,167,86,0.08) 0%, transparent 70%)',
                       }}
                     />
+
                     <span className="relative z-10">{label}</span>
+
+                    {path === ROUTES.ADMIN && (
+                      <NotificationBadge count={adminAlertCount} />
+                    )}
                   </Link>
                 );
               })}
@@ -423,18 +473,20 @@ function Header() {
                     key={path}
                     to={path}
                     onClick={() => setIsMenuOpen(false)}
-                    className={`mobile-link-enter px-4 py-3.5 text-[17px] font-bold tracking-wide transition-all duration-300 flex items-center gap-3 ${
-                      isActive
-                        ? 'text-[#cfa756]'
-                        : 'text-[#f7f4e9]/80 hover:text-[#cfa756]'
-                    }`}
+                    className={`mobile-link-enter px-4 py-3.5 text-[17px] font-bold tracking-wide transition-all duration-300 flex items-center gap-3 ${isActive
+                      ? 'text-[#cfa756]'
+                      : 'text-[#f7f4e9]/80 hover:text-[#cfa756]'
+                      }`}
                     style={{
                       animationDelay: `${i * 55}ms`,
                       borderBottom: '1px solid rgba(207,167,86,0.08)',
-                      textShadow: isActive ? '0 0 10px rgba(207,167,86,0.4)' : 'none',
+                      textShadow: isActive
+                        ? '0 0 10px rgba(207,167,86,0.4)'
+                        : 'none',
                       background: isActive
                         ? 'linear-gradient(90deg, rgba(207,167,86,0.08) 0%, transparent 100%)'
                         : 'transparent',
+                      position: 'relative',
                     }}
                   >
                     {isActive && (
@@ -442,7 +494,12 @@ function Header() {
                         <CrownSVG id="crownGradMobile" size={12} />
                       </span>
                     )}
+
                     <span>{label}</span>
+
+                    {path === ROUTES.ADMIN && (
+                      <NotificationBadge count={adminAlertCount} />
+                    )}
                   </Link>
                 );
               })}

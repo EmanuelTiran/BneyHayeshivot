@@ -1,7 +1,7 @@
 const service           = require('../services/sponsorshipService');
 const portalItemService = require('../services/portalItemService');
 const categoryService   = require('../services/categoryService');
-
+const SponsorshipRequest = require('../models/SponsorshipRequest');
 exports.create = async (req, res) => {
   try {
     const { itemId, categoryId } = req.body;
@@ -40,4 +40,25 @@ exports.createFromCommemoration = async (req, res) => {
     );
     res.status(201).json(request);
   } catch (err) { res.status(400).json({ message: err.message }); }
+};
+exports.remove = async (req, res) => {
+  try {
+    const deleted = await SponsorshipRequest.findByIdAndDelete(req.params.id);
+
+    if (!deleted) {
+      return res.status(404).json({ message: 'בקשת ההקדשה לא נמצאה' });
+    }
+
+    return res.json({
+      message: 'בקשת ההקדשה נמחקה בהצלחה',
+      deletedId: deleted._id,
+    });
+  } catch (err) {
+    if (err.name === 'CastError') {
+      return res.status(400).json({ message: 'מזהה הבקשה אינו תקין' });
+    }
+
+    console.error('Delete sponsorship request error:', err);
+    return res.status(500).json({ message: 'שגיאה במחיקת בקשת ההקדשה' });
+  }
 };
