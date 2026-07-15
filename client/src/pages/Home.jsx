@@ -55,7 +55,7 @@ const Home = () => {
       <div className="relative z-10 w-full flex flex-col items-center gap-6 px-4">
         {/* כותרת ראשית */}
         <div className="text-center mb-2">
-          <h1
+          {/* <h1
             className="text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-wider"
             style={{
               fontFamily: "'Assistant', sans-serif",
@@ -65,7 +65,7 @@ const Home = () => {
             }}
           >
            בני הישיבות
-          </h1>
+          </h1> */}
           <div
             className="mx-auto mt-3"
             style={{
