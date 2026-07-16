@@ -62,30 +62,79 @@ const ContactAndPrayerTimes = ({ isButtonTransparent }) => {
   // ── שמירת שינויים ────────────────────────────────────────────────────────
   const saveChanges = async () => {
     try {
-      // 1. שמירת תפילות + כותרת
-      const result = await savePrayers(tempPrayers, tempTitle);
-      if (Array.isArray(result)) {
-        setPrayers(result);
-      } else {
-        setPrayers(result.prayers ?? tempPrayers);
-        setPrayerSectionTitle(result.prayerSectionTitle ?? tempTitle);
-      }
-
-      // 2. מחיקת הכרזות שהוסרו
+      /*
+       * חשוב מאוד:
+       * קודם שומרים את כל ההודעות,
+       * ורק בסוף שומרים את התפילות.
+       *
+       * שמירת התפילות היא הפעולה שמפעילה
+       * את שליחת המייל בשרת.
+       */
+  
+      // 1. מציאת ההודעות שנמחקו
       const deletedAnnouncements = announcements.filter(
-        (orig) => !tempAnnouncements.some((t) => t._id === orig._id)
+        (originalAnnouncement) =>
+          !tempAnnouncements.some(
+            (tempAnnouncement) =>
+              tempAnnouncement._id === originalAnnouncement._id
+          )
       );
-      await Promise.all(deletedAnnouncements.map((a) => removeAnnouncement(a._id)));
-
-      // 3. שמירת הכרזות
+  
+      // 2. מחיקת ההודעות שהוסרו
+      await Promise.all(
+        deletedAnnouncements.map((announcement) =>
+          removeAnnouncement(announcement._id)
+        )
+      );
+  
+      // 3. שמירת כל ההודעות החדשות והמעודכנות
       const savedAnnouncements = await Promise.all(
-        tempAnnouncements.map((a) => saveAnnouncement(a))
+        tempAnnouncements.map((announcement) =>
+          saveAnnouncement(announcement)
+        )
       );
+  
       setAnnouncements(savedAnnouncements);
+  
+      /*
+       * 4. שמירת התפילות והכותרת מתבצעת אחרונה.
+       *
+       * הנתיב הזה מפעיל בשרת את
+       * sendUpdateNewsletter.
+       *
+       * בשלב הזה כל ההודעות כבר נשמרו במסד הנתונים,
+       * ולכן המייל יקבל את התוכן החדש.
+       */
+      const result = await savePrayers(
+        tempPrayers,
+        tempTitle
+      );
+  
+      if (Array.isArray(result)) {
+        // תמיכה בפורמט הישן
+        setPrayers(result);
+        setPrayerSectionTitle(tempTitle);
+      } else {
+        setPrayers(
+          result.prayers ?? tempPrayers
+        );
+  
+        setPrayerSectionTitle(
+          result.prayerSectionTitle ?? tempTitle
+        );
+      }
+  
+      // 5. סגירת חלון העריכה רק לאחר שכל הפעולות הסתיימו
       setIsModalOpen(false);
     } catch (err) {
-      console.error('שגיאה בשמירת הנתונים:', err);
-      alert('שגיאה בשמירת הנתונים. אנא נסה שוב.');
+      console.error(
+        'שגיאה בשמירת הנתונים:',
+        err
+      );
+  
+      alert(
+        'שגיאה בשמירת הנתונים. אנא נסה שוב.'
+      );
     }
   };
 
