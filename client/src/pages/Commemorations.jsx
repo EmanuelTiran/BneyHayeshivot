@@ -644,7 +644,7 @@ export default function Commemorations() {
     <div dir="rtl" style={{ minHeight: '100vh', background: '#f7f4ee' }}>
       <PageHeader
         title="לוח הנצחות"
-        subtitle="הנצחות ותרומות לעילוי נשמת יקירינו"
+        subtitle="הנצחות ותרומות להקדשות"
       />
 
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px 16px' }}>
