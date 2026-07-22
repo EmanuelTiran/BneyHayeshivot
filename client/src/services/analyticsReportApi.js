@@ -4,10 +4,20 @@ export async function fetchAnalyticsReport(
   params,
   options = {}
 ) {
+  const response = await API.get('/analytics/report', {
+    params,
+    signal: options.signal,
+  });
+
+  return response.data;
+}
+
+export async function fetchActiveAnalyticsUsers(
+  options = {}
+) {
   const response = await API.get(
-    '/analytics/report',
+    '/analytics/active-users',
     {
-      params,
       signal: options.signal,
     }
   );

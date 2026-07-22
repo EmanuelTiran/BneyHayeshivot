@@ -2,10 +2,21 @@ const express = require('express');
 
 const router = express.Router();
 
-const controller = require('../controllers/analyticsController');
-const protect = require('../middleware/authMiddleware');
-const optionalAuth = require('../middleware/optionalAuthMiddleware');
-const requireAdmin = require('../middleware/requireAdminMiddleware');
+const controller = require(
+  '../controllers/analyticsController'
+);
+
+const protect = require(
+  '../middleware/authMiddleware'
+);
+
+const optionalAuth = require(
+  '../middleware/optionalAuthMiddleware'
+);
+
+const requireAdmin = require(
+  '../middleware/requireAdminMiddleware'
+);
 
 const {
   analyticsCollectionLimiter,
@@ -32,6 +43,14 @@ router.get(
   analyticsReportLimiter,
   requireAdmin,
   controller.getReport
+);
+
+router.get(
+  '/active-users',
+  protect,
+  analyticsReportLimiter,
+  requireAdmin,
+  controller.getActiveUsers
 );
 
 module.exports = router;

@@ -1,4 +1,7 @@
 const SESSION_TIMEOUT_MS = 30 * 60 * 1000;
+const ANONYMOUS_IDENTITY_KEY = 'anonymous';
+const AUTHENTICATED_IDENTITY_KEY = 'authenticated';
+const USER_IDENTITY_PATTERN = /^user:[0-9a-f]{24}$/i;
 
 export const ANALYTICS_STORAGE_KEYS = Object.freeze({
   visitorId: 'bneyhayeshivot.analytics.visitor_id',
@@ -35,26 +38,20 @@ function removeLocalStorage(key) {
 }
 
 function notifyAnalyticsStateChanged() {
-  window.dispatchEvent(
-    new Event(ANALYTICS_STATE_EVENT)
-  );
+  window.dispatchEvent(new Event(ANALYTICS_STATE_EVENT));
 }
 
 function createUuid() {
   const webCrypto = window.crypto;
 
-  if (!webCrypto?.getRandomValues) {
-    return null;
-  }
+  if (!webCrypto?.getRandomValues) return null;
 
   if (typeof webCrypto.randomUUID === 'function') {
     return webCrypto.randomUUID();
   }
 
   const bytes = new Uint8Array(16);
-
   webCrypto.getRandomValues(bytes);
-
   bytes[6] = (bytes[6] & 0x0f) | 0x40;
   bytes[8] = (bytes[8] & 0x3f) | 0x80;
 
@@ -80,6 +77,40 @@ function isUuid(value) {
   );
 }
 
+function normalizeIdentityKey(value) {
+  if (value === ANONYMOUS_IDENTITY_KEY) {
+    return ANONYMOUS_IDENTITY_KEY;
+  }
+
+  if (value === AUTHENTICATED_IDENTITY_KEY) {
+    return AUTHENTICATED_IDENTITY_KEY;
+  }
+
+  if (
+    typeof value === 'string' &&
+    USER_IDENTITY_PATTERN.test(value)
+  ) {
+    return value.toLowerCase();
+  }
+
+  return ANONYMOUS_IDENTITY_KEY;
+}
+
+function readStoredIdentityKey(value) {
+  if (
+    value === ANONYMOUS_IDENTITY_KEY ||
+    value === AUTHENTICATED_IDENTITY_KEY ||
+    (
+      typeof value === 'string' &&
+      USER_IDENTITY_PATTERN.test(value)
+    )
+  ) {
+    return value.toLowerCase();
+  }
+
+  return null;
+}
+
 export function isAnalyticsEnvironmentEnabled() {
   const override = String(
     import.meta.env.VITE_ANALYTICS_ENABLED || ''
@@ -93,9 +124,7 @@ export function isAnalyticsEnvironmentEnabled() {
 
 export function isAnalyticsDisabledInBrowser() {
   return (
-    readLocalStorage(
-      ANALYTICS_STORAGE_KEYS.disabled
-    ) === 'true'
+    readLocalStorage(ANALYTICS_STORAGE_KEYS.disabled) === 'true'
   );
 }
 
@@ -106,15 +135,11 @@ export function disableAnalyticsInBrowser() {
   );
 
   notifyAnalyticsStateChanged();
-
   return saved;
 }
 
 export function enableAnalyticsInBrowser() {
-  removeLocalStorage(
-    ANALYTICS_STORAGE_KEYS.disabled
-  );
-
+  removeLocalStorage(ANALYTICS_STORAGE_KEYS.disabled);
   notifyAnalyticsStateChanged();
 }
 
@@ -126,23 +151,17 @@ export function canCollectAnalytics() {
 }
 
 export function getOrCreateVisitorId() {
-  if (!canCollectAnalytics()) {
-    return null;
-  }
+  if (!canCollectAnalytics()) return null;
 
   const existing = readLocalStorage(
     ANALYTICS_STORAGE_KEYS.visitorId
   );
 
-  if (isUuid(existing)) {
-    return existing;
-  }
+  if (isUuid(existing)) return existing;
 
   const visitorId = createUuid();
 
-  if (!visitorId) {
-    return null;
-  }
+  if (!visitorId) return null;
 
   return writeLocalStorage(
     ANALYTICS_STORAGE_KEYS.visitorId,
@@ -157,9 +176,7 @@ function readStoredSession() {
     ANALYTICS_STORAGE_KEYS.session
   );
 
-  if (!raw) {
-    return null;
-  }
+  if (!raw) return null;
 
   try {
     const session = JSON.parse(raw);
@@ -171,7 +188,13 @@ function readStoredSession() {
       return null;
     }
 
-    return session;
+    return {
+      id: session.id,
+      identityKey: readStoredIdentityKey(
+        session.identityKey
+      ),
+      lastActivityAt: session.lastActivityAt,
+    };
   } catch {
     return null;
   }
@@ -184,23 +207,44 @@ function saveSession(session) {
   );
 }
 
-export function getOrCreateSessionId(
+export function startNewAnalyticsSession(
+  identityKey = ANONYMOUS_IDENTITY_KEY,
   now = Date.now()
 ) {
-  if (!canCollectAnalytics()) {
-    return null;
-  }
+  if (!canCollectAnalytics()) return null;
 
+  const sessionId = createUuid();
+
+  if (!sessionId) return null;
+
+  const nextSession = {
+    id: sessionId,
+    identityKey: normalizeIdentityKey(identityKey),
+    lastActivityAt: now,
+  };
+
+  return saveSession(nextSession) ? sessionId : null;
+}
+
+export function getOrCreateSessionId(
+  identityKey = ANONYMOUS_IDENTITY_KEY,
+  now = Date.now()
+) {
+  if (!canCollectAnalytics()) return null;
+
+  const normalizedIdentityKey =
+    normalizeIdentityKey(identityKey);
   const existing = readStoredSession();
 
   if (
     existing &&
+    existing.identityKey === normalizedIdentityKey &&
     now - existing.lastActivityAt >= 0 &&
-    now - existing.lastActivityAt <
-      SESSION_TIMEOUT_MS
+    now - existing.lastActivityAt < SESSION_TIMEOUT_MS
   ) {
     const refreshed = {
       id: existing.id,
+      identityKey: normalizedIdentityKey,
       lastActivityAt: now,
     };
 
@@ -209,42 +253,37 @@ export function getOrCreateSessionId(
       : null;
   }
 
-  const sessionId = createUuid();
-
-  if (!sessionId) {
-    return null;
-  }
-
-  const nextSession = {
-    id: sessionId,
-    lastActivityAt: now,
-  };
-
-  return saveSession(nextSession)
-    ? sessionId
-    : null;
+  return startNewAnalyticsSession(
+    normalizedIdentityKey,
+    now
+  );
 }
 
 export function touchAnalyticsSession(
+  identityKey = ANONYMOUS_IDENTITY_KEY,
   now = Date.now()
 ) {
-  if (!canCollectAnalytics()) {
-    return null;
-  }
+  if (!canCollectAnalytics()) return null;
 
+  const normalizedIdentityKey =
+    normalizeIdentityKey(identityKey);
   const existing = readStoredSession();
 
   if (
     !existing ||
+    existing.identityKey !== normalizedIdentityKey ||
     now - existing.lastActivityAt < 0 ||
-    now - existing.lastActivityAt >=
-      SESSION_TIMEOUT_MS
+    now - existing.lastActivityAt >= SESSION_TIMEOUT_MS
   ) {
-    return getOrCreateSessionId(now);
+    return startNewAnalyticsSession(
+      normalizedIdentityKey,
+      now
+    );
   }
 
   const refreshed = {
     id: existing.id,
+    identityKey: normalizedIdentityKey,
     lastActivityAt: now,
   };
 
@@ -254,12 +293,13 @@ export function touchAnalyticsSession(
 }
 
 export function createAnalyticsEventId() {
-  if (!canCollectAnalytics()) {
-    return null;
-  }
+  if (!canCollectAnalytics()) return null;
 
   return createUuid();
 }
 
 export const ANALYTICS_SESSION_TIMEOUT_MS =
   SESSION_TIMEOUT_MS;
+
+export const ANALYTICS_ANONYMOUS_IDENTITY_KEY =
+  ANONYMOUS_IDENTITY_KEY;

@@ -1,4 +1,7 @@
 const analyticsService = require('../services/analyticsService');
+const activeUsersService = require(
+  '../services/analyticsActiveUsersService'
+);
 
 const {
   resolveAnalyticsDateRange,
@@ -91,9 +94,9 @@ exports.recordHeartbeat = async (req, res) => {
 exports.getReport = async (req, res) => {
   try {
     const range = resolveAnalyticsDateRange(req.query);
-
-    const report =
-      await analyticsService.getAnalyticsReport(range);
+    const report = await analyticsService.getAnalyticsReport(
+      range
+    );
 
     return res.json(report);
   } catch (error) {
@@ -110,6 +113,24 @@ exports.getReport = async (req, res) => {
 
     return res.status(500).json({
       message: 'יצירת דוח הסטטיסטיקות נכשלה',
+    });
+  }
+};
+
+exports.getActiveUsers = async (_req, res) => {
+  try {
+    const activeUsers =
+      await activeUsersService.getActiveAuthenticatedUsers();
+
+    return res.json(activeUsers);
+  } catch (error) {
+    console.error(
+      '[Analytics] Active users report failed:',
+      error.message
+    );
+
+    return res.status(500).json({
+      message: 'טעינת המשתמשים הפעילים נכשלה',
     });
   }
 };
