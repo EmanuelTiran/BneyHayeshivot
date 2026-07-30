@@ -1,141 +1,307 @@
-const User  = require('../models/User');
-const jwt   = require('jsonwebtoken');
+const User = require('../models/User');
+const jwt = require('jsonwebtoken');
 const { OAuth2Client } = require('google-auth-library');
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
+const normalizeEmail = (email) =>
+  typeof email === 'string' ? email.trim().toLowerCase() : '';
+
+const createHttpError = (message, statusCode) => {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  return error;
+};
+
 // ── עזר: יצירת טוקנים ────────────────────────────────────────────────────────
 
 const generateTokens = (user) => {
-  const payload = { userId: user._id, role: user.role };
+  const payload = {
+    userId: user._id,
+    role: user.role,
+  };
 
-  const accessToken = jwt.sign(payload, process.env.JWT_SECRET, {
-    expiresIn: '15m',
-  });
+  const accessToken = jwt.sign(
+    payload,
+    process.env.JWT_SECRET,
+    {
+      expiresIn: '15m',
+    }
+  );
 
-  const refreshToken = jwt.sign(payload, process.env.JWT_REFRESH_SECRET, {
-    expiresIn: '30d', // ← היה 7d
-  });
+  const refreshToken = jwt.sign(
+    payload,
+    process.env.JWT_REFRESH_SECRET,
+    {
+      expiresIn: '30d',
+    }
+  );
 
-  return { accessToken, refreshToken };
+  return {
+    accessToken,
+    refreshToken,
+  };
 };
 
-// ── הרשמה ────────────────────────────────────────────────────────────────────
+// ── הרשמה באמצעות מייל ────────────────────────────────────────────────────────
 
 exports.register = async (userData) => {
-  const email = userData.email?.toLowerCase().trim();
+  const email = normalizeEmail(userData.email);
 
   if (!email) {
-    const err = new Error('נא לספק כתובת אימייל');
-    err.statusCode = 400;
-    throw err;
+    throw createHttpError('נא לספק כתובת אימייל', 400);
   }
+
   if (!userData.password || userData.password.length < 6) {
-    const err = new Error('הסיסמה חייבת להכיל לפחות 6 תווים');
-    err.statusCode = 400;
-    throw err;
+    throw createHttpError(
+      'הסיסמה חייבת להכיל לפחות 6 תווים',
+      400
+    );
   }
 
   const existingUser = await User.findOne({ email });
 
   if (existingUser) {
-    // ── מקרה 1: המשתמש כבר "מלא" — חסום כרגיל ──────────────────────────
     if (existingUser.isFullyRegistered !== false) {
-      const err = new Error('כתובת אימייל זו כבר רשומה במערכת');
-      err.statusCode = 409; // Conflict
-      throw err;
+      throw createHttpError(
+        'כתובת אימייל זו כבר רשומה במערכת',
+        409
+      );
     }
 
-    // ── מקרה 2: זהו placeholder של רשימת תפוצה — נשלים את הרישום ──────
-    existingUser.name              = userData.name?.trim() || existingUser.name;
-    existingUser.password          = userData.password; // ה-pre('save') יבצע hash אוטומטית
-    existingUser.phone             = userData.phone?.trim() || existingUser.phone;
+    /*
+     * זהו משתמש שהמנהל הוסיף ידנית לרשימת התפוצה.
+     * משלימים את אותה רשומה במקום ליצור משתמש כפול.
+     *
+     * receivesNewsletter אינו משתנה, ולכן הבחירה של המנהל
+     * אם לשלוח לאותו משתמש עדכונים נשמרת.
+     */
+    existingUser.name =
+      userData.name?.trim() || existingUser.name;
+
+    existingUser.password = userData.password;
+
+    existingUser.phone =
+      userData.phone?.trim() || existingUser.phone;
+
     existingUser.isFullyRegistered = true;
 
     await existingUser.save();
+
     return existingUser;
   }
 
-  // ── מקרה 3: משתמש חדש לגמרי ──────────────────────────────────────────
-  const user = new User({ ...userData, email, isFullyRegistered: true });
-  return await user.save();
+  const user = new User({
+    ...userData,
+    name: userData.name?.trim(),
+    email,
+    phone: userData.phone?.trim(),
+    isFullyRegistered: true,
+  });
+
+  return user.save();
 };
 
-// ── התחברות רגילה ─────────────────────────────────────────────────────────────
+// ── התחברות באמצעות מייל וסיסמה ──────────────────────────────────────────────
 
 exports.login = async ({ email, password }) => {
-  const user = await User.findOne({ email });
-  if (!user || !(await user.comparePassword(password))) {
+  const normalizedEmail = normalizeEmail(email);
+
+  const user = await User.findOne({
+    email: normalizedEmail,
+  });
+
+  const passwordMatches =
+    user && typeof password === 'string'
+      ? await user.comparePassword(password)
+      : false;
+
+  if (!user || !passwordMatches) {
     throw new Error('Invalid credentials');
   }
 
-  const { accessToken, refreshToken } = generateTokens(user);
+  /*
+   * תיקון עצמי לרשומות ישנות:
+   * אם למשתמש יש סיסמה תקינה והוא הצליח להתחבר,
+   * הוא בהכרח משתמש רשום.
+   */
+  user.isFullyRegistered = true;
 
-  // שמור refresh token ב-DB (מחיקת ישן)
+  const {
+    accessToken,
+    refreshToken,
+  } = generateTokens(user);
+
   user.refreshToken = refreshToken;
+
   await user.save();
 
-  return { token: accessToken, refreshToken, user };
+  return {
+    token: accessToken,
+    refreshToken,
+    user,
+  };
 };
 
-// ── התחברות גוגל ─────────────────────────────────────────────────────────────
+// ── התחברות באמצעות Google ───────────────────────────────────────────────────
 
 exports.googleLogin = async (credential) => {
+  if (!credential) {
+    throw createHttpError(
+      'לא התקבל אסימון התחברות מ-Google',
+      400
+    );
+  }
+
   const ticket = await googleClient.verifyIdToken({
-    idToken:  credential,
+    idToken: credential,
     audience: process.env.GOOGLE_CLIENT_ID,
   });
-  const { email, name, sub: googleId } = ticket.getPayload();
+
+  const payload = ticket.getPayload();
+
+  const email = normalizeEmail(payload?.email);
+
+  const googleName =
+    typeof payload?.name === 'string'
+      ? payload.name.trim()
+      : '';
+
+  const googleId = payload?.sub;
+
+  if (
+    !email ||
+    !googleId ||
+    payload?.email_verified !== true
+  ) {
+    throw createHttpError(
+      'חשבון Google לא החזיר כתובת אימייל מאומתת',
+      401
+    );
+  }
 
   let user = await User.findOne({ email });
 
   if (!user) {
-    // יצירת משתמש חדש בהתחברות ראשונה עם גוגל
-    user = await User.create({
+    /*
+     * משתמש חדש לגמרי:
+     * נוצרת רשומה מלאה ולא רשומת תפוצה בלבד.
+     */
+    user = new User({
       email,
-      name,
+      name: googleName || email,
       googleId,
-      role: 'member',           // ברירת מחדל
-      password: Math.random().toString(36), // placeholder — לא ישמש
+      role: 'member',
+      isFullyRegistered: true,
+      receivesNewsletter: true,
     });
+  } else {
+    /*
+     * הגנה מפני קישור כתובת אימייל לחשבון Google שונה
+     * מזה שכבר חובר בעבר.
+     */
+    if (
+      user.googleId &&
+      user.googleId !== googleId
+    ) {
+      throw createHttpError(
+        'כתובת האימייל כבר מקושרת לחשבון Google אחר',
+        409
+      );
+    }
+
+    /*
+     * אם המנהל הוסיף את האימייל ידנית לרשימת התפוצה,
+     * משתמשים באותה רשומה ולא יוצרים רשומה נוספת.
+     */
+    if (
+      user.isFullyRegistered === false &&
+      googleName
+    ) {
+      user.name = googleName;
+    }
+
+    user.googleId = googleId;
+    user.isFullyRegistered = true;
   }
 
-  const { accessToken, refreshToken } = generateTokens(user);
+  const {
+    accessToken,
+    refreshToken,
+  } = generateTokens(user);
+
   user.refreshToken = refreshToken;
+
   await user.save();
 
-  return { token: accessToken, refreshToken, user };
+  return {
+    token: accessToken,
+    refreshToken,
+    user,
+  };
 };
 
 // ── רענון טוקן ───────────────────────────────────────────────────────────────
 
-exports.refreshToken = async (incomingRefreshToken) => {
-  if (!incomingRefreshToken) throw new Error('No refresh token');
-
-  // אמת את הטוקן
-  let payload;
-  try {
-    payload = jwt.verify(incomingRefreshToken, process.env.JWT_REFRESH_SECRET);
-  } catch {
-    throw new Error('Invalid or expired refresh token');
+exports.refreshToken = async (
+  incomingRefreshToken
+) => {
+  if (!incomingRefreshToken) {
+    throw new Error('No refresh token');
   }
 
-  // וודא שהטוקן תואם למה שב-DB (מניעת שימוש חוזר לאחר logout)
-  const user = await User.findById(payload.userId);
-  if (!user || user.refreshToken !== incomingRefreshToken) {
+  let payload;
+
+  try {
+    payload = jwt.verify(
+      incomingRefreshToken,
+      process.env.JWT_REFRESH_SECRET
+    );
+  } catch {
+    throw new Error(
+      'Invalid or expired refresh token'
+    );
+  }
+
+  const user = await User.findById(
+    payload.userId
+  );
+
+  if (
+    !user ||
+    user.refreshToken !== incomingRefreshToken
+  ) {
     throw new Error('Refresh token revoked');
   }
 
-  // צור זוג חדש (rotation — מניעת גניבת טוקן)
-  const { accessToken, refreshToken: newRefreshToken } = generateTokens(user);
+  /*
+   * תיקון עצמי למשתמשים שהתחברו באמצעות Google
+   * עוד לפני שהתיקון הוטמע.
+   */
+  user.isFullyRegistered = true;
+
+  const {
+    accessToken,
+    refreshToken: newRefreshToken,
+  } = generateTokens(user);
+
   user.refreshToken = newRefreshToken;
+
   await user.save();
 
-  return { token: accessToken, refreshToken: newRefreshToken };
+  return {
+    token: accessToken,
+    refreshToken: newRefreshToken,
+  };
 };
 
 // ── התנתקות ───────────────────────────────────────────────────────────────────
 
 exports.logout = async (userId) => {
-  await User.findByIdAndUpdate(userId, { refreshToken: null });
+  await User.findByIdAndUpdate(
+    userId,
+    {
+      refreshToken: null,
+    }
+  );
 };
