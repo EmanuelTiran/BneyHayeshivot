@@ -285,11 +285,10 @@ function DesktopNavigationItem({
     <Link
       to={path}
       aria-current={isActive ? 'page' : undefined}
-      className={`desktop-nav-link relative shrink-0 pb-2 text-[14px] xl:text-[17px] font-bold tracking-wide xl:tracking-widest transition-all duration-300 ${
-        isActive
+      className={`desktop-nav-link relative shrink-0 pb-2 text-[14px] xl:text-[17px] font-bold tracking-wide xl:tracking-widest transition-all duration-300 ${isActive
           ? 'text-[#f7d98a]'
           : 'text-[#f7f4e9]/80 hover:text-[#cfa756]'
-      }`}
+        }`}
       style={{
         textShadow: isActive
           ? '0 0 14px rgba(247,217,138,.55), 0 0 28px rgba(207,167,86,.2)'
@@ -311,11 +310,10 @@ function DesktopNavigationItem({
       )}
 
       <span
-        className={`absolute -bottom-0.5 left-0 right-0 h-[2px] rounded-full transition-all duration-300 ${
-          isActive
+        className={`absolute -bottom-0.5 left-0 right-0 h-[2px] rounded-full transition-all duration-300 ${isActive
             ? 'opacity-100 scale-x-100'
             : 'opacity-0 scale-x-50'
-        }`}
+          }`}
         style={{
           background:
             'linear-gradient(90deg, transparent, #cfa756 15%, #ffe9a0 50%, #cfa756 85%, transparent)',
@@ -343,15 +341,13 @@ function MobileNavigationItem({
     <Link
       to={path}
       aria-current={isActive ? 'page' : undefined}
-      className={`mobile-nav-item relative min-w-0 h-[52px] rounded-xl flex flex-col items-center justify-center gap-0.5 font-bold transition-colors duration-300 ${
-        admin
+      className={`mobile-nav-item relative min-w-0 h-[52px] rounded-xl flex flex-col items-center justify-center gap-0.5 font-bold transition-colors duration-300 ${admin
           ? 'w-[30px] min-[360px]:w-[34px]'
           : 'flex-1'
-      } ${
-        isActive
+        } ${isActive
           ? 'text-[#ffe9a0]'
           : 'text-[#f7f4e9]/70'
-      }`}
+        }`}
       style={{
         animationDelay: `${animationIndex * 45}ms`,
         border: '1px solid rgba(207,167,86,.08)',
@@ -398,22 +394,20 @@ function CenterLogo({ mobile = false }) {
   return (
     <Link
       to={ROUTES.HOME}
-      className={`logo-link relative z-40 group flex items-center justify-center justify-self-center rounded-full ${
-        mobile
+      className={`logo-link relative z-40 group flex items-center justify-center justify-self-center rounded-full ${mobile
           ? 'w-[58px] h-[58px] translate-y-2'
           : 'w-[124px] h-[124px] xl:w-[134px] xl:h-[134px] translate-y-4'
-      }`}
+        }`}
       aria-label="לוגו – מעבר לדף הבית"
     >
       <span className="logo-halo absolute inset-[5%] rounded-full" />
 
       <img
         src="/logo.png"
-        className={`relative z-10 w-auto object-contain transition-transform duration-500 group-hover:scale-105 ${
-          mobile
+        className={`relative z-10 w-auto object-contain transition-transform duration-500 group-hover:scale-105 ${mobile
             ? 'h-[54px]'
             : 'h-[112px] xl:h-[120px]'
-        }`}
+          }`}
         alt="לוגו"
       />
 
@@ -425,22 +419,19 @@ function CenterLogo({ mobile = false }) {
 function UserBadge({ name, mobile = false }) {
   return (
     <div
-      className={`user-badge ${
-        mobile
+      className={`user-badge ${mobile
           ? 'h-7 max-w-[150px] px-2.5 gap-1.5'
           : 'h-8 max-w-[160px] px-3 gap-2'
-      }`}
+        }`}
     >
       <span
-        className={`${
-          mobile ? 'w-1.5 h-1.5' : 'w-2 h-2'
-        } user-status-dot`}
+        className={`${mobile ? 'w-1.5 h-1.5' : 'w-2 h-2'
+          } user-status-dot`}
       />
 
       <span
-        className={`truncate font-semibold ${
-          mobile ? 'text-[11px]' : 'text-[13px]'
-        }`}
+        className={`truncate font-semibold ${mobile ? 'text-[11px]' : 'text-[13px]'
+          }`}
       >
         {name || 'משתמש'}
       </span>
@@ -456,17 +447,15 @@ function AuthAction({
   icon,
   mobile = false,
 }) {
-  const className = `auth-action auth-${variant} ${
-    mobile
+  const className = `auth-action auth-${variant} ${mobile
       ? 'h-7 px-2.5 gap-1.5 text-[11px]'
       : 'h-8 px-4 text-[13px]'
-  } ${
-    variant === 'logout'
+    } ${variant === 'logout'
       ? ''
       : mobile
         ? 'min-w-[78px]'
         : 'min-w-[92px]'
-  }`;
+    }`;
 
   const content = (
     <>
@@ -614,9 +603,9 @@ function Header() {
 
   const adminItem = adminEnabled
     ? {
-        path: ROUTES.ADMIN,
-        label: 'ניהול',
-      }
+      path: ROUTES.ADMIN,
+      label: 'ניהול',
+    }
     : null;
 
   const rightItems = [
@@ -876,8 +865,9 @@ function Header() {
       `}</style>
 
       <header
-        className="header-font fixed top-0 left-0 right-0 z-50"
+        className="header-font notranslate fixed top-0 left-0 right-0 z-50"
         dir="rtl"
+        translate="no"
       >
         <div className="glass-dark relative h-[62px] lg:h-20 overflow-visible">
           <div className="absolute inset-0 overflow-hidden pointer-events-none">
