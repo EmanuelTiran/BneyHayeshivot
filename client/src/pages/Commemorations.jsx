@@ -572,7 +572,7 @@ function CommemorationCard({ item, onRequest, isAdmin, onEdit, onDelete, onImage
 
 // ── עמוד ראשי ─────────────────────────────────────────────────────────────────
 export default function Commemorations() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, isGabbai } = useAuth();
   const [commemorations, setCommemorations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -638,7 +638,7 @@ export default function Commemorations() {
     }
   };
 
-  const showAdminBar = isAdmin && isAdmin();
+  const showAdminBar = (isAdmin && isAdmin()) || (isGabbai && isGabbai());
 
   return (
     <div dir="rtl" style={{ minHeight: '100vh', background: '#f7f4ee' }}>
@@ -648,7 +648,7 @@ export default function Commemorations() {
       />
 
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px 16px' }}>
-        {/* שורת ניהול — למנהלים בלבד */}
+        {/* שורת ניהול — למנהלים ולגבאים */}
         {showAdminBar && (
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
             <button

@@ -178,7 +178,7 @@ function CategoryCard({ category, isAdmin, onEdit, onDelete, onClick, onMouseEnt
 
 export default function Portal() {
   const navigate = useNavigate();
-  const { isAdmin } = useAuth();
+  const { isAdmin, isGabbai } = useAuth();
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -212,6 +212,8 @@ export default function Portal() {
     load();
   };
 
+  const canManage = (isAdmin && isAdmin()) || (isGabbai && isGabbai());
+
   return (
     <div
       dir="rtl"
@@ -232,7 +234,7 @@ export default function Portal() {
       />
 
       <div className="max-w-5xl mx-auto px-4 py-10">
-        {isAdmin && isAdmin() && (
+        {canManage && (
           <div className="flex justify-end mb-6">
             <button onClick={() => setModal('add')}
               className="flex items-center gap-2 bg-[#0d2340] text-[#cfa756] font-bold px-5 py-2.5 rounded-lg hover:bg-[#1a365d] shadow-md">
@@ -253,7 +255,7 @@ export default function Portal() {
             <CategoryCard
               key={cat._id}
               category={cat}
-              isAdmin={isAdmin && isAdmin()}
+              isAdmin={canManage}
               onClick={() => navigate(ROUTES.PORTAL_CATEGORY.replace(':categoryId', cat._id))}
               onEdit={() => setModal({ category: cat })}
               onDelete={() => handleDelete(cat._id)}

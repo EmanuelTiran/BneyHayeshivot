@@ -357,10 +357,11 @@ function GalleryManagerModal({ isOpen, onClose, images, onRefresh }) {
         </div>
     );
 }
-
+ 
 // ─── קומפוננטה ראשית ──────────────────────────────────────────────────────────
 export default function ImageGallery() {
-    const { isAdmin } = useAuth();
+    const { isAdmin, isGabbai } = useAuth();
+    const canManage = (isAdmin && isAdmin()) || (isGabbai && isGabbai());
 
     const [images, setImages] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -438,7 +439,7 @@ export default function ImageGallery() {
                 <div className="flex flex-col items-center justify-center h-64 rounded-2xl bg-white border border-gray-100 shadow-sm text-gray-400 mx-4 mt-8">
                     <ImageIcon size={36} className="mb-3 opacity-40" />
                     <p className="text-sm">הגלריה ריקה כרגע</p>
-                    {isAdmin && isAdmin() && (
+                    {canManage && (
                         <button onClick={() => setIsModalOpen(true)}
                             className="mt-4 bg-[#cfa756] hover:bg-[#b8860b] text-[#0d2340] font-bold px-5 py-2 rounded-lg text-sm transition-colors shadow-sm">
                             הוסף תמונה ראשונה
@@ -557,7 +558,7 @@ export default function ImageGallery() {
                                             )}
 
                                             {/* ── כפתור ניהול גלריה – מופיע על הכרטיס הפעיל בריחוף ── */}
-                                            {isActive && isAdmin && isAdmin() && (
+                                            {isActive && canManage && (
                                                 <AnimatePresence>
                                                     {isHovered && (
                                                         <motion.button
