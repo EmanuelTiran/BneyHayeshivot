@@ -1,5 +1,4 @@
-import React, { useEffect, useState } from 'react';
-// אין צורך ב־named import
+import { useEffect, useState } from 'react';
 import { getZmanimJson } from 'kosher-zmanim';
 
 const HalachicTimes = () => {
@@ -17,10 +16,8 @@ const HalachicTimes = () => {
         },
       };
 
-      const zmanimJson = await getZmanimJson(options); // <--- כאן השינוי העיקרי
+      const zmanimJson = await getZmanimJson(options);
       setZmanim(zmanimJson.BasicZmanim);
-      console.log({zmanim});
-
     };
 
     fetchZmanim();

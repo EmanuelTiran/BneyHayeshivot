@@ -1,3 +1,4 @@
+// BneyHayeshivot\client\.eslintrc.cjs
 module.exports = {
   root: true,
   env: { browser: true, es2020: true },
@@ -12,6 +13,9 @@ module.exports = {
   settings: { react: { version: '18.2' } },
   plugins: ['react-refresh'],
   rules: {
+    'react-refresh/only-export-components': 'off',
+    'react/prop-types': 'off',
+    'react/no-unescaped-entities': 'off',
     'react/jsx-no-target-blank': 'off',
     'react-refresh/only-export-components': [
       'warn',

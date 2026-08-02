@@ -1,5 +1,49 @@
 const mongoose = require('mongoose');
 
+const analyticsUserSnapshotSchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      trim: true,
+      maxlength: 160,
+      default: '',
+    },
+    email: {
+      type: String,
+      trim: true,
+      lowercase: true,
+      maxlength: 254,
+      default: '',
+    },
+    phone: {
+      type: String,
+      trim: true,
+      maxlength: 40,
+      default: '',
+    },
+    role: {
+      type: String,
+      enum: ['admin', 'gabbai', 'member'],
+      default: 'member',
+    },
+    registeredAt: {
+      type: Date,
+      default: null,
+    },
+    googleLinked: {
+      type: Boolean,
+      default: false,
+    },
+    capturedAt: {
+      type: Date,
+      required: true,
+    },
+  },
+  {
+    _id: false,
+  }
+);
+
 const analyticsSessionSchema = new mongoose.Schema(
   {
     sessionKey: {
@@ -25,6 +69,11 @@ const analyticsSessionSchema = new mongoose.Schema(
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
+      default: null,
+    },
+
+    userSnapshot: {
+      type: analyticsUserSnapshotSchema,
       default: null,
     },
 

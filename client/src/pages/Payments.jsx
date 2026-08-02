@@ -2,9 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   fetchMyPayments, fetchAllPayments, fetchAllUsers,
-  addMyDebt, markMyDebtPaid,
+  markMyDebtPaid,
   setMyStandingOrder, cancelMyStandingOrder,
-  addMyDonation,
   addUserDebt, markUserDebtPaid, deleteUserDebt,
   setUserStandingOrder, cancelUserStandingOrder,
   addUserDonation, deleteUserDonation,
@@ -22,11 +21,10 @@ const fmtDate = (dateStr) =>
 // ─── Badge סטטוס ─────────────────────────────────────────────────────────────
 
 const Badge = ({ active, labels }) => (
-  <span className={`text-xs font-bold px-2 py-1 rounded-full ${
-    active
+  <span className={`text-xs font-bold px-2 py-1 rounded-full ${active
       ? 'bg-green-100 text-green-800 border border-green-300'
       : 'bg-red-100 text-red-700 border border-red-300'
-  }`}>
+    }`}>
     {active ? labels[0] : labels[1]}
   </span>
 );
@@ -125,8 +123,8 @@ function AddDonationForm({ onSubmit, loading }) {
 
 function StandingOrderForm({ current, onSave, onCancel, loading }) {
   const [form, setForm] = useState({
-    amount:      current?.amount     || '',
-    dayOfMonth:  current?.dayOfMonth || 1,
+    amount: current?.amount || '',
+    dayOfMonth: current?.dayOfMonth || 1,
     description: current?.description || 'הוראת קבע חודשית',
   });
 
@@ -173,10 +171,10 @@ function StandingOrderForm({ current, onSave, onCancel, loading }) {
 // ─── תצוגת תשלומים – משתמש רגיל ──────────────────────────────────────────────
 
 function MyPaymentsView() {
-  const [data, setData]       = useState(null);
+  const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving]   = useState(false);
-  const [error, setError]     = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
   const [showSOForm, setShowSOForm] = useState(false);
 
   const reload = useCallback(async () => {
@@ -207,11 +205,11 @@ function MyPaymentsView() {
   };
 
   if (loading) return <p className="text-center py-10 text-[#0d2340]">טוען נתונים...</p>;
-  if (!data)   return <p className="text-center py-10 text-red-600">{error}</p>;
+  if (!data) return <p className="text-center py-10 text-red-600">{error}</p>;
 
-  const openDebts  = data.debts?.filter(d => !d.isPaid) || [];
+  const openDebts = data.debts?.filter(d => !d.isPaid) || [];
   const closedDebts = data.debts?.filter(d => d.isPaid) || [];
-  const totalDebt  = openDebts.reduce((s, d) => s + d.amount, 0);
+  const totalDebt = openDebts.reduce((s, d) => s + d.amount, 0);
 
   return (
     <div dir="rtl" className="max-w-3xl mx-auto py-8 px-4">
@@ -230,8 +228,8 @@ function MyPaymentsView() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         {[
           { label: 'סך חובות פתוחים', value: fmt(totalDebt), color: totalDebt > 0 ? 'text-red-600' : 'text-green-600' },
-          { label: 'תרומות שבוצעו',  value: data.donations?.length || 0, color: 'text-[#0d2340]' },
-          { label: 'הוראת קבע',      value: data.standingOrder?.isActive ? fmt(data.standingOrder.amount) : 'לא פעילה', color: 'text-[#0d2340]' },
+          { label: 'תרומות שבוצעו', value: data.donations?.length || 0, color: 'text-[#0d2340]' },
+          { label: 'הוראת קבע', value: data.standingOrder?.isActive ? fmt(data.standingOrder.amount) : 'לא פעילה', color: 'text-[#0d2340]' },
         ].map(card => (
           <div key={card.label} className="bg-white rounded-xl border border-[#cfa756]/30 shadow-sm p-4 text-center">
             <p className="text-sm text-gray-500 mb-1">{card.label}</p>
@@ -369,16 +367,16 @@ function MyPaymentsView() {
 // ─── תצוגת תשלומים – אדמין ───────────────────────────────────────────────────
 
 function AdminPaymentsView() {
-  const [allData, setAllData]   = useState([]);
-  const [users, setUsers]       = useState([]);
+  const [allData, setAllData] = useState([]);
+  const [users, setUsers] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
-  const [loading, setLoading]   = useState(true);
-  const [saving, setSaving]     = useState(false);
-  const [error, setError]       = useState('');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
   const [notesText, setNotesText] = useState('');
-  const [showDebtForm, setShowDebtForm]   = useState(false);
-  const [showDonForm, setShowDonForm]     = useState(false);
-  const [showSOForm, setShowSOForm]       = useState(false);
+  const [showDebtForm, setShowDebtForm] = useState(false);
+  const [showDonForm, setShowDonForm] = useState(false);
+  const [showSOForm, setShowSOForm] = useState(false);
 
   const reload = useCallback(async () => {
     try {
@@ -441,9 +439,8 @@ function AdminPaymentsView() {
                 <li key={user._id}>
                   <button
                     onClick={() => setSelectedId(user._id)}
-                    className={`w-full text-right px-4 py-3 hover:bg-[#f7f4e9] transition-colors ${
-                      selectedId === user._id ? 'bg-[#f7f4e9] border-r-4 border-[#cfa756]' : ''
-                    }`}
+                    className={`w-full text-right px-4 py-3 hover:bg-[#f7f4e9] transition-colors ${selectedId === user._id ? 'bg-[#f7f4e9] border-r-4 border-[#cfa756]' : ''
+                      }`}
                   >
                     <p className="font-semibold text-[#0d2340]">{user.name}</p>
                     <p className="text-xs text-gray-500">{user.email}</p>
@@ -650,7 +647,7 @@ export default function Payments() {
   const navigate = useNavigate();
 
   const rawUser = localStorage.getItem('user');
-  const user    = rawUser ? JSON.parse(rawUser) : null;
+  const user = rawUser ? JSON.parse(rawUser) : null;
 
   useEffect(() => {
     if (!user) navigate('/login', { state: { from: '/payments' } });

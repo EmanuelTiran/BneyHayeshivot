@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../components/context/authContext';
 import { fetchCategories, fetchItemsByCategory, createItem, updateItem, deleteItem } from '../services/portalService';
@@ -175,17 +175,30 @@ export default function PortalCategory() {
   const [error, setError] = useState('');
   const [modal, setModal] = useState(null);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     try {
       setLoading(true);
-      const [catRes, itemsRes] = await Promise.all([fetchCategories(), fetchItemsByCategory(categoryId)]);
-      setCategory(catRes.data.find((c) => c._id === categoryId) || null);
+  
+      const [catRes, itemsRes] = await Promise.all([
+        fetchCategories(),
+        fetchItemsByCategory(categoryId),
+      ]);
+  
+      setCategory(
+        catRes.data.find((currentCategory) => currentCategory._id === categoryId) ||
+          null
+      );
       setItems(itemsRes.data);
-    } catch { setError('שגיאה בטעינת הנתונים'); }
-    finally { setLoading(false); }
-  };
-
-  useEffect(() => { load(); }, [categoryId]);
+    } catch {
+      setError('שגיאה בטעינת הנתונים');
+    } finally {
+      setLoading(false);
+    }
+  }, [categoryId]);
+  
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const handleSave = async (form) => {
     if (modal === 'add') await createItem({ ...form, categoryId });

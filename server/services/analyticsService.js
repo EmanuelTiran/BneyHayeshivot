@@ -1,6 +1,7 @@
 const AnalyticsVisitor = require('../models/AnalyticsVisitor');
 const AnalyticsSession = require('../models/AnalyticsSession');
 const AnalyticsPageView = require('../models/AnalyticsPageView');
+const User = require('../models/User');
 
 const {
   classifySource,
@@ -28,6 +29,64 @@ function isDuplicateKeyError(error) {
 
 function getVerifiedUserId(user) {
   return user?.userId || null;
+}
+
+async function getUserSnapshot(userId, capturedAt) {
+  if (!userId) return null;
+
+  const user = await User.findOne({
+    _id: userId,
+    isActive: { $ne: false },
+    isFullyRegistered: { $ne: false },
+  })
+    .select('name email phone role createdAt googleId')
+    .lean();
+
+  if (!user) return null;
+
+  return {
+    name: user.name || '',
+    email: user.email || '',
+    phone: user.phone || '',
+    role: user.role || 'member',
+    registeredAt: user.createdAt || null,
+    googleLinked: Boolean(user.googleId),
+    capturedAt,
+  };
+}
+
+function getHistoricalUserDetails(session, currentUser) {
+  const snapshot = session.userSnapshot || null;
+
+  if (!snapshot && !currentUser) {
+    return session.userId
+      ? {
+          name: 'משתמש רשום שפרטיו אינם זמינים',
+          email: '',
+          phone: '',
+          role: 'member',
+          registeredAt: null,
+          googleLinked: false,
+          capturedAt: null,
+          unavailable: true,
+        }
+      : null;
+  }
+
+  return {
+    name: snapshot?.name || currentUser?.name || '',
+    email: snapshot?.email || currentUser?.email || '',
+    phone: snapshot?.phone || currentUser?.phone || '',
+    role: snapshot?.role || currentUser?.role || 'member',
+    registeredAt:
+      snapshot?.registeredAt || currentUser?.createdAt || null,
+    googleLinked:
+      typeof snapshot?.googleLinked === 'boolean'
+        ? snapshot.googleLinked
+        : Boolean(currentUser?.googleId),
+    capturedAt: snapshot?.capturedAt || null,
+    unavailable: false,
+  };
 }
 
 async function updateVisitor({ environment, visitorKey, now, expiresAt }) {
@@ -69,6 +128,7 @@ async function upsertSessionForPageView({
   sessionKey,
   visitorKey,
   userId,
+  userSnapshot,
   path,
   referrerHost,
   utmSource,
@@ -84,6 +144,7 @@ async function upsertSessionForPageView({
   };
 
   if (userId) setFields.userId = userId;
+  if (userSnapshot) setFields.userSnapshot = userSnapshot;
 
   await AnalyticsSession.updateOne(
     { environment, sessionKey, visitorKey },
@@ -162,6 +223,17 @@ async function collectPageView(payload, context) {
     return { accepted: false };
   }
 
+  const snapshotNeedsCapture = Boolean(
+    userId &&
+      (!compatibleSession ||
+        !compatibleSession.userSnapshot ||
+        String(compatibleSession.userId || '') !== String(userId))
+  );
+
+  const userSnapshot = snapshotNeedsCapture
+    ? await getUserSnapshot(userId, now)
+    : null;
+
   await Promise.all([
     updateVisitor({
       environment,
@@ -174,6 +246,7 @@ async function collectPageView(payload, context) {
       sessionKey,
       visitorKey,
       userId,
+      userSnapshot,
       path,
       referrerHost,
       utmSource,
@@ -722,7 +795,7 @@ async function getAnalyticsReport(range) {
 
     AnalyticsSession.find(sessionMatch)
       .select(
-        'startedAt lastActiveAt activeDurationMs firstPage lastPage sourceCategory deviceType browser os userId'
+        'startedAt lastActiveAt activeDurationMs firstPage lastPage sourceCategory deviceType browser os userId userSnapshot'
       )
       .sort({
         startedAt: -1,
@@ -731,24 +804,53 @@ async function getAnalyticsReport(range) {
       .lean(),
   ]);
 
+  const recentUserIds = [
+    ...new Set(
+      recentSessionDocuments
+        .map((session) => session.userId?.toString())
+        .filter(Boolean)
+    ),
+  ];
+
+  const currentUsers = recentUserIds.length
+    ? await User.find({
+        _id: { $in: recentUserIds },
+      })
+        .select('name email phone role createdAt googleId')
+        .lean()
+    : [];
+
+  const currentUsersById = new Map(
+    currentUsers.map((user) => [user._id.toString(), user])
+  );
+
   const recentSessions = recentSessionDocuments.map(
-    (session) => ({
-      startedAt: session.startedAt,
-      lastActiveAt: session.lastActiveAt,
-      activeDurationSeconds: Math.round(
-        session.activeDurationMs / 1000
-      ),
-      firstPage: session.firstPage,
-      lastPage: session.lastPage,
-      source: session.sourceCategory,
-      device: session.deviceType,
-      browser: session.browser,
-      os: session.os,
-      authenticated: Boolean(session.userId),
-      active:
-        session.lastActiveAt.getTime() >=
-        activeCutoff.getTime(),
-    })
+    (session) => {
+      const currentUser = session.userId
+        ? currentUsersById.get(session.userId.toString()) || null
+        : null;
+
+      const user = getHistoricalUserDetails(session, currentUser);
+
+      return {
+        startedAt: session.startedAt,
+        lastActiveAt: session.lastActiveAt,
+        activeDurationSeconds: Math.round(
+          session.activeDurationMs / 1000
+        ),
+        firstPage: session.firstPage,
+        lastPage: session.lastPage,
+        source: session.sourceCategory,
+        device: session.deviceType,
+        browser: session.browser,
+        os: session.os,
+        authenticated: Boolean(session.userId),
+        user,
+        active:
+          session.lastActiveAt.getTime() >=
+          activeCutoff.getTime(),
+      };
+    }
   );
 
   return {

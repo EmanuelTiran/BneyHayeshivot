@@ -1,4 +1,3 @@
-import React from 'react';
 import { CreditCard, ArrowLeft } from 'lucide-react';
 
 const CommunityPaymentButton = ({ buttonText = "לתרומות ותשלומים" }) => {

@@ -67,7 +67,19 @@ async function getActiveAuthenticatedUsers() {
               _id: 0,
               name: 1,
               email: 1,
+              phone: 1,
               role: 1,
+              createdAt: 1,
+              googleLinked: {
+                $gt: [
+                  {
+                    $strLenCP: {
+                      $ifNull: ['$googleId', ''],
+                    },
+                  },
+                  0,
+                ],
+              },
             },
           },
         ],
@@ -98,7 +110,10 @@ async function getActiveAuthenticatedUsers() {
               _id: 0,
               name: '$user.name',
               email: '$user.email',
+              phone: '$user.phone',
               role: '$user.role',
+              registeredAt: '$user.createdAt',
+              googleLinked: '$user.googleLinked',
               startedAt: 1,
               lastActiveAt: 1,
               lastPage: 1,

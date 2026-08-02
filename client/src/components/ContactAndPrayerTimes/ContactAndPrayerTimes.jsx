@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../context/authContext';
 import { getPrayers, savePrayers } from '../../services/prayersService';
 import {
@@ -70,7 +70,7 @@ const ContactAndPrayerTimes = ({ isButtonTransparent }) => {
        * שמירת התפילות היא הפעולה שמפעילה
        * את שליחת המייל בשרת.
        */
-  
+
       // 1. מציאת ההודעות שנמחקו
       const deletedAnnouncements = announcements.filter(
         (originalAnnouncement) =>
@@ -79,23 +79,23 @@ const ContactAndPrayerTimes = ({ isButtonTransparent }) => {
               tempAnnouncement._id === originalAnnouncement._id
           )
       );
-  
+
       // 2. מחיקת ההודעות שהוסרו
       await Promise.all(
         deletedAnnouncements.map((announcement) =>
           removeAnnouncement(announcement._id)
         )
       );
-  
+
       // 3. שמירת כל ההודעות החדשות והמעודכנות
       const savedAnnouncements = await Promise.all(
         tempAnnouncements.map((announcement) =>
           saveAnnouncement(announcement)
         )
       );
-  
+
       setAnnouncements(savedAnnouncements);
-  
+
       /*
        * 4. שמירת התפילות והכותרת מתבצעת אחרונה.
        *
@@ -109,7 +109,7 @@ const ContactAndPrayerTimes = ({ isButtonTransparent }) => {
         tempPrayers,
         tempTitle
       );
-  
+
       if (Array.isArray(result)) {
         // תמיכה בפורמט הישן
         setPrayers(result);
@@ -118,12 +118,12 @@ const ContactAndPrayerTimes = ({ isButtonTransparent }) => {
         setPrayers(
           result.prayers ?? tempPrayers
         );
-  
+
         setPrayerSectionTitle(
           result.prayerSectionTitle ?? tempTitle
         );
       }
-  
+
       // 5. סגירת חלון העריכה רק לאחר שכל הפעולות הסתיימו
       setIsModalOpen(false);
     } catch (err) {
@@ -131,7 +131,7 @@ const ContactAndPrayerTimes = ({ isButtonTransparent }) => {
         'שגיאה בשמירת הנתונים:',
         err
       );
-  
+
       alert(
         'שגיאה בשמירת הנתונים. אנא נסה שוב.'
       );
@@ -277,7 +277,7 @@ const ContactAndPrayerTimes = ({ isButtonTransparent }) => {
                 className="lux-item p-4 rounded-lg rounded-r-none relative"
                 style={{ borderRight: '4px solid #a61b1b' }}
               >
-                <div 
+                <div
                   className="absolute -top-3 -right-2 text-white text-xs font-bold px-3 py-1 rounded-full shadow-md bg-[#a61b1b]"
                 >
                   {announcement.title || 'הודעת גבאי'}
@@ -306,7 +306,7 @@ const ContactAndPrayerTimes = ({ isButtonTransparent }) => {
 
         {/* זמני תפילה — כותרת דינמית */}
         <div className="mb-8">
-          <h3 
+          <h3
             className="text-xl font-bold mb-4 border-b-2 pb-2 inline-block text-[#0d2340]"
             style={{ borderColor: '#cfa756' }}
           >
@@ -362,8 +362,8 @@ const ContactAndPrayerTimes = ({ isButtonTransparent }) => {
               className="lux-card rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto custom-scrollbar"
               dir="rtl"
             >
-              <h3 
-                className="text-2xl font-bold mb-6 text-center pb-3 text-[#0d2340]" 
+              <h3
+                className="text-2xl font-bold mb-6 text-center pb-3 text-[#0d2340]"
                 style={{ borderBottom: '1px solid rgba(207,167,86,0.3)' }}
               >
                 עריכת תוכן

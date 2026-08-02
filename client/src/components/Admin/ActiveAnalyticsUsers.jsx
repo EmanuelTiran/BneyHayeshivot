@@ -21,6 +21,7 @@ import {
   const REFRESH_INTERVAL_MS = 30 * 1000;
   
   const ROLE_LABELS = {
+    admin: 'מנהל',
     member: 'חבר',
     gabbai: 'גבאי',
   };
@@ -200,6 +201,37 @@ import {
               {user.browser || 'לא ידוע'}
               {' · '}
               {user.os || 'לא ידוע'}
+            </dd>
+          </div>
+
+          <div className="rounded-xl bg-[#f7f4ee] p-3">
+            <dt className="font-semibold text-[#0d2340]/65">
+              פרטי חשבון
+            </dt>
+
+            <dd className="mt-1 space-y-1 text-[#0d2340]">
+              <p>
+                טלפון:{' '}
+                <span dir="ltr" className="inline-block font-medium">
+                  {user.phone || 'לא הוזן'}
+                </span>
+              </p>
+
+              <p>
+                נרשם בתאריך:{' '}
+                <strong>
+                  {formatDateTime(user.registeredAt)}
+                </strong>
+              </p>
+
+              <p>
+                סוג חשבון:{' '}
+                <strong>
+                  {user.googleLinked
+                    ? 'מקושר ל־Google'
+                    : 'אימייל וסיסמה'}
+                </strong>
+              </p>
             </dd>
           </div>
         </dl>

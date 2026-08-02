@@ -1,4 +1,4 @@
-/* eslint-disable react/prop-types */
+ 
 
 import {
     useEffect,
@@ -57,6 +57,12 @@ import {
     referral: 'אתר אחר',
     internal: 'מעבר פנימי',
     unknown: 'לא ידוע',
+  };
+
+  const ROLE_LABELS = {
+    admin: 'מנהל',
+    gabbai: 'גבאי',
+    member: 'חבר',
   };
   
   const numberFormatter =
@@ -148,6 +154,10 @@ import {
     )
       ? '—'
       : dateTimeFormatter.format(date);
+  }
+
+  function getRoleLabel(role) {
+    return ROLE_LABELS[role] || 'משתמש';
   }
   
   function formatBucket(
@@ -1406,11 +1416,15 @@ import {
                   </div>
   
                   <div className="overflow-x-auto">
-                    <table className="w-full min-w-[1050px] text-sm">
+                    <table className="w-full min-w-[1350px] text-sm">
                       <thead className="bg-[#f7f4ee] text-right text-xs text-gray-500">
                         <tr>
                           <th className="px-4 py-3">
                             זמן כניסה
+                          </th>
+
+                          <th className="px-4 py-3">
+                            פרטי המשתמש
                           </th>
   
                           <th className="px-4 py-3">
@@ -1460,6 +1474,53 @@ import {
                               <td className="whitespace-nowrap px-4 py-3">
                                 {formatDateTime(
                                   session.startedAt
+                                )}
+                              </td>
+
+                              <td className="min-w-[260px] px-4 py-3 align-top">
+                                {session.user?.unavailable ? (
+                                  <span className="font-medium text-amber-700">
+                                    פרטי המשתמש אינם זמינים עוד
+                                  </span>
+                                ) : session.user ? (
+                                  <div className="space-y-1">
+                                    <p className="font-bold text-[#0d2340]">
+                                      {session.user.name || 'משתמש ללא שם'}
+                                    </p>
+
+                                    <p
+                                      dir="ltr"
+                                      className="break-all text-left text-xs"
+                                    >
+                                      {session.user.email || '—'}
+                                    </p>
+
+                                    <p className="text-xs">
+                                      טלפון:{' '}
+                                      <span dir="ltr" className="inline-block">
+                                        {session.user.phone || 'לא הוזן'}
+                                      </span>
+                                    </p>
+
+                                    <p className="text-xs">
+                                      {getRoleLabel(session.user.role)}
+                                      {' · '}
+                                      {session.user.googleLinked
+                                        ? 'מקושר ל־Google'
+                                        : 'אימייל וסיסמה'}
+                                    </p>
+
+                                    <p className="text-xs text-gray-400">
+                                      נרשם:{' '}
+                                      {formatDateTime(
+                                        session.user.registeredAt
+                                      )}
+                                    </p>
+                                  </div>
+                                ) : (
+                                  <span className="font-medium text-gray-400">
+                                    מבקר אנונימי
+                                  </span>
                                 )}
                               </td>
   

@@ -33,54 +33,7 @@ const tabInStyle = `
   }
 `;
 
-// ── כותרת אחידה לטאבים ──────────────────────────────────────────────────────
-function AdminTabHeader({ title, subtitle }) {
-  const dots = [
-    { top: '18%', right: '8%', delay: '0s' },
-    { top: '32%', right: '18%', delay: '.7s' },
-    { top: '20%', left: '11%', delay: '1.2s' },
-    { top: '62%', left: '20%', delay: '.35s' },
-    { top: '70%', right: '27%', delay: '1.7s' },
-  ];
 
-  return (
-    <header
-      className="relative overflow-hidden rounded-2xl px-5 py-6 mb-6 text-center border border-[#cfa756]/35"
-      style={{
-        background: 'linear-gradient(135deg, #0a192f 0%, #0d2340 52%, #122b4d 100%)',
-        boxShadow: '0 12px 30px rgba(13,35,64,.22), inset 0 0 32px rgba(207,167,86,.045)',
-      }}
-    >
-      {dots.map((dot, index) => (
-        <span
-          key={index}
-          aria-hidden="true"
-          className="absolute h-1.5 w-1.5 rounded-full bg-[#f7d98a] pointer-events-none"
-          style={{
-            ...dot,
-            boxShadow: '0 0 7px #f7d98a, 0 0 14px rgba(207,167,86,.8)',
-            animation: `adminGlowDot 2.4s ease-in-out ${dot.delay} infinite`,
-          }}
-        />
-      ))}
-
-      <div className="relative z-10">
-        <h2 className="text-2xl sm:text-3xl font-bold text-[#f7d98a] drop-shadow-[0_0_10px_rgba(207,167,86,.38)]">
-          {title}
-        </h2>
-        {subtitle && <p className="mt-2 text-sm text-[#f7f4e9]/70">{subtitle}</p>}
-        <div
-          aria-hidden="true"
-          className="mx-auto mt-4 h-[2px] w-32 rounded-full"
-          style={{
-            background: 'linear-gradient(90deg, transparent, #cfa756, #f7d98a, #cfa756, transparent)',
-            animation: 'adminGoldLine 2.2s ease-in-out infinite',
-          }}
-        />
-      </div>
-    </header>
-  );
-}
 
 // ── מודאל עריכת משתמש ─────────────────────────────────────────────────────
 function EditUserModal({ user, onClose, onSave }) {
@@ -230,7 +183,6 @@ function ContactMessages({ onAlertsChange }) {
 
   return (
     <section className="max-w-5xl mx-auto">
-      {/* <AdminTabHeader title="הודעות צור קשר" subtitle="צפייה, טיפול ומחיקה של הודעות שהתקבלו מהאתר" /> */}
       <FilterBar filters={FILTERS} active={activeFilter} onChange={setActiveFilter} />
 
       {isLoading && <p className="text-center py-6">טוען הודעות...</p>}
@@ -482,11 +434,6 @@ function SponsorshipRequests({ onAlertsChange }) {
   };
 
   const STATUS_LABELS = { pending: 'ממתין', approved: 'אושר', rejected: 'נדחה' };
-  const STATUS_COLORS = {
-    pending: 'bg-yellow-100 text-yellow-800 border-yellow-300',
-    approved: 'bg-green-100  text-green-800  border-green-300',
-    rejected: 'bg-red-100    text-red-800    border-red-300',
-  };
 
   const FILTERS = [
     { key: 'all', label: `הכל (${requests.length})` },
@@ -499,7 +446,6 @@ function SponsorshipRequests({ onAlertsChange }) {
 
   return (
     <section className="max-w-5xl mx-auto">
-      {/* <AdminTabHeader title="בקשות הקדשה" subtitle="אישור, דחייה ומחיקה של בקשות ההקדשה" /> */}
       <FilterBar filters={FILTERS} active={activeFilter} onChange={setActiveFilter} />
 
       {loading && <p className="text-center py-6">טוען...</p>}
@@ -866,7 +812,6 @@ function MailingListManagement() {
 
   return (
     <section className="max-w-3xl mx-auto">
-      {/* <AdminTabHeader title="ניהול רשימת תפוצה" subtitle="הוספה, עריכה וניהול של מקבלי עדכוני הקהילה" /> */}
       {/* טופס הוספה */}
       <div className="bg-white shadow rounded-lg p-5 border border-gray-200 mb-8">
         <h2 className="text-lg font-bold text-[#0d2340] mb-4">הוספת חבר קהילה לרשימת התפוצה</h2>
@@ -1022,8 +967,14 @@ export default function Admin() {
   // מיקום ראשוני של ה-underline אחרי render
   useEffect(() => {
     const btn = tabBarRef.current?.querySelector(`[data-tab="${activeTab}"]`);
-    if (btn) setUnderlineStyle({ left: btn.offsetLeft, width: btn.offsetWidth });
-  }, []);
+
+    if (btn) {
+      setUnderlineStyle({
+        left: btn.offsetLeft,
+        width: btn.offsetWidth,
+      });
+    }
+  }, [activeTab]);
 
   // עדכן underline בשינוי גודל חלון
   useEffect(() => {
