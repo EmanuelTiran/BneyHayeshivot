@@ -16,6 +16,7 @@ const userSchema = new mongoose.Schema({
   refreshToken: {
     type: String,
     default: null,
+    select: false,
   },
   role: { type: String, enum: ['admin', 'gabbai', 'member'], default: 'member' },
   phone: { type: String, trim: true, default: '' },

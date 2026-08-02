@@ -3,19 +3,80 @@ import { API_URL } from '../config';
 
 const API = axios.create({
   baseURL: `${API_URL}/api`,
-  withCredentials: true, // ← חובה! שולח את cookie עם כל בקשה
+  withCredentials: true,
 });
 
-// ── משתנה פנימי למנוע קריאות refresh מקביליות ───────────────────────────────
-let isRefreshing = false;
-let failedQueue = [];  // תור בקשות שנכשלו בזמן הרענון
+export const AUTH_SESSION_UPDATED_EVENT =
+  'bneyhayeshivot:auth-session-updated';
 
-const processQueue = (error, token = null) => {
-  failedQueue.forEach(({ resolve, reject }) => {
-    error ? reject(error) : resolve(token);
-  });
-  failedQueue = [];
-};
+let refreshPromise = null;
+let onSessionExpired = null;
+
+function publishAuthSession({ token, user }) {
+  localStorage.setItem('user', JSON.stringify(user));
+  localStorage.setItem('token', token);
+
+  window.dispatchEvent(
+    new CustomEvent(AUTH_SESSION_UPDATED_EVENT, {
+      detail: { token, user },
+    })
+  );
+}
+
+export function clearStoredAuthSession() {
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+}
+
+function handleSessionExpired() {
+  clearStoredAuthSession();
+
+  if (onSessionExpired) {
+    onSessionExpired();
+    return;
+  }
+
+  window.location.href =
+    '/login?reason=session_expired';
+}
+
+function isAuthenticationRejection(error) {
+  return [401, 403].includes(
+    error.response?.status
+  );
+}
+
+export function refreshAuthSession() {
+  if (refreshPromise) return refreshPromise;
+
+  refreshPromise = API.post('/auth/refresh')
+    .then(({ data }) => {
+      if (!data?.token || !data?.user) {
+        throw new Error(
+          'Invalid refresh response'
+        );
+      }
+
+      publishAuthSession(data);
+      return data;
+    })
+    .finally(() => {
+      refreshPromise = null;
+    });
+
+  return refreshPromise;
+}
+
+export const registerSessionExpiredHandler =
+  (handler) => {
+    onSessionExpired = handler;
+
+    return () => {
+      if (onSessionExpired === handler) {
+        onSessionExpired = null;
+      }
+    };
+  };
 
 // ── Interceptor: צרף Access Token לכל בקשה ──────────────────────────────────
 API.interceptors.request.use((req) => {
@@ -24,81 +85,45 @@ API.interceptors.request.use((req) => {
   return req;
 });
 
-// ── Interceptor: טיפול ב-401 / רענון אוטומטי ────────────────────────────────
 API.interceptors.response.use(
-  (response) => response, // הצלחה — העבר הלאה
-
+  (response) => response,
   async (error) => {
     const originalRequest = error.config;
-
     const is401 = error.response?.status === 401;
-    const alreadyRetried = originalRequest._retry;
-    const isRefreshCall = originalRequest.url?.includes('/auth/refresh');
-    const isLoginCall = originalRequest.url?.includes('/auth/login');
+    const alreadyRetried = originalRequest?._retry;
+    const isAuthLifecycleCall =
+      /\/auth\/(login|google|register|refresh|logout)/
+        .test(originalRequest?.url || '');
 
-    // אם זו שגיאת 401 על בקשה שעוד לא ניסינו לרענן
-    if (is401 && !alreadyRetried && !isRefreshCall && !isLoginCall) {
+    if (
+      is401 &&
+      originalRequest &&
+      !alreadyRetried &&
+      !isAuthLifecycleCall
+    ) {
       originalRequest._retry = true;
 
-      if (isRefreshing) {
-        // הרענון כבר בתהליך — הוסף לתור והמתן
-        return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
-        })
-          .then((token) => {
-            originalRequest.headers.Authorization = `Bearer ${token}`;
-            return API(originalRequest);
-          })
-          .catch((err) => Promise.reject(err));
-      }
-
-      isRefreshing = true;
-
       try {
-        // נסה לרענן — ה-refresh token מגיע מה-cookie אוטומטית
-        const { data } = await API.post('/auth/refresh');
-        const newToken = data.token;
+        const { token } = await refreshAuthSession();
 
-        localStorage.setItem('token', newToken);
-        API.defaults.headers.common.Authorization = `Bearer ${newToken}`;
-        originalRequest.headers.Authorization = `Bearer ${newToken}`;
+        originalRequest.headers =
+          originalRequest.headers || {};
+        originalRequest.headers.Authorization =
+          `Bearer ${token}`;
 
-        processQueue(null, newToken);
-        return API(originalRequest); // חזור על הבקשה המקורית
-
+        return API(originalRequest);
       } catch (refreshError) {
-        // הרענון נכשל — הפעל logout גלובלי
-        processQueue(refreshError, null);
-        handleSessionExpired();
-        return Promise.reject(refreshError);
+        if (isAuthenticationRejection(refreshError)) {
+          handleSessionExpired();
+        }
 
-      } finally {
-        isRefreshing = false;
+        return Promise.reject(refreshError);
       }
     }
 
     return Promise.reject(error);
   }
 );
-
-// ── פונקציה גלובלית לטיפול בפקיעת session ────────────────────────────────────
-// authContext רושם את עצמו כאן כדי ש-api.js לא ייבא ממנו (circular import)
-let _onSessionExpired = null;
-
-export const registerSessionExpiredHandler = (handler) => {
-  _onSessionExpired = handler;
-};
-
-const handleSessionExpired = () => {
-  localStorage.removeItem('token');
-  localStorage.removeItem('user');
-  if (_onSessionExpired) {
-    _onSessionExpired();
-  } else {
-    // fallback אם ה-handler לא נרשם עדיין
-    window.location.href = '/login?reason=session_expired';
-  }
-};
 
 // ── ייצוא פונקציות API ────────────────────────────────────────────────────────
 
