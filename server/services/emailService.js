@@ -1248,7 +1248,7 @@ const sendUpdateNewsletter = async (
          * חברי הקהילה לא יוכלו לראות
          * את כתובות המייל זה של זה.
          */
-        // bcc: emails,
+        bcc: emails,
 
         /*
          * כותרת המייל בתיבת הדואר.
