@@ -2,7 +2,7 @@ import './headerAnimations.css';
 
 export default function GoldParticles() {
   return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+    <div className="gold-particles absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
       {[...Array(18)].map((_, i) => (
         <div
           key={`dust-${i}`}

@@ -1,0 +1,80 @@
+.home-hero {
+  --crown-height: clamp(156px, 27.88vw, 213px);
+  --crown-gap: 12px;
+}
+
+.home-hero-content {
+  /* Reserve room beneath the header logo, including when the card grows. */
+  padding-block: 184px 16px;
+}
+
+.crowned-prayer-card {
+  width: 100%;
+  max-width: 28rem;
+  position: relative;
+  /* Match the card's original my-8 flex-item spacing. */
+  margin-block: 2rem;
+}
+
+.crown-stage {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + var(--crown-gap));
+  transform: translateX(-50%);
+  width: min(100%, 279px);
+  height: var(--crown-height);
+  z-index: 0;
+  isolation: isolate;
+}
+
+.crown-stage::before {
+  content: '';
+  position: absolute;
+  left: 22%;
+  width: 56%;
+  bottom: -5px;
+  height: 18px;
+  pointer-events: none;
+  background: radial-gradient(ellipse, rgba(13, 35, 64, 0.16), rgba(207, 167, 86, 0.08) 40%, transparent 72%);
+  filter: blur(4px);
+  z-index: -1;
+}
+
+.crown-stage canvas { cursor: grab; touch-action: pan-y; }
+.crown-stage:active canvas { cursor: grabbing; }
+.crown-fallback { color: #e8c06b; font-size: 150px; line-height: 1.4; }
+
+.crowned-prayer-card > .lux-card {
+  margin-block: 0;
+  position: relative;
+  /* Do not establish a stacking context: the existing fixed editor must stay above the hero. */
+  border-color: rgba(207, 167, 86, 0.44);
+  box-shadow: 0 -8px 26px rgba(207, 167, 86, 0.09), 0 15px 40px rgba(13, 35, 64, 0.15);
+}
+
+/* Keep the community caption above the crown without shifting the card. */
+.home-community-caption {
+  transform: translateY(calc(0px - var(--crown-height) - var(--crown-gap)));
+}
+
+.crowned-prayer-card .prayer-card-accent {
+  height: 5px;
+  background: linear-gradient(90deg, #0d2340, #1b3761 20%, #cfa756 40%, #f7d98a 50%, #cfa756 60%, #1b3761 80%, #0d2340);
+  box-shadow: 0 1px 8px rgba(207, 167, 86, 0.26);
+}
+
+@media (max-width: 480px) {
+  .home-hero { --crown-height: 168px; }
+  .home-hero-content { padding-top: 139px; }
+  .crown-stage { width: min(100%, 221px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .crowned-prayer-card .prayer-card-accent > div { animation: none !important; }
+}
+
+@media print {
+  .crown-stage { display: none; }
+  .home-hero-content { padding-block: 0; }
+  .home-community-caption { transform: none; }
+}

@@ -1,12 +1,16 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { GoogleLogin } from '@react-oauth/google';
 import './Home.css';
+import '../components/Crown3D/Crown3D.css';
+import './HomePolish.css';
 
 import CommunityPaymentButton from '../components/CommunityPaymentButton';
 import ContactAndPrayerTimes from '../components/ContactAndPrayerTimes/ContactAndPrayerTimes';
 import { useAuth } from '../components/context/authContext';
 import GoldParticles from '../components/common/GoldParticles';
+
+const Crown3D = lazy(() => import('../components/Crown3D/Crown3D'));
 
 const GOOGLE_PROMPT_SESSION_KEY = 'home-google-login-prompt-shown';
 const GOOGLE_PROMPT_DELAY = 5000;
@@ -149,9 +153,10 @@ const Home = () => {
           isolation: 'isolate',
         }}
       >
+        <div className="home-hero-image" aria-hidden="true" />
         {/* שכבת וינייטה כהה */}
         <div
-          className="absolute inset-0 pointer-events-none"
+          className="home-hero-overlay absolute inset-0 pointer-events-none"
           style={{
             background: `
               radial-gradient(
@@ -182,8 +187,8 @@ const Home = () => {
         <GoldParticles />
 
         {/* תוכן מרכזי */}
-        <div className="relative z-10 w-full flex flex-col items-center gap-6 px-4">
-          <div className="text-center mb-2">
+        <div className="home-hero-content relative z-10 w-full flex flex-col items-center gap-6 px-4">
+          <div className="home-community-caption text-center mb-2">
             <div
               className="mx-auto mt-3"
               style={{
@@ -209,7 +214,13 @@ const Home = () => {
             </p>
           </div>
 
-          <ContactAndPrayerTimes isButtonTransparent={false} />
+          <div className="crowned-prayer-card">
+            <Suspense fallback={<div className="crown-stage" aria-hidden="true" />}>
+              <Crown3D />
+            </Suspense>
+            <div className="home-card-glow hidden" aria-hidden="true" />
+            <ContactAndPrayerTimes isButtonTransparent={false} />
+          </div>
           <CommunityPaymentButton />
         </div>
       </div>

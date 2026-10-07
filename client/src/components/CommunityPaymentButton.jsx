@@ -4,7 +4,7 @@ const CommunityPaymentButton = ({ buttonText = "לתרומות ותשלומים"
   return (
     <div 
       // המעטפת הותאמה בדיוק לרוחב ולריווח של הקומפוננטה השנייה: max-w-md, mx-auto, my-8, rounded-xl
-      className="bg-[#162641] rounded-xl p-6  max-w-md w-full mx-auto my-8 flex items-center justify-center shadow-lg"
+      className="community-payment bg-[#162641] rounded-xl p-6  max-w-md w-full mx-auto my-8 flex items-center justify-center shadow-lg"
       dir="rtl"
     >
       <a

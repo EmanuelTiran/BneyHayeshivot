@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { NAVIGATION_ITEMS, ROUTES } from '../../constants/routes';
 import { useAuth } from '../context/authContext';
@@ -348,6 +348,8 @@ function MobileNavigationItem({
           ? 'text-[#ffe9a0]'
           : 'text-[#f7f4e9]/70'
         }`}
+      aria-label={label}
+      title={label}
       style={{
         animationDelay: `${animationIndex * 45}ms`,
         border: '1px solid rgba(207,167,86,.08)',
@@ -469,7 +471,7 @@ function AuthAction({
 
   if (to) {
     return (
-      <Link to={to} className={className}>
+      <Link to={to} className={className} aria-label={label} title={label}>
         {content}
       </Link>
     );
@@ -480,6 +482,8 @@ function AuthAction({
       type="button"
       onClick={onClick}
       className={className}
+      aria-label={label}
+      title={label}
     >
       {content}
     </button>
@@ -487,6 +491,26 @@ function AuthAction({
 }
 
 function Header() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const mobileMenuRef = useRef(null);
+  useEffect(() => {
+    if (!mobileMenuOpen) return undefined;
+    const closeOutside = (event) => {
+      if (!mobileMenuRef.current?.contains(event.target)) setMobileMenuOpen(false);
+    };
+    const closeOnEscape = (event) => {
+      if (event.key === 'Escape') {
+        setMobileMenuOpen(false);
+        mobileMenuRef.current?.querySelector('button')?.focus();
+      }
+    };
+    document.addEventListener('pointerdown', closeOutside);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeOutside);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [mobileMenuOpen]);
   const {
     user,
     isAuthenticated,
@@ -865,11 +889,11 @@ function Header() {
       `}</style>
 
       <header
-        className="header-font notranslate fixed top-0 left-0 right-0 z-50"
+        className="site-header header-font notranslate fixed top-0 left-0 right-0 z-50"
         dir="rtl"
         translate="no"
       >
-        <div className="glass-dark relative h-[62px] lg:h-20 overflow-visible">
+        <div className="site-header-bar glass-dark relative h-[62px] lg:h-20 overflow-visible">
           <div className="absolute inset-0 overflow-hidden pointer-events-none">
             <GoldParticles />
           </div>
@@ -877,11 +901,11 @@ function Header() {
           <div className="container mx-auto h-full px-2 sm:px-3 lg:px-6 relative z-20">
             {/* מובייל */}
             <div
-              className="lg:hidden relative h-full"
+              className="home-mobile-nav lg:hidden relative h-full"
               dir="ltr"
             >
               <div
-                className="absolute inset-y-0 left-1/2 -translate-x-1/2 grid items-center"
+                className="home-mobile-nav-grid absolute inset-y-0 left-1/2 -translate-x-1/2 grid items-center"
                 style={{
                   width: 'calc(100% - 68px)',
                   gridTemplateColumns:
@@ -914,7 +938,7 @@ function Header() {
 
               {adminItem && (
                 <div
-                  className="absolute left-0 top-1/2 -translate-y-1/2"
+                  className="home-mobile-admin absolute left-0 top-1/2 -translate-y-1/2"
                   dir="rtl"
                 >
                   <MobileNavigationItem
@@ -933,11 +957,11 @@ function Header() {
 
             {/* מסך מחשב */}
             <div
-              className="hidden lg:block relative h-full"
+              className="home-desktop-nav hidden lg:block relative h-full"
               dir="ltr"
             >
               <div
-                className="absolute inset-y-0 left-1/2 -translate-x-1/2 grid items-center"
+                className="home-desktop-nav-grid absolute inset-y-0 left-1/2 -translate-x-1/2 grid items-center"
                 style={{
                   width: 'calc(100% - 150px)',
                   maxWidth: '1080px',
@@ -1022,9 +1046,50 @@ function Header() {
           </div>
         </div>
 
+        <div className="home-mobile-user-menu hidden" ref={mobileMenuRef}>
+          <button
+            type="button"
+            className="home-mobile-user-trigger"
+            aria-label={isAuthenticated ? 'תפריט משתמש' : 'התחברות והרשמה'}
+            title={isAuthenticated ? 'תפריט משתמש' : 'התחברות והרשמה'}
+            aria-expanded={mobileMenuOpen}
+            aria-controls="home-mobile-user-popover"
+            onClick={() => setMobileMenuOpen((open) => !open)}
+          >
+            <RoyalNavIcon type="login" size={15} />
+            {!isAuthenticated && <span className="home-mobile-signin-dot" aria-hidden="true" />}
+          </button>
+          {mobileMenuOpen && (
+            <div
+              id="home-mobile-user-popover"
+              className="home-mobile-user-popover"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              {isAuthenticated ? (
+                <>
+                  <UserBadge name={user?.name} mobile />
+                  {adminItem && (
+                    <Link to={adminItem.path} className="home-mobile-admin-action">
+                      <RoyalNavIcon type="admin" size={16} />
+                      <span>{adminItem.label}</span>
+                      <NotificationBadge count={adminAlertCount} compact />
+                    </Link>
+                  )}
+                  <AuthAction onClick={logout} variant="logout" label="התנתק" icon="logout" mobile />
+                </>
+              ) : (
+                <>
+                  <AuthAction to={ROUTES.LOGIN} variant="login" label="התחבר" icon="login" mobile />
+                  <AuthAction to={ROUTES.REGISTER} variant="register" label="הירשם" icon="register" mobile />
+                </>
+              )}
+            </div>
+          )}
+        </div>
+
         {/* התחברות במובייל */}
         <div
-          className="glass-dark relative z-20 pt-2.5 pb-2 flex items-center justify-center gap-2 lg:hidden"
+          className="site-header-account-row glass-dark relative z-20 pt-2.5 pb-2 flex items-center justify-center gap-2 lg:hidden"
           style={{
             background:
               'linear-gradient(180deg, rgba(13,35,64,.95), rgba(10,25,47,.985))',
@@ -1068,7 +1133,7 @@ function Header() {
       </header>
 
       <div
-        className="h-[108px] lg:h-20"
+        className="site-header-spacer h-[108px] lg:h-20"
         aria-hidden="true"
       />
     </>

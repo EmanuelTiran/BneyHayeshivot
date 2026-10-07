@@ -256,29 +256,30 @@ const ContactAndPrayerTimes = ({ isButtonTransparent }) => {
       `}</style>
 
       <div
-        className="widget-font lux-card rounded-2xl p-6 max-w-md mx-auto my-8 w-full overflow-hidden"
+        className="home-prayer-card widget-font lux-card rounded-2xl p-6 max-w-md mx-auto my-8 w-full overflow-hidden"
         dir="rtl"
       >
+        <div className="home-card-surface" aria-hidden="true" />
         {/* קרן אור עליונה - גרדיאנט קלאסי כחול-זהב-כחול */}
-        <div className="absolute top-0 left-0 right-0 h-[4px] overflow-hidden rounded-t-2xl pointer-events-none bg-gradient-to-r from-[#0d2340] via-[#cfa756] to-[#0d2340]">
+        <div className="prayer-card-accent absolute top-0 left-0 right-0 h-[4px] overflow-hidden rounded-t-2xl pointer-events-none bg-gradient-to-r from-[#0d2340] via-[#cfa756] to-[#0d2340]">
           <div className="absolute inset-y-0 w-[50%]" style={{ background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.6) 50%, transparent 100%)', animation: 'cardLightSweep 4s ease-in-out infinite' }} />
         </div>
 
         <h2 className="text-3xl font-bold mb-8 mt-2 text-center text-[#0d2340] drop-shadow-sm">
-          זמני תפילה ומידע
+לוח מודעות
         </h2>
 
         {/* הכרזות */}
         {announcements.length > 0 && (
-          <div className="mb-8 space-y-4" translate="no">
+          <div className="home-notices mb-8 space-y-4" translate="no">
             {announcements.map((announcement, index) => (
               <div
                 key={announcement._id ?? index}
-                className="lux-item p-4 rounded-lg rounded-r-none relative"
+                className={`home-notice lux-item p-4 rounded-lg rounded-r-none relative${announcement.title?.trim() ? '' : ' home-notice-no-title'}`}
                 style={{ borderRight: '4px solid #a61b1b' }}
               >
                 <div
-                  className="absolute -top-3 -right-2 text-white text-xs font-bold px-3 py-1 rounded-full shadow-md bg-[#a61b1b]"
+                  className="home-notice-title absolute -top-3 -right-2 text-white text-xs font-bold px-3 py-1 rounded-full shadow-md bg-[#a61b1b]"
                 >
                   {announcement.title || 'הודעת גבאי'}
                 </div>
@@ -290,22 +291,8 @@ const ContactAndPrayerTimes = ({ isButtonTransparent }) => {
           </div>
         )}
 
-        {/* כתובת */}
-        <div className="lux-item mb-8 p-4 rounded-lg flex flex-col gap-1 shadow-sm">
-          <h3 className="text-xl font-bold mb-2 flex items-center gap-2 text-[#0d2340]">
-            <svg className="w-5 h-5 text-[#cfa756]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            כתובתנו:
-          </h3>
-          <p className="text-lg text-gray-700 font-medium pr-7">
-            הרב רפאל ברוך טולדנו 20 | רמת שלמה
-          </p>
-        </div>
-
         {/* זמני תפילה — כותרת דינמית */}
-        <div className="mb-8">
+        <div className="home-prayers mb-8">
           <h3
             className="text-xl font-bold mb-4 border-b-2 pb-2 inline-block text-[#0d2340]"
             style={{ borderColor: '#cfa756' }}
@@ -329,12 +316,26 @@ const ContactAndPrayerTimes = ({ isButtonTransparent }) => {
           </ul>
         </div>
 
+        {/* כתובת */}
+        <div className="home-address lux-item mb-8 p-4 rounded-lg flex flex-col gap-1 shadow-sm">
+          <h3 className="text-xl font-bold mb-2 flex items-center gap-2 text-[#0d2340]">
+            <svg className="w-5 h-5 text-[#cfa756]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            כתובתנו:
+          </h3>
+          <p className="text-lg text-gray-700 font-medium pr-7">
+            הרב רפאל ברוך טולדנו 20 | רמת שלמה
+          </p>
+        </div>
+
         {/* כפתור עריכה */}
-        <div className="text-center mt-6">
+        <div className="home-edit-controls text-center mt-6">
           {isAdmin() && (
             <button
               onClick={openModal}
-              className="px-8 py-3 rounded-full text-[16px] font-bold tracking-wide transition-all duration-300 shadow-md focus:outline-none"
+              className="home-edit-button px-8 py-3 rounded-full text-[16px] font-bold tracking-wide transition-all duration-300 shadow-md focus:outline-none"
               style={{
                 opacity: isButtonTransparent ? 0 : 1,
                 background: 'linear-gradient(135deg, #cfa756 0%, #b8860b 100%)',
