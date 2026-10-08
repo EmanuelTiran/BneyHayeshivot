@@ -834,3 +834,30 @@ body:has(.home-hero) :is(.site-header, .home-hero, .site-footer) :is(a, button, 
   .home-hero-image, .home-hero-overlay, .home-hero::after { display: none; }
   .home-hero-content { padding-block: 0; }
 }
+
+/* Crown framing grows only on desktop/tablet; mobile keeps its existing stage size. */
+@media screen and (min-width: 641px) {
+  .home-hero { --crown-width: clamp(288px, 33.75vh, 350px); }
+  .home-hero .crown-stage {
+    /* Align the visible base, allowing transparent canvas room for the existing tilt. */
+    inset-block-end: calc(100% + var(--crown-gap) - 12px - var(--crown-height) * .039);
+  }
+  .home-hero .crown-stage::after {
+    inset-block-end: calc(var(--crown-height) * .07 - 6px);
+  }
+  @media (max-width: 1023px) {
+    .home-hero { --crown-width: 275px; }
+  }
+  @media (min-width: 1024px) and (max-height: 820px) {
+    .home-hero { --crown-width: clamp(250px, 33.75vh, 350px); }
+  }
+}
+
+@media screen and (max-width: 640px) {
+  .home-hero .crown-stage {
+    inset-block-end: calc(100% + var(--crown-gap) - var(--crown-height) * .065);
+  }
+  .home-hero .crown-stage::after {
+    inset-block-end: calc(var(--crown-height) * .096 - 16px);
+  }
+}
