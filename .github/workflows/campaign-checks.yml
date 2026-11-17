@@ -35,7 +35,7 @@ jobs:
       - run: npm run build
         working-directory: client
   browser:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
       ARIEL_BROWSER_CHANNEL: chromium
