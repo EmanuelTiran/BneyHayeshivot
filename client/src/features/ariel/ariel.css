@@ -1,0 +1,153 @@
+
+/* All selectors use the ariel prefix to avoid affecting the existing site. */
+.ariel-page, .ariel-admin { font-family: 'Heebo', 'Assistant', Arial, sans-serif; direction: rtl; }
+.ariel-page *, .ariel-admin * { box-sizing: border-box; }
+.ariel-page { --ink:#193e3d; --teal:#137f73; --accent:#ad7b48; --cream:#f8f5ed; --line:#e5e7df; position:relative; isolation:isolate; min-height:100vh; overflow:hidden; color:var(--ink); background:linear-gradient(155deg,#f8f6ef 0%,#f0f7f2 49%,#f4f1e7 100%); }
+.ariel-glow { position:absolute; z-index:-1; width:540px; height:540px; border-radius:100%; filter:blur(70px); opacity:.20; pointer-events:none; }
+.ariel-glow-one { top:-220px; left:-220px; background:#b1dbd0; }
+.ariel-glow-two { top:500px; right:-250px; background:#eccaa2; }
+.ariel-container { width:min(880px, calc(100% - 34px)); margin:0 auto; padding:24px 0 48px; }
+.ariel-topline { display:flex; align-items:center; justify-content:space-between; gap:12px; font-size:13px; }
+.ariel-mark { color:#25524d; font-weight:800; display:flex; align-items:center; gap:8px; }
+.ariel-topnote { color:#7a8e85; display:flex; align-items:center; gap:5px; }
+.ariel-hero { text-align:center; padding:54px 22px 38px; }
+.ariel-overline { display:inline-flex; gap:7px; align-items:center; border:1px solid #c7ded2; border-radius:100px; background:#fff9; color:#548276; padding:7px 17px; font-size:12px; font-weight:700; letter-spacing:.04em; }
+.ariel-hero h1 { margin:20px 0 8px; font-weight:900; font-size:clamp(34px, 6vw, 61px); line-height:1.2; letter-spacing:-.045em; color:#173a35; }
+.ariel-subtitle { margin:0 auto; font-weight:600; font-size:clamp(17px,2.5vw,23px); color:#648076; }
+.ariel-house-art { height:190px; display:flex; align-items:center; justify-content:center; }
+.ariel-art-ring { width:145px;height:145px;border-radius:43px; display:grid;place-items:center;position:relative; transform:rotate(-8deg); color:#4e9c8b; background:linear-gradient(135deg,#fff,#e3f0e6); border:1px solid #d6e9dc; box-shadow:0 18px 42px #69948731, inset 0 0 32px #fff; }
+.ariel-art-ring>svg:first-child { transform:rotate(8deg); }
+.ariel-art-heart { position:absolute; bottom:15px;left:22px;color:#b38055;transform:rotate(8deg); }
+.ariel-intro { max-width:620px; margin:3px auto 10px; line-height:1.95; font-size:17px; color:#4c615a; white-space:pre-line; }
+.ariel-beneficiary { font-weight:700; }
+.ariel-story-toggle { display:inline-flex; gap:7px; align-items:center; color:#0d7d71; background:none; border:0; cursor:pointer; font-weight:800; margin-top:12px; }
+.ariel-story-toggle:hover { text-decoration:underline; }
+.ariel-full-story { padding:20px 25px; text-align:right; border:1px solid #cde3d9; border-radius:18px; background:#ffffffb8; max-width:640px; margin:20px auto 0; line-height:2; white-space:pre-line; }
+.ariel-progress-card,.ariel-donate,.ariel-recent { background:#fffc; border:1px solid #e4e8df; border-radius:27px; box-shadow:0 20px 56px rgba(36,73,62,.065); }
+.ariel-progress-card { padding:34px clamp(20px,5vw,50px); }
+.ariel-progress-caption { color:#6b8479; font-size:15px; font-weight:700; }
+.ariel-progress-total { display:flex; align-items:baseline; flex-wrap:wrap; gap:13px; margin:7px 0 25px; }
+.ariel-progress-total strong { font-weight:900; font-size:clamp(32px,6vw,49px); line-height:1.3; color:#163f39; }
+.ariel-progress-total span { color:#839389; font-weight:600; }
+.ariel-meter { background:#e5eee8; border-radius:50px; overflow:hidden; height:17px; }
+.ariel-meter-fill { background:linear-gradient(90deg,#59b9a4,#188b7c,#0f675d); height:100%; min-width:0; border-radius:50px; transition:width 1.25s cubic-bezier(.2,.8,.2,1); box-shadow:0 0 15px #218e7a88; }
+.ariel-progress-bottom { display:flex; justify-content:space-between; align-items:center; margin-top:11px; color:#6d8376; font-size:13px; }
+.ariel-progress-bottom strong { font-size:17px; color:#1f7568; }
+.ariel-stats-line { display:flex; gap:16px; flex-wrap:wrap; padding-top:22px; margin-top:20px; border-top:1px solid #e6eae4; font-weight:650; font-size:14px; color:#537166; justify-content:space-between; }
+.ariel-stats-line span { display:inline-flex; align-items:center; gap:7px; }
+.ariel-milestone { display:flex; align-items:center; gap:7px; background:#e2f5e9; padding:11px 15px; border-radius:12px; font-weight:800; margin-top:18px; }
+.ariel-extended { color:#7a6345; font-size:13px; line-height:1.7; }
+.ariel-donate,.ariel-recent { margin-top:22px; padding:34px clamp(18px,5vw,42px); }
+.ariel-section-heading { display:flex; gap:13px; align-items:center; margin-bottom:25px; }
+.ariel-section-icon { display:grid; place-items:center; width:47px; height:47px; border-radius:16px; background:#e6f1e9; color:#188475; }
+.ariel-section-heading h2 { font-weight:900; font-size:24px; margin:0; line-height:1.4; }
+.ariel-section-heading p { margin:5px 0 0; color:#798a80; font-size:14px; }
+.ariel-amounts { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:9px; }
+.ariel-amount { border:1px solid #dce9e1; border-radius:13px; font-weight:800; background:#f7faf7; min-height:58px; padding:8px 3px; color:#2c5750; cursor:pointer; transition:all .2s; font-size:14px; }
+.ariel-amount:hover { transform:translateY(-2px); border-color:#53a798; }
+.ariel-amount.is-selected { background:#176e63; color:white; border-color:#176e63; box-shadow:0 7px 19px #1380703c; }
+.ariel-custom { grid-column:1/-1; margin-top:7px; }
+.ariel-payment-options { margin-top:25px; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:13px; }
+.ariel-payment-tile { background:#f6faf7; border:1px solid #e3ede5; border-radius:18px; padding:20px; min-width:0; }
+.ariel-payment-title { font-weight:850; display:flex; gap:8px; align-items:center; margin-bottom:15px; }
+.ariel-phone { display:flex; align-items:center; justify-content:space-between; border:1px solid #dbe9df; border-radius:12px; background:white; padding:8px 12px; font-size:19px; font-weight:800; }
+.ariel-phone button,.ariel-bank-details button { background:none;border:0;color:#196f61;display:flex;gap:5px;align-items:center;cursor:pointer; }
+.ariel-secondary,.ariel-primary { display:inline-flex; justify-content:center; align-items:center; gap:8px; text-decoration:none; border-radius:12px; cursor:pointer; font-weight:800; min-height:43px; padding:10px 18px; }
+.ariel-secondary { border:1px solid #79afa2; background:#fff; color:#1c7769; margin-top:12px; }
+.ariel-primary { border:0; background:linear-gradient(130deg,#148575,#0c6359); color:white; box-shadow:0 6px 16px #09706340; }
+.ariel-primary:disabled { opacity:.5; cursor:not-allowed; }
+.ariel-payment-tile small { display:block; color:#7f8b82; line-height:1.7; margin-top:11px; }
+.ariel-bank-details { border:1px solid #dce9e0; padding:12px; background:#fff; border-radius:11px; margin-top:12px; display:grid; gap:6px; font-size:14px; }
+.ariel-bank-details button { margin-top:7px;font-weight:800; }
+.ariel-organizer { background:#f8f7f0; padding:13px 17px; border-radius:12px; color:#667569; margin-top:20px; font-size:13px; display:flex; gap:8px; align-items:center; }
+.ariel-report-callout { padding:21px; border:1px solid #d7e8d9; border-radius:17px; background:linear-gradient(130deg,#eff8f0,#f9faf7); margin-top:24px; display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.ariel-report-callout>div { display:grid; gap:5px; }
+.ariel-report-callout strong { font-size:17px; }
+.ariel-report-callout span { font-size:13px; color:#647b71; }
+.ariel-recent-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+.ariel-recent-item { padding:15px 17px; background:#f8faf7; border-radius:12px; display:flex; justify-content:space-between; gap:8px; font-size:14px; }
+.ariel-recent-item strong { white-space:nowrap; color:#1b826f; }
+.ariel-empty { color:#7a8c83; }
+.ariel-footer { text-align:center; padding:29px; color:#7d9189; font-size:12px; }
+.ariel-modal-backdrop { position:fixed; z-index:100; inset:0; overflow:auto; background:#0d332fc4; display:grid; place-items:center; padding:20px; }
+.ariel-modal { position:relative; width:min(100%,560px); max-height:calc(100vh - 40px); overflow:auto; padding:30px; background:#fff; border-radius:24px; box-shadow:0 30px 80px #072d2a66; }
+.ariel-modal h2 { font-size:24px; margin:0 0 5px; font-weight:900; }
+.ariel-modal p { color:#687f74; line-height:1.7; }
+.ariel-close { position:absolute; left:18px; top:12px; background:none; border:0; cursor:pointer; font-size:28px; }
+.ariel-form { display:grid; gap:15px; margin-top:15px; }
+.ariel-form label,.ariel-custom { display:grid; gap:6px; font-size:13px; font-weight:700; color:#49685f; }
+.ariel-form input:not([type="checkbox"]),.ariel-form select,.ariel-custom input { display:block; width:100%; min-width:0; border:1px solid #d5e2d9; border-radius:10px; padding:12px; background:white; color:#203d38; font-size:15px; }
+.ariel-form-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.ariel-report-amount { display:grid; font-size:12px; color:#7b8b82; gap:5px; }
+.ariel-report-amount strong { font-size:20px; color:#166f63; }
+.ariel-form .ariel-privacy-check { display:flex; gap:10px; align-items:flex-start; line-height:1.6; }
+.ariel-honeypot { position:absolute; left:-9999px; pointer-events:none; }
+.ariel-error { color:#9a2b2b !important; background:#fff0ef; border-radius:10px; padding:11px; }
+.ariel-success { color:#1b6f4a; background:#e6f6ec; border-radius:10px; padding:11px; display:flex; align-items:center; gap:8px; }
+.ariel-copy-status { color:#3c806f; font-size:13px; }
+.ariel-state { display:grid; min-height:100vh; place-items:center; font-weight:800; text-align:center; padding:24px; }
+
+/* Admin uses the existing admin authentication and stays in its existing layout. */
+.ariel-admin { color:#193e3d; max-width:1180px; margin:auto; padding:32px 20px 45px; }
+.ariel-admin-title { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:12px; margin-bottom:22px; }
+.ariel-admin-kicker { color:#577f72; font-size:13px; font-weight:700; }
+.ariel-admin-title h1 { font-size:30px; margin:4px 0; font-weight:900; }
+.ariel-admin-title p { color:#788881; margin:0; }
+.ariel-admin-stats { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:13px; }
+.ariel-admin-stats>div { background:white; border:1px solid #e0e7e0; border-radius:16px; padding:18px; display:grid; gap:7px; }
+.ariel-admin-stats span { color:#79897f; font-size:13px; }
+.ariel-admin-stats strong { font-size:24px; }
+.ariel-admin-btn { border:1px solid #cdded5; background:white; color:#225f53; border-radius:10px; padding:10px 16px; font-weight:750; display:inline-flex; gap:6px; align-items:center; justify-content:center; cursor:pointer; }
+.ariel-admin-btn.primary { border-color:#157765; color:#fff; background:#157765; }
+.ariel-admin-btn:disabled { opacity:.5; cursor:not-allowed; }
+.ariel-admin-tabs { display:flex; gap:8px; margin:25px 0 15px; flex-wrap:wrap; }
+.ariel-admin-tabs button { display:inline-flex; gap:7px; align-items:center; background:#f2f5f0; color:#537064; border:1px solid #e3e9e2; padding:12px 18px; border-radius:11px; cursor:pointer; font-weight:800; }
+.ariel-admin-tabs button.active { background:#155f55; color:white; }
+.ariel-admin-stack { display:grid; gap:18px; }
+.ariel-admin-panel { background:#fff; border:1px solid #dfe8df; border-radius:17px; padding:25px; margin-bottom:16px; }
+.ariel-admin-panel h2 { margin:0 0 10px; font-size:21px; font-weight:850; display:flex; align-items:center; gap:7px; }
+.ariel-admin-panel p { color:#7a8c80; font-size:13px; }
+.ariel-admin-form { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:13px; margin-top:20px; }
+.ariel-admin-form label { font-size:13px; font-weight:750; color:#456558; display:grid; gap:6px; min-width:0; }
+.ariel-admin-form input:not([type="checkbox"]),.ariel-admin-form select,.ariel-admin-form textarea { border:1px solid #d9e4dd; border-radius:9px; padding:11px; background:#fff; color:#1c413b; width:100%; }
+.ariel-admin-form .wide { grid-column:1/-1; }
+.ariel-admin-form label.ariel-admin-check { display:flex; align-items:center; flex-direction:row; gap:9px; }
+.ariel-admin-form label.ariel-admin-check input { width:auto; }
+.ariel-admin-actions { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.ariel-admin-panel-header { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; }
+.ariel-table-scroll { width:100%; overflow:auto; }
+.ariel-admin-table { width:100%; border-collapse:collapse; min-width:660px; font-size:13px; }
+.ariel-admin-table th { background:#f4f8f3; font-weight:800; color:#506c5d; text-align:right; }
+.ariel-admin-table td,.ariel-admin-table th { border-bottom:1px solid #e6eee5; padding:13px 12px; }
+.ariel-admin-table td small { display:block;color:#849188; }
+.ariel-actions { display:flex; gap:7px; }
+.ariel-actions button { border:1px solid #d5e4da; background:white; border-radius:8px; padding:7px; cursor:pointer; }
+.ariel-status { border-radius:6px; padding:4px 7px; font-weight:750; white-space:nowrap; }
+.ariel-status-pending { background:#fff4d9; color:#93611c; }
+.ariel-status-confirmed { background:#e3f6e8; color:#286b43; }
+.ariel-status-rejected,.ariel-status-void { background:#ffe9e8; color:#9a4b43; }
+.ariel-settings-checks { padding:14px; border:1px solid #e0e9e1; border-radius:12px; display:grid; gap:12px; }
+@media(max-width:700px) {
+  .ariel-container { width:min(100% - 22px,880px); padding-top:17px; }
+  .ariel-topnote { display:none; }
+  .ariel-hero { padding:38px 10px 23px; }
+  .ariel-house-art { height:150px; }
+  .ariel-art-ring { width:110px;height:110px;border-radius:35px; }
+  .ariel-art-ring>svg:first-child { width:72px;height:72px; }
+  .ariel-progress-card,.ariel-donate,.ariel-recent { border-radius:19px; }
+  .ariel-amounts { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .ariel-payment-options { grid-template-columns:1fr; }
+  .ariel-recent-grid { grid-template-columns:1fr; }
+  .ariel-report-callout { flex-direction:column; align-items:stretch; }
+  .ariel-progress-total { gap:4px; }
+  .ariel-progress-total span { width:100%; }
+  .ariel-form-grid { grid-template-columns:1fr; }
+  .ariel-admin { padding:18px 8px; }
+  .ariel-admin-stats { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .ariel-admin-form { grid-template-columns:1fr; }
+  .ariel-admin-form .wide { grid-column:auto; }
+  .ariel-admin-panel { padding:15px; }
+}
+@media(prefers-reduced-motion:reduce) {
+  .ariel-page *, .ariel-admin * { transition:none !important; animation:none !important; }
+}

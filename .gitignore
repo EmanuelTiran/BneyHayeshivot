@@ -1,4 +1,7 @@
 .env
 node_modules
+.npm-cache/
+.ariel-qa/
+client/.env.local.backup-*
 repomix-output.xml
 repomix-output.xml
