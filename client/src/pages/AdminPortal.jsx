@@ -1,5 +1,6 @@
 import {
   BarChart3,
+  HeartHandshake,
   Settings,
 } from 'lucide-react';
 
@@ -14,8 +15,16 @@ import ActiveAnalyticsUsers from '../components/Admin/ActiveAnalyticsUsers';
 import AnalyticsDashboard from '../components/Admin/AnalyticsDashboard';
 import { ROUTES } from '../constants/routes';
 import Admin from './Admin';
+import ArielAdmin from '../features/ariel/ArielAdmin';
 
 const ADMIN_SECTIONS = [
+  {
+    id: 'ariel',
+    label: 'גיוס משפחתי',
+    to: `${ROUTES.ADMIN}/ariel`,
+    end: false,
+    icon: HeartHandshake,
+  },
   {
     id: 'management',
     label: 'ניהול שוטף',
@@ -40,7 +49,7 @@ function AdminPortal() {
     >
       <div className="border-b border-[#cfa756]/25 bg-[#0d2340] px-3 py-3 shadow-md sm:px-5">
         <nav
-          className="mx-auto flex max-w-5xl items-center justify-center gap-2 rounded-2xl border border-[#cfa756]/25 bg-[#091a30] p-1.5 sm:w-fit"
+          className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-2 rounded-2xl border border-[#cfa756]/25 bg-[#091a30] p-1.5 sm:w-fit"
           aria-label="אזורי ניהול"
         >
           {ADMIN_SECTIONS.map((section) => {
@@ -72,6 +81,7 @@ function AdminPortal() {
       </div>
 
       <Routes>
+        <Route path="ariel" element={<ArielAdmin />} />
         <Route
           index
           element={<Admin />}

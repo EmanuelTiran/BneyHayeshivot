@@ -75,6 +75,7 @@ app.use('/api/categories', require('./routes/categories'));
 app.use('/api/portal-items', require('./routes/portalItems'));
 app.use('/api/sponsorships', require('./routes/sponsorships'));
 app.use('/api/analytics', require('./routes/analytics'));
+app.use('/api/ariel', require('./routes/arielCampaign'));
 
 app.get('/api/health', (_req, res) => {
   res.status(200).json({ status: 'ok' });

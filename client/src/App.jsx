@@ -20,6 +20,8 @@ import PortalItem from './pages/PortalItem';
 import PortalCategory from './pages/PortalCategory';
 import Portal from './pages/Portal';
 import Gallery from './pages/Gallery';
+import ArielPage from './features/ariel/ArielPage';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 
 const tabInStyle = `
   @keyframes tabIn {
@@ -72,9 +74,11 @@ function AnimatedRoutes() {
   );
 }
 
-function App() {
+function SiteRoot() {
+  const location = useLocation();
+  if (/^\/ariel\/?$/i.test(location.pathname)) return <ArielPage />;
   return (
-    <Router>
+    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
       <AuthProvider>
         <AnalyticsTracker />
 
@@ -86,8 +90,12 @@ function App() {
           <Footer />
         </div>
       </AuthProvider>
-    </Router>
+    </GoogleOAuthProvider>
   );
+}
+
+function App() {
+  return <Router><SiteRoot /></Router>;
 }
 
 export default App;
