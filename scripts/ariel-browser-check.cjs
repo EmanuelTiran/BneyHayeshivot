@@ -108,6 +108,9 @@ app.get('*', (_req, res) => res.sendFile(path.join(root, '.ariel-qa/build/index.
       await page.getByRole('button', { name: 'שמירת כל ההגדרות' }).click();
       await page.getByRole('status').filter({ hasText: 'ההגדרות נשמרו' }).waitFor();
       assert.equal(campaign.published, false);
+      // The existing site's footer contains a real person's dedication.
+      // Keep review artifacts synthetic without altering the existing site.
+      await page.locator('footer').evaluateAll(elements => elements.forEach(el => { el.textContent = 'אתר לדוגמה — צילום בדיקה עם נתונים סינתטיים'; }));
       await page.evaluate(() => window.scrollTo(0, 0));
       await page.screenshot({ path: path.join(screenshots, `admin-${name}.png`), fullPage: true });
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth), false);
