@@ -1,5 +1,7 @@
 # Ariel campaign integration — review notes
 
+For the subsequent final privacy/CI/infrastructure review and current release risks, see [FINAL_REVIEW.md](FINAL_REVIEW.md).
+
 Implemented on `feature/ariel-family-campaign`, based on the supplied ZIP's `README.md` and `CODEX_INTEGRATION.md`. Validation date: 2026-11-17. No deployment, production database access, campaign publication, donation seeding or outreach was performed.
 
 ## Behavior
