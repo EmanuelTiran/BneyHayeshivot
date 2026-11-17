@@ -34,3 +34,29 @@ jobs:
         working-directory: client
       - run: npm run build
         working-directory: client
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      ARIEL_BROWSER_CHANNEL: chromium
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+      - run: npm ci
+        working-directory: client
+      - run: npm ci
+        working-directory: server
+      - name: Install isolated browser test tools
+        run: |
+          npm install --prefix .ariel-qa --no-save playwright@1.56.1
+          node .ariel-qa/node_modules/playwright/cli.js install --with-deps chromium
+      - name: Build isolated client
+        run: npm run build --prefix client -- --outDir ../.ariel-qa/build
+      - name: Browser regression with synthetic API
+        run: node scripts/ariel-browser-check.cjs
