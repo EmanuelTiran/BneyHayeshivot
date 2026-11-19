@@ -68,6 +68,13 @@ app.get('*', (_req, res) => res.sendFile(path.join(root, '.ariel-qa/build/index.
       assert.equal(await page.locator('meta[name="robots"]').getAttribute('content'), 'noindex,nofollow,noarchive');
       assert.equal(await page.locator('meta[name="referrer"]').getAttribute('content'), 'no-referrer');
       assert.equal(await page.locator('.ariel-page').count(), 1);
+      const initialMessage = await page.locator('.ariel-encouragement-text').textContent();
+      assert.match(initialMessage, /משפחה אחת, לב אחד/);
+      await page.waitForFunction(
+        first => document.querySelector('.ariel-encouragement-text')?.textContent !== first,
+        initialMessage,
+        { timeout: 8500 }
+      );
       assert.equal(await page.locator('.ariel-bank-details').count(), 0);
       assert.ok(calls.every(url => url.startsWith('/api/ariel')));
       assert.equal(await page.getByText(/נותרו \d+ ימים/).count(), 0);
@@ -102,6 +109,17 @@ app.get('*', (_req, res) => res.sendFile(path.join(root, '.ariel-qa/build/index.
       await page.getByRole('button', { name: 'הוספת תרומה מאושרת' }).click();
       await page.getByRole('status').filter({ hasText: 'התרומה נוספה ואושרה' }).waitFor();
       assert.equal(manualKeys[0], manualKeys[1]);
+      await page.locator('button[title="עריכה"]').first().click();
+      await page.locator('.ariel-admin-edit-panel').waitFor();
+      assert.equal(
+        await page.locator('.ariel-admin-edit-panel input').first().evaluate(input => document.activeElement === input),
+        true
+      );
+      await page.waitForFunction(() => {
+        const rect = document.querySelector('.ariel-admin-edit-panel')?.getBoundingClientRect();
+        return rect && rect.top < window.innerHeight && rect.bottom > 0;
+      }, null, { timeout: 2500 });
+      await page.getByRole('button', { name: 'ביטול', exact: true }).click();
       await page.getByRole('button', { name: 'הגדרות ופרסום' }).click();
       assert.equal(await page.getByLabel('לפרסם את שם המוטב', { exact: true }).isChecked(), false);
       assert.equal(await page.getByLabel('לפרסם את הסיפור האישי', { exact: false }).isChecked(), false);

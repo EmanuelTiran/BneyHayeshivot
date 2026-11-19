@@ -5,6 +5,15 @@ import './ariel.css';
 
 const PRESETS = [100, 180, 360, 500];
 const INITIAL_DONATIONS_VISIBLE = 8;
+const ENCOURAGEMENT_MESSAGES = [
+  'משפחה אחת, לב אחד — כולנו מתגייסים לסייע לבן משפחה.',
+  'כשכל אחד נותן מעט, יחד אפשר לעשות הרבה.',
+  'יש מי שנותן מזמנו ומכוחותיו בלי לבקש תמורה. עכשיו גם אנחנו יכולים לתת כתף.',
+  'כל השתתפות מקרבת משפחה יקרה עוד צעד להשלמת ביתה.',
+  'לפעמים מחווה קטנה של אחד היא תקווה גדולה עבור אחר.',
+  'לא חייבים לתת הרבה כדי להיות חלק ממשהו גדול.',
+  'גם שיתוף הקישור יכול להביא עוד לב טוב למעגל העזרה.',
+];
 const formatter = new Intl.NumberFormat('he-IL');
 const fmt = value => `${formatter.format(value || 0)} ₪`;
 const errorText = err => err?.response?.data?.message || 'אירעה שגיאה. נסו שוב.';
@@ -106,6 +115,7 @@ export default function ArielPage() {
   const [error, setError] = useState('');
   const [showStory, setShowStory] = useState(false);
   const [showAllDonations, setShowAllDonations] = useState(false);
+  const [encouragementIndex, setEncouragementIndex] = useState(0);
   const [amount, setAmount] = useState(180);
   const [now, setNow] = useState(Date.now());
   const [bank, setBank] = useState(null);
@@ -147,6 +157,27 @@ export default function ArielPage() {
     return () => { active = false; clearInterval(poll); };
   }, []);
 
+  useEffect(() => {
+    const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
+    let intervalId;
+    const synchronizeRotation = () => {
+      window.clearInterval(intervalId);
+      if (!motionPreference.matches) {
+        intervalId = window.setInterval(() => {
+          if (document.visibilityState === 'visible') {
+            setEncouragementIndex(index => (index + 1) % ENCOURAGEMENT_MESSAGES.length);
+          }
+        }, 6000);
+      }
+    };
+    synchronizeRotation();
+    motionPreference.addEventListener('change', synchronizeRotation);
+    return () => {
+      window.clearInterval(intervalId);
+      motionPreference.removeEventListener('change', synchronizeRotation);
+    };
+  }, []);
+
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t); }, []);
   const countdown = useMemo(() => deadlineCountdown(data?.deadlineAt, now), [data?.deadlineAt, now]);
   const stats = data?.stats;
@@ -185,6 +216,10 @@ export default function ArielPage() {
             <div className="ariel-art-ring"><House size={95} strokeWidth={1.1}/><HeartHandshake size={29} className="ariel-art-heart"/></div>
           </div>
           <p className="ariel-intro">{data.storyShort}</p>
+          <div className="ariel-encouragement" aria-label="מסרים לעידוד ההשתתפות">
+            <HeartHandshake size={25} aria-hidden="true"/>
+            <p key={encouragementIndex} className="ariel-encouragement-text" aria-live="off">{ENCOURAGEMENT_MESSAGES[encouragementIndex]}</p>
+          </div>
           {data.beneficiaryName && <p className="ariel-beneficiary">למען {data.beneficiaryName}</p>}
           {data.storyFull && <button className="ariel-story-toggle" type="button" onClick={() => setShowStory(!showStory)}>
             {showStory ? 'סגירת הסיפור' : 'לקריאת הסיפור המלא'} {showStory ? <ChevronUp size={17}/> : <ChevronDown size={17}/>}
