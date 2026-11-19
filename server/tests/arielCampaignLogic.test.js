@@ -39,6 +39,22 @@ test('only opted-in names are exposed publicly', () => {
   assert.equal(JSON.stringify(recent).includes('לא לפרסם'), false);
 });
 
+test('public donor list includes more than eight confirmed donations, newest first', () => {
+  const rows = Array.from({ length: 12 }, (_, i) => ({
+    _id: `donation-${i}`, amount: 100 + i, status: 'confirmed',
+    donorName: `Name ${i}`, displayName: i % 2 === 0,
+    confirmedAt: new Date(Date.UTC(2026, 10, i + 1)).toISOString(),
+  }));
+  rows.push({ _id: 'pending', amount: 9000, status: 'pending', donorName: 'Private', displayName: true });
+  const publicRows = publicRecent(rows);
+  assert.equal(publicRows.length, 12);
+  assert.equal(publicRows[0].id, 'donation-11');
+  assert.equal(publicRows.at(-1).id, 'donation-0');
+  assert.equal(publicRows[0].name, null);
+  assert.equal(publicRows[1].name, 'Name 10');
+  assert.equal(JSON.stringify(publicRows).includes('pending'), false);
+});
+
 test('strict whole-₪ payment amount validation', () => {
   assert.equal(validAmount(100), true);
   for (const bad of [-1, 0, 12.5, '100', NaN, Infinity, 1000001]) assert.equal(validAmount(bad), false);
