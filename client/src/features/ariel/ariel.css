@@ -67,6 +67,9 @@
 .ariel-recent-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
 .ariel-recent-item { padding:15px 17px; background:#f8faf7; border-radius:12px; display:flex; justify-content:space-between; gap:8px; font-size:14px; }
 .ariel-recent-item strong { white-space:nowrap; color:#1b826f; }
+.ariel-donations-toggle { display:flex; align-items:center; justify-content:center; gap:8px; min-height:44px; margin:22px auto 0; padding:9px 20px; border:1px solid #8dc7ba; border-radius:12px; background:#f4faf7; color:#176e63; font:inherit; font-size:14px; font-weight:800; cursor:pointer; transition:background .2s, border-color .2s; }
+.ariel-donations-toggle:hover { background:#e4f4ed; border-color:#4e9c8b; }
+.ariel-donations-toggle:focus-visible { outline:3px solid #188475; outline-offset:3px; }
 .ariel-empty { color:#7a8c83; }
 .ariel-footer { text-align:center; padding:29px; color:#7d9189; font-size:12px; }
 .ariel-modal-backdrop { position:fixed; z-index:100; inset:0; overflow:auto; background:#0d332fc4; display:grid; place-items:center; padding:20px; }
