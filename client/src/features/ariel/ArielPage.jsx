@@ -4,6 +4,7 @@ import { getArielBankDetails, getArielPublic, reportArielPayment } from './ariel
 import './ariel.css';
 
 const PRESETS = [100, 180, 360, 500];
+const INITIAL_DONATIONS_VISIBLE = 8;
 const formatter = new Intl.NumberFormat('he-IL');
 const fmt = value => `${formatter.format(value || 0)} ₪`;
 const errorText = err => err?.response?.data?.message || 'אירעה שגיאה. נסו שוב.';
@@ -104,6 +105,7 @@ export default function ArielPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showStory, setShowStory] = useState(false);
+  const [showAllDonations, setShowAllDonations] = useState(false);
   const [amount, setAmount] = useState(180);
   const [now, setNow] = useState(Date.now());
   const [bank, setBank] = useState(null);
@@ -148,6 +150,8 @@ export default function ArielPage() {
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t); }, []);
   const countdown = useMemo(() => deadlineCountdown(data?.deadlineAt, now), [data?.deadlineAt, now]);
   const stats = data?.stats;
+  const donations = data?.recent || [];
+  const visibleDonations = showAllDonations ? donations : donations.slice(0, INITIAL_DONATIONS_VISIBLE);
   const validAmount = Number.isSafeInteger(amount) && amount > 0 && amount <= 1000000;
 
   const copy = async (value, label = 'הועתק') => {
@@ -227,8 +231,19 @@ export default function ArielPage() {
           {copyMessage && <p role="status" className="ariel-copy-status">{copyMessage}</p>}
         </section>
         <section className="ariel-recent" aria-labelledby="ariel-recent-title">
-          <div className="ariel-section-heading"><span className="ariel-section-icon"><HeartHandshake size={22}/></span><div><h2 id="ariel-recent-title">שותפים לדרך</h2><p>התרומות האחרונות שאושרו</p></div></div>
-          {data.recent?.length ? <div className="ariel-recent-grid">{data.recent.map(item => <div key={item.id} className="ariel-recent-item"><span>{item.name || 'תרומה בעילום שם'}</span><strong>{fmt(item.amount)}</strong></div>)}</div> : <p className="ariel-empty">עדיין אין תרומות מוצגות. אפשר להיות הראשונים.</p>}
+          <div className="ariel-section-heading"><span className="ariel-section-icon"><HeartHandshake size={22}/></span><div><h2 id="ariel-recent-title">שותפים לדרך</h2><p>כל התרומות שאושרו</p></div></div>
+          {donations.length ? (
+            <>
+              <div className="ariel-recent-grid">
+                {visibleDonations.map(item => <div key={item.id} className="ariel-recent-item"><span>{item.name || 'תרומה בעילום שם'}</span><strong>{fmt(item.amount)}</strong></div>)}
+              </div>
+              {donations.length > INITIAL_DONATIONS_VISIBLE && (
+                <button type="button" className="ariel-donations-toggle" aria-expanded={showAllDonations} onClick={() => setShowAllDonations(previous => !previous)}>
+                  {showAllDonations ? <>הצג פחות <ChevronUp size={17}/></> : <>הצגת כל התרומות ({donations.length}) <ChevronDown size={17}/></>}
+                </button>
+              )}
+            </>
+          ) : <p className="ariel-empty">עדיין אין תרומות מוצגות. אפשר להיות הראשונים.</p>}
         </section>
         <footer className="ariel-footer">מיזם משפחתי עצמאי • התשלומים מאומתים ידנית לפני עדכון הסכום</footer>
       </main>
