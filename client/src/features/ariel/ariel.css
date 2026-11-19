@@ -19,6 +19,10 @@
 .ariel-art-ring>svg:first-child { transform:rotate(8deg); }
 .ariel-art-heart { position:absolute; bottom:15px;left:22px;color:#b38055;transform:rotate(8deg); }
 .ariel-intro { max-width:620px; margin:3px auto 10px; line-height:1.95; font-size:17px; color:#4c615a; white-space:pre-line; }
+.ariel-encouragement { display:flex; align-items:center; justify-content:center; gap:15px; min-height:94px; max-width:670px; margin:23px auto 12px; padding:19px 27px; border:1px solid #cde5dc; border-radius:19px; background:linear-gradient(120deg,#f7fcf9,#e8f4ef); box-shadow:0 12px 35px rgba(44,115,96,.06); }
+.ariel-encouragement>svg { flex-shrink:0; color:#23917e; }
+.ariel-encouragement-text { min-width:0; margin:0; font-size:clamp(15px,2.4vw,19px); font-weight:750; line-height:1.65; color:#235e52; text-wrap:balance; animation:ariel-quote-enter .55s ease both; }
+@keyframes ariel-quote-enter { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
 .ariel-beneficiary { font-weight:700; }
 .ariel-story-toggle { display:inline-flex; gap:7px; align-items:center; color:#0d7d71; background:none; border:0; cursor:pointer; font-weight:800; margin-top:12px; }
 .ariel-story-toggle:hover { text-decoration:underline; }
@@ -109,6 +113,7 @@
 .ariel-admin-stack { display:grid; gap:18px; }
 .ariel-admin-panel { background:#fff; border:1px solid #dfe8df; border-radius:17px; padding:25px; margin-bottom:16px; }
 .ariel-admin-panel h2 { margin:0 0 10px; font-size:21px; font-weight:850; display:flex; align-items:center; gap:7px; }
+.ariel-admin-edit-panel { scroll-margin-top:24px; }
 .ariel-admin-panel p { color:#7a8c80; font-size:13px; }
 .ariel-admin-form { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:13px; margin-top:20px; }
 .ariel-admin-form label { font-size:13px; font-weight:750; color:#456558; display:grid; gap:6px; min-width:0; }
@@ -135,6 +140,7 @@
   .ariel-topnote { display:none; }
   .ariel-hero { padding:38px 10px 23px; }
   .ariel-house-art { height:150px; }
+  .ariel-encouragement { min-height:110px; padding:17px 15px; gap:11px; margin-top:18px; }
   .ariel-art-ring { width:110px;height:110px;border-radius:35px; }
   .ariel-art-ring>svg:first-child { width:72px;height:72px; }
   .ariel-progress-card,.ariel-donate,.ariel-recent { border-radius:19px; }
