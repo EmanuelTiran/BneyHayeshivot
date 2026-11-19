@@ -34,11 +34,10 @@ function statsFromDonations(donations, config = {}) {
   };
 }
 
-function publicRecent(donations, limit = 8) {
+function publicRecent(donations) {
   return donations
     .filter((d) => d.status === 'confirmed')
     .sort((a, b) => new Date(b.confirmedAt || b.createdAt) - new Date(a.confirmedAt || a.createdAt))
-    .slice(0, limit)
     .map((d) => ({
       id: String(d._id || d.id),
       amount: d.amount,
