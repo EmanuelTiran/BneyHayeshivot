@@ -130,6 +130,10 @@
 .ariel-admin-table td small { display:block;color:#849188; }
 .ariel-actions { display:flex; gap:7px; }
 .ariel-actions button { border:1px solid #d5e4da; background:white; border-radius:8px; padding:7px; cursor:pointer; }
+.ariel-actions button.ariel-action-delete { border-color:#efc5c2; color:#9c3431; background:#fff7f6; }
+.ariel-actions button.ariel-action-delete:hover { background:#ffe9e7; border-color:#d8938b; }
+.ariel-actions button:focus-visible { outline:2px solid #167a6d; outline-offset:2px; }
+.ariel-actions button:disabled { opacity:.45; cursor:not-allowed; }
 .ariel-status { border-radius:6px; padding:4px 7px; font-weight:750; white-space:nowrap; }
 .ariel-status-pending { background:#fff4d9; color:#93611c; }
 .ariel-status-confirmed { background:#e3f6e8; color:#286b43; }
