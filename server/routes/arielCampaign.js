@@ -192,4 +192,22 @@ router.patch('/admin/donations/:id', ...admin, wrap(async (req, res) => {
   });
   return res.json({ donation });
 }));
+
+router.delete('/admin/donations/:id', ...admin, wrap(async (req, res) => {
+  if (!mongoose.isObjectIdOrHexString(req.params.id)) fail(400, 'מזהה תרומה לא תקין');
+  const input = validateBody(req.body);
+  if (!Number.isSafeInteger(input.expectedVersion) || input.expectedVersion < 0) fail(400, 'גרסת תרומה חסרה');
+  // Remove the database row, but keep a privacy-safe audit event in the same transaction.
+  await atomic(async session => {
+    const before = await Donation.findOne({ _id: req.params.id, campaignKey: 'ariel' }).session(session).lean();
+    if (!before) fail(404, 'התרומה לא נמצאה');
+    if (before.__v !== input.expectedVersion) fail(409, 'התרומה השתנתה. רענן ונסה שוב');
+    const result = await Donation.deleteOne({
+      _id: before._id, campaignKey: 'ariel', __v: input.expectedVersion,
+    }, { session });
+    if (result.deletedCount !== 1) fail(409, 'התרומה השתנתה. רענן ונסה שוב');
+    await audit(session, req.user.userId, 'donation_deleted', before._id, before, null);
+  });
+  return res.json({ deleted: true, id: req.params.id });
+}));
 module.exports = router;
