@@ -54,7 +54,7 @@ async function settings(patch) {
 test('campaign API security, privacy and financial integrity', async t => {
   await t.test('all administrator endpoints require authentication and database-backed active admin role', async () => {
     const id = String(new mongoose.Types.ObjectId());
-    for (const [path, method] of [['/admin', 'GET'], ['/admin/settings', 'PATCH'], ['/admin/donations', 'POST'], [`/admin/donations/${id}`, 'PATCH'], [`/admin/donations/${id}/status`, 'PATCH']]) {
+    for (const [path, method] of [['/admin', 'GET'], ['/admin/settings', 'PATCH'], ['/admin/donations', 'POST'], [`/admin/donations/${id}`, 'PATCH'], [`/admin/donations/${id}/status`, 'PATCH'], [`/admin/donations/${id}`, 'DELETE']]) {
       assert.equal((await request(path, method, method === 'GET' ? undefined : {})).status, 401);
       assert.equal((await request(path, method, method === 'GET' ? undefined : {}, memberToken)).status, 403);
       assert.equal((await request(path, method, method === 'GET' ? undefined : {}, inactiveToken)).status, 401);
@@ -160,6 +160,58 @@ test('campaign API security, privacy and financial integrity', async t => {
     assert.equal((await Donation.findById(doc._id)).amount, doc.amount);
     assert.equal((await Donation.findById(pending._id)).status, 'pending');
     assert.equal((await Campaign.findOne()).published, true);
+  });
+
+  await t.test('admin deletion is permanent, version-checked, auditable and updates totals', async () => {
+    const totalBefore = (await request('')).data.stats.total;
+    const created = await request('/admin/donations', 'POST', manual({
+      amount: 234, donorName: 'PRIVATE DELETE DONOR', donorContact: 'PRIVATE DELETE CONTACT',
+      note: 'PRIVATE DELETE NOTE', displayName: true,
+    }), adminToken);
+    assert.equal(created.status, 201);
+    const doc = created.data.donation;
+    const path = `/admin/donations/${doc._id}`;
+    assert.equal((await request('')).data.stats.total, totalBefore + 234);
+    assert.equal((await request(path, 'DELETE', {}, adminToken)).status, 400);
+    assert.equal((await request(path, 'DELETE', { expectedVersion: '0' }, adminToken)).status, 400);
+    assert.equal((await request('/admin/donations/not-an-id', 'DELETE', { expectedVersion: 0 }, adminToken)).status, 400);
+    assert.equal((await request(path, 'PATCH', { expectedVersion: doc.__v, note: 'PRIVATE UPDATED NOTE' }, adminToken)).status, 200);
+    assert.equal((await request(path, 'DELETE', { expectedVersion: doc.__v }, adminToken)).status, 409);
+    assert.ok(await Donation.findById(doc._id));
+    const deleted = await request(path, 'DELETE', { expectedVersion: doc.__v + 1 }, adminToken);
+    assert.equal(deleted.status, 200);
+    assert.equal(deleted.data.deleted, true);
+    assert.equal(await Donation.findById(doc._id), null);
+    assert.equal((await request(path, 'DELETE', { expectedVersion: doc.__v + 1 }, adminToken)).status, 404);
+    assert.equal((await request('')).data.stats.total, totalBefore);
+    const adminData = (await request('/admin', 'GET', undefined, adminToken)).data;
+    assert.ok(!adminData.donations.some(d => String(d._id) === String(doc._id)));
+    const event = await Audit.findOne({ action: 'donation_deleted', donationId: doc._id }).lean();
+    assert.equal(event.before.amount, 234);
+    assert.equal(event.before.status, 'confirmed');
+    assert.equal(event.after, null);
+    assert.ok(!JSON.stringify(event).includes('PRIVATE'));
+
+    for (const status of ['pending', 'rejected', 'void']) {
+      const entry = await Donation.create({ amount: 18, method: 'bit', source: 'report', reportKey: randomUUID(), status, donorName: 'PRIVATE STATUS DONOR' });
+      assert.equal((await request(`/admin/donations/${entry._id}`, 'DELETE', { expectedVersion: entry.__v }, adminToken)).status, 200);
+      assert.equal(await Donation.findById(entry._id), null);
+    }
+    assert.equal((await request('')).data.stats.total, totalBefore);
+  });
+  await t.test('audit failure rolls back permanent deletion', async () => {
+    const created = await request('/admin/donations', 'POST', manual({ amount: 31 }), adminToken);
+    assert.equal(created.status, 201);
+    const doc = created.data.donation;
+    const totalBefore = (await request('')).data.stats.total;
+    const oldCreate = Audit.create;
+    Audit.create = async () => { throw new Error('simulated audit outage'); };
+    try {
+      assert.equal((await request(`/admin/donations/${doc._id}`, 'DELETE', { expectedVersion: doc.__v }, adminToken)).status, 500);
+    } finally { Audit.create = oldCreate; }
+    assert.ok(await Donation.findById(doc._id));
+    assert.equal((await request('')).data.stats.total, totalBefore);
+    assert.equal((await request(`/admin/donations/${doc._id}`, 'DELETE', { expectedVersion: doc.__v }, adminToken)).status, 200);
   });
   await t.test('reports are rate limited and unpublishing closes every public endpoint', async () => {
     for (let i = 0; i < 5; i++) assert.equal((await request('/reports', 'POST', { website: 'spam' }, undefined, '192.0.2.22')).status, 202);
