@@ -53,6 +53,13 @@ app.get('*', (_req, res) => res.sendFile(path.join(root, '.ariel-qa/build/index.
             status = failManual ? 500 : 201;
             data = failManual ? { message: 'כשל זמני לבדיקה' } : { donation: body };
             if (!failManual) donations.push({ ...body, _id: '507f1f77bcf86cd799439012', __v: 0, status: 'confirmed', createdAt: new Date().toISOString() });
+          } else if (url.pathname.startsWith('/api/ariel/admin/donations/') && method === 'DELETE') {
+            const id = url.pathname.split('/').at(-1);
+            const index = donations.findIndex(d => d._id === id);
+            const input = route.request().postDataJSON();
+            if (index < 0) { status = 404; data = { message: 'התרומה לא נמצאה' }; }
+            else if (input.expectedVersion !== donations[index].__v) { status = 409; data = { message: 'גרסה שגויה' }; }
+            else { donations.splice(index, 1); data = { deleted: true, id }; }
           } else if (url.pathname === '/api/ariel/admin/settings') {
             Object.assign(campaign, route.request().postDataJSON(), { __v: campaign.__v + 1 });
             data = { campaign };
@@ -120,6 +127,17 @@ app.get('*', (_req, res) => res.sendFile(path.join(root, '.ariel-qa/build/index.
         return rect && rect.top < window.innerHeight && rect.bottom > 0;
       }, null, { timeout: 2500 });
       await page.getByRole('button', { name: 'ביטול', exact: true }).click();
+      page.once('dialog', dialog => dialog.dismiss());
+      await page.getByRole('button', { name: /מחיקה לצמיתות של תרומת/ }).click();
+      assert.equal(donations.length, 1, 'cancelling confirmation must preserve the row');
+      page.once('dialog', dialog => {
+        assert.match(dialog.message(), /לא ניתן לשחזר/);
+        dialog.accept();
+      });
+      await page.getByRole('button', { name: /מחיקה לצמיתות של תרומת/ }).click();
+      await page.getByRole('status').filter({ hasText: 'הרשומה נמחקה לצמיתות' }).waitFor();
+      assert.equal(donations.length, 0, 'confirmed permanent deletion removes the row');
+      await page.getByText('אין עדיין תרומות במערכת.').waitFor();
       await page.getByRole('button', { name: 'הגדרות ופרסום' }).click();
       assert.equal(await page.getByLabel('לפרסם את שם המוטב', { exact: true }).isChecked(), false);
       assert.equal(await page.getByLabel('לפרסם את הסיפור האישי', { exact: false }).isChecked(), false);
