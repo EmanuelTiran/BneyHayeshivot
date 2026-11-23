@@ -21,6 +21,9 @@ export async function createArielDonation(data) {
 export async function updateArielDonation(id, data) {
   return (await API.patch(`/ariel/admin/donations/${encodeURIComponent(id)}`, data)).data;
 }
+export async function deleteArielDonation(id, expectedVersion) {
+  return (await API.delete(`/ariel/admin/donations/${encodeURIComponent(id)}`, { data: { expectedVersion } })).data;
+}
 export async function changeArielDonationStatus(id, status) {
   return (await API.patch(`/ariel/admin/donations/${encodeURIComponent(id)}/status`, { status })).data;
 }
