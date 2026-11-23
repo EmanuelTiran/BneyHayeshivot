@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Check, CheckCircle2, CircleAlert, ClipboardList, Pencil, Plus, RefreshCw, Settings, ShieldCheck, Trash2 } from 'lucide-react';
-import { changeArielDonationStatus, createArielDonation, getArielAdmin, saveArielSettings, updateArielDonation } from './arielApi';
+import { Check, CheckCircle2, CircleAlert, ClipboardList, Pencil, Plus, RefreshCw, Settings, ShieldCheck, Trash2, XCircle } from 'lucide-react';
+import { changeArielDonationStatus, createArielDonation, deleteArielDonation, getArielAdmin, saveArielSettings, updateArielDonation } from './arielApi';
 import './ariel.css';
 import { csvCell } from './arielCsv.mjs';
 
@@ -117,6 +117,12 @@ export default function ArielAdmin() {
     await run(() => changeArielDonationStatus(donation._id, status), 'הסטטוס עודכן');
   };
 
+  const deleteDonation = async donation => {
+    const details = `${donation.donorName || 'תורם אנונימי'} — ${money(donation.amount)}`;
+    if (!window.confirm(`למחוק לצמיתות את הרשומה של ${details}?\n\nהרשומה תימחק ממסד הנתונים ומיומן התרומות. אם התרומה אושרה, היא תופחת מהסכום שנאסף. לא ניתן לשחזר את המחיקה.`)) return;
+    const saved = await run(() => deleteArielDonation(donation._id, donation.__v), 'הרשומה נמחקה לצמיתות');
+    if (saved) setEditing(current => current?._id === donation._id ? null : current);
+  };
   const saveEdit = async e => {
     e.preventDefault();
     const amount = Number(editing.amount);
@@ -168,7 +174,7 @@ export default function ArielAdmin() {
         <div className="ariel-table-scroll"><table className="ariel-admin-table"><thead><tr><th>מועד</th><th>תורם</th><th>סכום</th><th>אמצעי</th><th>מצב</th><th>פעולות</th></tr></thead><tbody>
           {donations.map(d => <tr key={d._id}>
             <td>{new Date(d.createdAt).toLocaleString('he-IL')}</td><td>{d.donorName || 'אנונימי'}<small>{d.reference || ''}</small></td><td>{money(d.amount)}</td><td>{methods[d.method]}</td><td><span className={`ariel-status ariel-status-${d.status}`}>{statuses[d.status]}</span></td>
-            <td><div className="ariel-actions"><button type="button" disabled={busy} title="עריכה" onClick={() => beginEdit(d)}><Pencil size={16}/></button>{d.status === 'pending' && <><button disabled={busy} title="אישור" onClick={() => setStatus(d, 'confirmed')}><Check size={17}/></button><button disabled={busy} title="דחייה" onClick={() => setStatus(d, 'rejected')}><Trash2 size={16}/></button></>}{d.status === 'confirmed' && <button disabled={busy} title="ביטול תרומה" onClick={() => setStatus(d, 'void')}><CircleAlert size={16}/></button>}</div></td>
+            <td><div className="ariel-actions"><button type="button" disabled={busy} title="עריכה" onClick={() => beginEdit(d)}><Pencil size={16}/></button>{d.status === 'pending' && <><button disabled={busy} title="אישור" onClick={() => setStatus(d, 'confirmed')}><Check size={17}/></button><button disabled={busy} title="דחיית דיווח (ללא מחיקה)" aria-label="דחיית דיווח" onClick={() => setStatus(d, 'rejected')}><XCircle size={16}/></button></>}{d.status === 'confirmed' && <button disabled={busy} title="ביטול תרומה" onClick={() => setStatus(d, 'void')}><CircleAlert size={16}/></button>}<button type="button" className="ariel-action-delete" disabled={busy} title="מחיקה לצמיתות" aria-label={`מחיקה לצמיתות של תרומת ${d.donorName || 'תורם אנונימי'} בסך ${money(d.amount)}`} onClick={() => deleteDonation(d)}><Trash2 size={16}/></button></div></td>
           </tr>)}
           {!donations.length && <tr><td colSpan="6">אין עדיין תרומות במערכת.</td></tr>}
         </tbody></table></div>
